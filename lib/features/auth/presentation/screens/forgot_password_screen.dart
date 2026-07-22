@@ -1,25 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/design_system/index.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_button.dart';
-import '../../../../core/widgets/app_text_field.dart';
-import '../../../../core/widgets/app_snackbar.dart';
 import '../providers/auth_provider.dart';
+import '../utils/auth_feedback.dart';
+import '../widgets/auth_asset_text_field.dart';
+import '../widgets/auth_screen_header.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
-  final _formKey   = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
-  bool  _sent      = false;
+  bool _sent = false;
 
   @override
   void dispose() {
@@ -31,13 +34,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     FocusScope.of(context).unfocus();
 
-    await ref.read(authNotifierProvider.notifier)
-        .forgotPassword(email: _emailCtrl.text.trim());
+    await ref.read(authNotifierProvider.notifier).forgotPassword(
+          email: _emailCtrl.text.trim(),
+        );
 
     if (!mounted) return;
     final failure = ref.read(authNotifierProvider).failure;
     if (failure != null) {
-      AppSnackbar.error(context, failure.message);
+      showAuthFailure(context, failure);
     } else {
       setState(() => _sent = true);
     }
@@ -45,22 +49,32 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(authNotifierProvider).isLoading;
+    final authState = ref.watch(authNotifierProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: SignmeColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => context.pop(),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: SignmeColors.black,
+          ),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.login);
+            }
+          },
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: _sent ? _buildSuccess() : _buildForm(isLoading),
+          padding: SignmeSpacing.screenPadding,
+          child: _sent ? _buildSuccess() : _buildForm(authState.isLoading),
         ),
       ),
     );
@@ -70,38 +84,33 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     return Form(
       key: _formKey,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 20),
-          Text(
-            AppStrings.resetPassword,
-            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          const AuthScreenHeader(
+            title: 'Mot de passe oublié',
+            subtitle: AppStrings.resetSubtitle,
+            logoSize: 72,
           ),
-          const SizedBox(height: 8),
-          Text(
-            AppStrings.resetSubtitle,
-            style: GoogleFonts.poppins(fontSize: 14, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 36),
-          AppTextField(
+          SignmeSpacing.vGapLg,
+          AuthAssetTextField(
             label: AppStrings.email,
             hint: AppStrings.emailHint,
             controller: _emailCtrl,
-            leadingIcon: Icons.alternate_email_rounded,
+            assetPath: SignmeAssets.email,
             keyboardType: TextInputType.emailAddress,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _send(),
             validator: (v) {
-              if (v == null || v.trim().isEmpty) return AppStrings.requiredField;
+              if (v == null || v.trim().isEmpty) {
+                return AppStrings.requiredField;
+              }
               if (!v.contains('@')) return AppStrings.invalidEmail;
               return null;
             },
           ),
-          const SizedBox(height: 32),
-          AppPrimaryButton(
+          SignmeSpacing.vGapLg,
+          SignmePrimaryButton(
             label: AppStrings.sendResetLink,
-            onPressed: _send,
             isLoading: isLoading,
+            onPressed: isLoading ? null : _send,
           ),
         ],
       ),
@@ -109,32 +118,63 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 
   Widget _buildSuccess() {
+    final email = _emailCtrl.text.trim();
+
     return Column(
       children: [
-        const SizedBox(height: 40),
+        SignmeSpacing.vGapLg,
         Container(
-          width: 80, height: 80,
+          width: 72,
+          height: 72,
           decoration: BoxDecoration(
-            color: AppColors.successLight,
+            color: SignmeColors.success.withOpacity(0.12),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.mark_email_read_rounded, size: 40, color: AppColors.success),
+          child: const Icon(
+            Icons.mark_email_read_rounded,
+            size: 36,
+            color: SignmeColors.success,
+          ),
         ),
-        const SizedBox(height: 24),
+        SignmeSpacing.vGapMd,
         Text(
-          'Email envoyé !',
-          style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          'Email envoyé',
+          style: SignmeTypography.headlineSmall.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        const SizedBox(height: 12),
+        SignmeSpacing.vGapSm,
         Text(
-          'Vérifiez votre boîte mail et suivez les instructions pour réinitialiser votre mot de passe.',
+          'Un code OTP a été envoyé à $email.',
           textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(fontSize: 14, color: AppColors.textSecondary),
+          style: SignmeTypography.bodyMedium.copyWith(
+            color: SignmeColors.mediumGray,
+            height: 1.4,
+          ),
         ),
-        const SizedBox(height: 36),
-        AppPrimaryButton(
-          label: AppStrings.backToLogin,
-          onPressed: () => context.go('/login'),
+        SignmeSpacing.vGapLg,
+        SignmePrimaryButton(
+          label: 'Saisir le code',
+          onPressed: () => context.push(
+            '${AppRoutes.otpVerification}?email=${Uri.encodeComponent(email)}',
+          ),
+        ),
+        SignmeSpacing.vGapSm,
+        TextButton(
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRoutes.login);
+            }
+          },
+          child: Text(
+            AppStrings.backToLogin,
+            style: SignmeTypography.labelMedium.copyWith(
+              color: SignmeColors.primaryLight,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
       ],
     );

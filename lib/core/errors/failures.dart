@@ -14,13 +14,25 @@ class AuthFailure extends Failure {
   const AuthFailure({required super.message});
 }
 
+class RateLimitFailure extends Failure {
+  const RateLimitFailure({
+    required super.message,
+    this.retryAfterSeconds,
+  });
+
+  final int? retryAfterSeconds;
+
+  @override
+  List<Object?> get props => [message, retryAfterSeconds];
+}
+
 class ValidationFailure extends Failure {
   const ValidationFailure({required super.message, this.errors = const {}});
   final Map<String, List<String>> errors;
 }
 
 class ForbiddenFailure extends Failure {
-  const ForbiddenFailure({super.message = 'Accès refusé'});
+  const ForbiddenFailure({super.message = "Une erreur s'est produite."});
 }
 
 class NetworkFailure extends Failure {
@@ -28,11 +40,11 @@ class NetworkFailure extends Failure {
 }
 
 class ServerFailure extends Failure {
-  const ServerFailure({super.message = 'Erreur serveur. Veuillez réessayer.'});
+  const ServerFailure({super.message = "Une erreur s'est produite. Veuillez réessayer..."});
 }
 
 class NotFoundFailure extends Failure {
-  const NotFoundFailure({super.message = 'Ressource introuvable.'});
+  const NotFoundFailure({super.message = "Une erreur s'est produite. Veuillez réessayer..."});
 }
 
 class TimeoutFailure extends Failure {

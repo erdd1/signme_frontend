@@ -69,7 +69,6 @@ abstract final class AppColors {
   // ── Couleurs par rôle ───────────────────────────────────────────────────
   static Color roleColor(String role) {
     const map = {
-      'administrateur': Color(0xFF7C3AED),
       'pasteur':        Color(0xFF1A2B6B),
       'secretaire':     Color(0xFF0EA5E9),
       'tresorier':      Color(0xFF22C55E),

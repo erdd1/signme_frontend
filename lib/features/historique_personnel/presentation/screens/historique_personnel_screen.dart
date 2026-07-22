@@ -1,215 +1,255 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/historique_personnel_provider.dart';
+import '../../../../core/design_system/index.dart';
+import '../../../../core/constants/app_assets.dart';
+import '../../../../core/widgets/index.dart';
+import '../../../../core/widgets/app_shimmer.dart';
+import '../../domain/entities/historique_personnel_entity.dart';
+import '../providers/historique_personnel_combined_provider.dart';
+import '../../../badge/presentation/providers/badge_provider.dart';
 
-/// Historique Personnel Screen
-/// Affiche UNIQUEMENT les signatures à distance de l'utilisateur connecté
-/// C'est l'historique personnel de mes paiements/signatures à distance
 class HistoriquePersonnelScreen extends ConsumerStatefulWidget {
-  const HistoriquePersonnelScreen({Key? key}) : super(key: key);
+  const HistoriquePersonnelScreen({super.key});
 
   @override
   ConsumerState<HistoriquePersonnelScreen> createState() =>
       _HistoriquePersonnelScreenState();
 }
 
-class _HistoriquePersonnelScreenState extends ConsumerState<HistoriquePersonnelScreen> {
+class _HistoriquePersonnelScreenState
+    extends ConsumerState<HistoriquePersonnelScreen> {
   late String _selectedYear = DateTime.now().year.toString();
 
-  // ✅ FIX: Créer les filters HORS du build pour éviter de relancer le provider à chaque setState
-  late final Map<String, dynamic> _filters = {
-    'year': _selectedYear,  // ✅ FIX: Keep as String for HTTP query parameters
-    'status': 'completed',
-    'per_page': 20,
-  };
+  @override
+  void initState() {
+    super.initState();
+    // Rafraîchit silencieusement à chaque ouverture de l'écran (les données
+    // déjà en cache restent affichées pendant la mise à jour en arrière-plan).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(historiquePersonnelCombinedProvider(_selectedYear).notifier).refresh();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Mettre à jour les filters seulement si l'année a changé
-    _filters['year'] = _selectedYear;  // ✅ Keep as String
+    final historiqueAsync =
+        ref.watch(historiquePersonnelCombinedProvider(_selectedYear));
 
-    final historiqueAsync = ref.watch(historiquePersonnelProvider(_filters));
+    final yearInt = int.tryParse(_selectedYear) ?? DateTime.now().year;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mon Historique'),
-        centerTitle: false,
-      ),
-      body: Column(
-        children: [
-          // ─── Filtres ────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              children: [
-                // Filtre par année
-                DropdownButton<String>(
-                  value: _selectedYear,
-                  isExpanded: true,
-                  items: List.generate(5, (i) {
-                    final year = (DateTime.now().year - 2 + i).toString();
-                    return DropdownMenuItem(
-                      value: year,
-                      child: Text('Année $year'),
-                    );
-                  }),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _selectedYear = value);
-                    }
-                  },
-                ),
-                const SizedBox(height: 0), // Pas de filtre de statut - affiche uniquement complétées
-              ],
+    return RefreshIndicator(
+      color: SignmeColors.primaryLight,
+      onRefresh: () async {
+        await ref
+            .read(historiquePersonnelCombinedProvider(_selectedYear).notifier)
+            .refresh();
+        // Marquer le badge historique comme lu
+        await ref
+            .read(badgeNotifierProvider.notifier)
+            .markRead('historique');
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            const OnboardingSection(
+              svgPath: SignmeAssets.onboardingHistorique,
+              title: 'Historique des signatures',
+              description: 'Retrouvez toutes vos signatures enregistrées.',
             ),
-          ),
-          // ─── Liste ──────────────────────────────────────────────────────
-          Expanded(
-            child: historiqueAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stackTrace) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, size: 48, color: Colors.red),
-                    const SizedBox(height: 12),
-                    Text('Erreur: $error'),
-                  ],
-                ),
+            const SizedBox(height: SignmeSpacing.lg),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+              child: SignmeYearSelector(
+                year: yearInt,
+                label: 'Filtrer par année',
+                minYear: DateTime.now().year,
+                maxYear: DateTime.now().year + 4,
+                onPrevious: () => setState(() {
+                  _selectedYear = (yearInt - 1).toString();
+                }),
+                onNext: () => setState(() {
+                  _selectedYear = (yearInt + 1).toString();
+                }),
               ),
-              data: (historique) {
-                if (historique.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.history, size: 48, color: Colors.grey),
-                        const SizedBox(height: 12),
-                        const Text('Aucune signature trouvée'),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: historique.length,
-                  itemBuilder: (context, index) {
-                    final sig = historique[index];
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: ListTile(
-                        leading: Icon(
-                          sig.isCompleted
-                              ? Icons.check_circle
-                              : sig.isPending
-                                  ? Icons.schedule
-                                  : Icons.error,
-                          color: sig.isCompleted
-                              ? Colors.green
-                              : sig.isPending
-                                  ? Colors.orange
-                                  : Colors.red,
-                          size: 32,
-                        ),
-                        title: Text(
-                          sig.month,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(
-                              'Statut: ${sig.statusFr}',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            Text(
-                              sig.formattedDate,
-                              style: const TextStyle(fontSize: 11, color: Colors.grey),
-                            ),
-                            if (sig.paymentMethod != null)
-                              Text(
-                                'Paiement: ${sig.paymentMethod}',
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                          ],
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${sig.amount} FCFA',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            if (sig.fees != null)
-                              Text(
-                                'Frais: ${sig.fees}',
-                                style: const TextStyle(fontSize: 10, color: Colors.grey),
-                              ),
-                          ],
-                        ),
-                        onTap: () => _showDetail(context, sig),
-                      ),
-                    );
-                  },
-                );
-              },
             ),
-          ),
-        ],
+            const SizedBox(height: SignmeSpacing.md),
+            SizedBox(
+              // Bornée pour rester utilisable sur les écrans courts/paysage
+              // (jamais en dessous de 320) sans devenir démesurée sur tablette.
+              height: (MediaQuery.of(context).size.height * 0.65).clamp(320.0, 900.0),
+              child: SignmeAsyncValue<List<HistoriquePersonnelEntity>>(
+                value: historiqueAsync,
+                fitViewport: false,
+
+                onRetry: () => ref.read(
+                  historiquePersonnelCombinedProvider(_selectedYear).notifier,
+                ).refresh(),
+
+                emptyIcon: Icons.history_rounded,
+                emptyTitle: 'Aucune signature',
+                emptyMessage:
+                'Vous n\'avez pas encore de signature pour cette année.',
+
+                isEmpty: (historique) => historique.isEmpty,
+
+                loading: ListView.builder(
+                  padding: const EdgeInsets.all(SignmeSpacing.lg),
+                  itemCount: 3,
+                  itemBuilder: (_, __) => const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: AppShimmerBox(
+                      height: 120,
+                      width: double.infinity,
+                      radius: SignmeSpacing.radiusLg,
+                    ),
+                  ),
+                ),
+
+                data: (historique) {
+                  return ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(
+                      SignmeSpacing.lg,
+                      0,
+                      SignmeSpacing.lg,
+                      120,
+                    ),
+                    itemCount: historique.length,
+                    itemBuilder: (context, index) =>
+                        _buildSignatureCard(context, historique[index]),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _showDetail(BuildContext context, dynamic sig) {
+  Widget _buildSignatureCard(
+    BuildContext context,
+    HistoriquePersonnelEntity sig,
+  ) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: SignmeSpacing.md),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        side: BorderSide(color: SignmeColors.lightGrayBorder),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(SignmeSpacing.md),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: (sig.isCompleted ? SignmeColors.success : SignmeColors.warning)
+                .withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            sig.isCompleted
+                ? Icons.check_circle_rounded
+                : Icons.pending_rounded,
+            color:
+                sig.isCompleted ? SignmeColors.success : SignmeColors.warning,
+            size: 28,
+          ),
+        ),
+        title: Text(
+          sig.month,
+          style: SignmeTypography.labelLarge.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              sig.signatureTypeFr,
+              style: SignmeTypography.bodySmall.copyWith(
+                color: SignmeColors.primaryLight,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              sig.formattedDate,
+              style: SignmeTypography.labelSmall.copyWith(
+                color: SignmeColors.mediumGray,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+        trailing: Text(
+          '${sig.amount} F',
+          style: SignmeTypography.labelLarge.copyWith(
+            fontWeight: FontWeight.w800,
+            color: SignmeColors.primaryDark,
+          ),
+        ),
+        onTap: () => _showDetail(context, sig),
+      ),
+    );
+  }
+
+  void _showDetail(BuildContext context, HistoriquePersonnelEntity sig) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Signature - ${sig.month}'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        ),
+        title: Text(
+          'Détails Signature',
+          style: SignmeTypography.headlineSmall.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _detailRow('Statut:', sig.statusFr),
+            _detailRow('Mois:', sig.month),
+            _detailRow('Type:', sig.signatureTypeFr),
             _detailRow('Montant:', '${sig.amount} FCFA'),
-            if (sig.fees != null) _detailRow('Frais:', '${sig.fees} FCFA'),
-            _detailRow('Type:', sig.signatureType),
-            if (sig.paymentMethod != null) _detailRow('Paiement:', sig.paymentMethod),
             _detailRow('Date:', sig.formattedDate),
-            if (sig.errorMessage != null)
-              _detailRow('Erreur:', sig.errorMessage, color: Colors.red),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
+            child: Text(
+              'Fermer',
+              style: SignmeTypography.labelMedium.copyWith(
+                color: SignmeColors.primaryLight,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _detailRow(String label, String? value, {Color? color}) {
+  Widget _detailRow(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: SignmeTypography.bodySmall.copyWith(
+              color: SignmeColors.mediumGray,
+            ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              value ?? 'N/A',
-              style: TextStyle(color: color),
-              overflow: TextOverflow.ellipsis,
+          Text(
+            value,
+            style: SignmeTypography.bodySmall.copyWith(
+              fontWeight: FontWeight.w600,
+              color: SignmeColors.black,
             ),
           ),
         ],

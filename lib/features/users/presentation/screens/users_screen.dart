@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
-import '../../../../core/widgets/app_shimmer.dart';
-import '../../../../core/widgets/role_menu_drawer.dart';
+import '../../../../core/constants/app_assets.dart';
+import '../../../../core/design_system/index.dart';
+import '../../../../core/permissions/app_permissions.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../../core/widgets/index.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../domain/entities/user_entity.dart';
 import '../providers/users_provider.dart';
-import 'create_user_dialog.dart';
-import 'user_detail_screen.dart';
+import '../widgets/user_card.dart';
 
 class UsersScreen extends ConsumerStatefulWidget {
   const UsersScreen({super.key});
@@ -29,7 +27,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
     _scrollCtrl.addListener(() {
       if (_scrollCtrl.position.pixels >=
           _scrollCtrl.position.maxScrollExtent - 150) {
-        ref.read(usersProvider.notifier).loadMore();
+        ref.read(usersListProvider.notifier).loadMore();
       }
     });
   }
@@ -44,302 +42,198 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(usersListProvider);
-    final auth = ref.watch(authNotifierProvider);
-    final currentUser = auth.auth?.user;
+    final currentUser = ref.watch(authNotifierProvider).auth?.user;
+    final canManage =
+        currentUser != null && AppPermissions.canManageMembers(currentUser);
     final users = state.filtered;
 
-    // ── Check permissions ──────────────────────────────────────────────
-    final canViewUsers = currentUser != null && 
-        (currentUser.role == 'pasteur' || currentUser.role == 'secretaire');
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      drawer: const RoleMenuDrawer(),
-      appBar: AppBar(
-        title: Text('Gérer Utilisateurs',
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      floatingActionButton: canViewUsers
-          ? FloatingActionButton(
-              backgroundColor: AppColors.primary,
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (_) => CreateUserDialog(
-                    currentUserRole: currentUser!.role,
-                  ),
-                );
-              },
-              child: const Icon(Icons.person_add_rounded, color: Colors.white),
-            )
-          : null,
-      body: Column(
-        children: [
-          // ── Check permissions guard ──────────────────────────────────
-          if (!canViewUsers)
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: AppColors.error.withOpacity(0.1),
-              child: Row(
-                children: [
-                  const Icon(Icons.lock_outline, color: AppColors.error, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Accès limité aux pasteurs et secrétaires',
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        color: AppColors.error,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // ── Search bar ──────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (v) => ref.read(usersListProvider.notifier).search(v),
-              style: GoogleFonts.poppins(fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Rechercher un utilisateur...',
-                prefixIcon: const Icon(Icons.search_rounded,
-                    color: AppColors.textSecondary, size: 20),
-                suffixIcon: _searchCtrl.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          ref.read(usersListProvider.notifier).search('');
-                        },
-                      )
-                    : null,
-              ),
-            ),
-          ),
-
-          // ── Body ────────────────────────────────────────────────────
-          Expanded(
-            child: !canViewUsers
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.block_rounded,
-                          size: 64,
-                          color: AppColors.textSecondary.withOpacity(0.5),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Pas d\'accès',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Seuls les pasteurs et secrétaires\npeuvent gérer les utilisateurs',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : _buildBody(state, users),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBody(UsersListState state, List<UserEntity> users) {
-    if (state.isLoading && state.users.isEmpty) {
-      return ListView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-        itemCount: 6,
-        itemBuilder: (_, __) => const Padding(
-          padding: EdgeInsets.only(bottom: 10),
-          child: AppShimmerBox(height: 80, width: double.infinity, radius: 12),
-        ),
-      );
-    }
-
-    if (users.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.people_outline_rounded,
-                size: 64, color: AppColors.textHint),
-            const SizedBox(height: 12),
-            Text(
-              state.searchQuery.isEmpty
-                  ? 'Aucun utilisateur'
-                  : 'Aucun résultat',
-              style: GoogleFonts.poppins(
-                  color: AppColors.textSecondary, fontSize: 14),
-            ),
-          ],
-        ),
-      );
+    if (currentUser != null && !AppPermissions.canViewMembers(currentUser)) {
+      return _AccessDenied();
     }
 
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: SignmeColors.primaryLight,
       onRefresh: () => ref.read(usersListProvider.notifier).refresh(),
-      child: ListView.builder(
+      child: CustomScrollView(
         controller: _scrollCtrl,
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-        itemCount: users.length + (state.hasMore && state.isLoading ? 1 : 0),
-        itemBuilder: (_, i) {
-          if (i < users.length) {
-            return GestureDetector(
-              onTap: () {
-                // Navigation vers le détail de l'utilisateur
-                // À adapter avec votre système de navigation
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => UserDetailScreen(userId: users[i].id),
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const OnboardingSection(
+                  svgPath: SignmeAssets.onboardingUsers,
+                  title: 'Gérer les utilisateurs',
+                  description:
+                      'Consultez, créez et gérez les membres de votre église.',
+                ),
+                if (canManage) ...[
+                  const SizedBox(height: SignmeSpacing.lg),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: SignmeSpacing.lg,
+                    ),
+                    child: SignmePrimaryButton(
+                      label: 'Nouveau membre',
+                      icon: Icons.person_add_rounded,
+                      onPressed: () => context.push(AppRoutes.userCreate),
+                    ),
                   ),
-                );
-              },
-              child: _UserCard(user: users[i]),
-            );
-          }
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: AppShimmerBox(height: 80, width: double.infinity, radius: 12),
-          );
-        },
+                  const SizedBox(height: SignmeSpacing.md),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: SignmeSpacing.lg,
+                    ),
+                    child: SignmeSecondaryButton(
+                      label: 'Statistiques fidèles',
+                      icon: Icons.bar_chart_rounded,
+                      onPressed: () => context.push(AppRoutes.userStats),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: SignmeSpacing.lg),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: SignmeSpacing.lg,
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: (v) =>
+                        ref.read(usersListProvider.notifier).search(v),
+                    style: SignmeTypography.bodyMedium,
+                    decoration: InputDecoration(
+                      hintText: 'Rechercher un membre…',
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        color: SignmeColors.mediumGray,
+                      ),
+                      filled: true,
+                      fillColor: SignmeColors.accentSky.withOpacity(0.3),
+                      border: OutlineInputBorder(
+                        borderRadius:
+                            BorderRadius.circular(SignmeSpacing.radiusMd),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: SignmeSpacing.lg),
+              ],
+            ),
+          ),
+          if (state.isLoading && state.users.isEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, __) => const Padding(
+                    padding: EdgeInsets.only(bottom: SignmeSpacing.md),
+                    child: AppShimmerBox(
+                      height: 80,
+                      width: double.infinity,
+                      radius: SignmeSpacing.radiusLg,
+                    ),
+                  ),
+                  childCount: 5,
+                ),
+              ),
+            )
+          else if (state.error != null && state.users.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: SignmeErrorState(
+                title: 'Chargement impossible',
+                message: state.error!,
+                onRetry: () => ref.read(usersListProvider.notifier).refresh(),
+              ),
+            )
+          else if (users.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: SignmeEmptyState(
+                icon: Icons.people_outline_rounded,
+                title: 'Aucun membre',
+                message:
+                    'Aucun résultat pour cette recherche. Créez un membre si besoin.',
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                SignmeSpacing.lg,
+                0,
+                SignmeSpacing.lg,
+                120,
+              ),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    if (index >= users.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(SignmeSpacing.lg),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: SignmeColors.primaryLight,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      );
+                    }
+                    final user = users[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: SignmeSpacing.md),
+                      child: UserCard(
+                        user: user,
+                        onTap: () =>
+                            context.push(AppRoutes.userDetailPath(user.id)),
+                      ),
+                    );
+                  },
+                  childCount: users.length + (state.isLoading ? 1 : 0),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
 }
 
-class _UserCard extends StatelessWidget {
-  const _UserCard({required this.user});
-  final UserEntity user;
-
+class _AccessDenied extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 0.8),
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.primarySurface,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary, width: 1),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(SignmeSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              SignmeAssets.lock,
+              width: 64,
+              height: 64,
+              color: SignmeColors.mediumGray,
             ),
-            child: const Icon(Icons.person_rounded,
-                size: 24, color: AppColors.primary),
-          ),
-          const SizedBox(width: 12),
-
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user.nom,
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _getRoleColor(user.role).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        user.roleLabel,
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _getRoleColor(user.role),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (!user.actif)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Inactif',
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.error,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
+            const SizedBox(height: SignmeSpacing.lg),
+            Text(
+              'Accès réservé',
+              style: SignmeTypography.headlineSmall.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-
-          // Status icon
-          Icon(
-            user.actif ? Icons.check_circle_rounded : Icons.cancel_rounded,
-            color: user.actif ? AppColors.success : AppColors.error,
-            size: 20,
-          ),
-        ],
+            const SizedBox(height: SignmeSpacing.md),
+            Text(
+              'Seuls le pasteur et le secrétaire peuvent gérer les membres.',
+              textAlign: TextAlign.center,
+              style: SignmeTypography.bodyMedium.copyWith(
+                color: SignmeColors.mediumGray,
+              ),
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  Color _getRoleColor(String role) {
-    switch (role) {
-      case 'administrateur':
-        return AppColors.primary;
-      case 'pasteur':
-        return const Color(0xFF6B5B95);
-      case 'secretaire':
-        return const Color(0xFFE09F3E);
-      case 'tresorier':
-        return const Color(0xFFD62828);
-      case 'ancien':
-        return const Color(0xFF2E8B57);
-      default:
-        return AppColors.textSecondary;
-    }
   }
 }

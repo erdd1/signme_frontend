@@ -13,7 +13,7 @@ class SignatureEntity extends Equatable {
     required this.signatureType,
     required this.status,
     this.ancienNom,
-    this.campayReference,
+    this.paymentReference,
     this.paymentMethod,
     this.phoneNumber,
     this.createdAt,
@@ -30,7 +30,7 @@ class SignatureEntity extends Equatable {
   final String  signatureType; // presentiel | distance
   final String  status;        // pending | completed | failed
   final String? ancienNom;
-  final String? campayReference;
+  final String? paymentReference;
   final String? paymentMethod;
   final String? phoneNumber;
   final DateTime? createdAt;
@@ -47,7 +47,6 @@ class SignatureEntity extends Equatable {
   List<Object?> get props => [id, month, status];
 }
 
-/// Structure retournée par /api/v1/signatures/ma-carte
 class MaCarteData {
   const MaCarteData({
     required this.userId,
@@ -60,30 +59,33 @@ class MaCarteData {
 
   final int    userId;
   final int    year;
-  final Map<String, SignatureEntity?> signaturesParMois; // "0".."11" → Signature ou null
+  final Map<String, SignatureEntity?> signaturesParMois;
   final int    totalAmount;
   final int    totalSignatures;
   final bool   hasPendingSignature;
 
   factory MaCarteData.fromJson(Map<String, dynamic> json) {
-    // Le backend retourne la structure : { 'year': ..., 'carte': [...], ... }
     final months = <String, SignatureEntity?>{};
-    final carte = json['carte'] as List? ?? json['signatures'] as List? ?? [];
+    // Suppression du typage dynamic pour une liste typée
+    final List<dynamic> carte = (json['carte'] as List?) ?? (json['signatures'] as List?) ?? [];
 
     for (int i = 0; i < 12; i++) {
       months[i.toString()] = null;
     }
 
-    for (final item in carte) {
-      final itemMap = item as Map<String, dynamic>;
-      final monthIndex = (itemMap['monthIndex'] as num?)?.toInt() ?? 0;
-      final signatureData = itemMap['signature'] as Map<String, dynamic>?;
-      
-      if (signatureData != null) {
-        // Créer une signature à partir des données embéquées
-        final sig = _SignaturePlain.fromJson(signatureData);
-        months[monthIndex.toString()] = sig;
-      }
+    for (final dynamic item in carte) {
+      if (item is! Map<String, dynamic>) continue;
+      final monthIndex = (item['monthIndex'] as num?)?.toInt() ?? 0;
+      final signatureData = item['signature'] as Map<String, dynamic>?;
+      if (signatureData == null) continue;
+
+      months[monthIndex.toString()] = _SignaturePlain.fromJson({
+        ...signatureData,
+        'month': signatureData['month'] ?? item['month'],
+        'monthIndex': monthIndex,
+        'year': json['year'],
+        'status': signatureData['status'] ?? 'completed',
+      });
     }
 
     return MaCarteData(
@@ -110,7 +112,7 @@ class _SignaturePlain extends SignatureEntity {
     required super.signatureType,
     required super.status,
     super.ancienNom,
-    super.campayReference,
+    super.paymentReference,
     super.paymentMethod,
     super.phoneNumber,
     super.createdAt,
@@ -128,7 +130,7 @@ class _SignaturePlain extends SignatureEntity {
     signatureType: j['signatureType']?.toString() ?? 'presentiel',
     status:        j['status']?.toString() ?? 'completed',
     ancienNom:     j['ancienNom']?.toString(),
-    campayReference: j['campay_reference']?.toString(),
+    paymentReference: j['payment_reference']?.toString(),
     paymentMethod: j['paymentMethod']?.toString(),
     phoneNumber:   j['phoneNumber']?.toString(),
     createdAt:     DateTime.tryParse(j['created_at']?.toString() ?? j['signed_at']?.toString() ?? ''),

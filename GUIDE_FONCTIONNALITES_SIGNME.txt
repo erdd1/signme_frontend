@@ -1,0 +1,284 @@
+================================================================================
+                    SIGNME — GUIDE DES FONCTIONNALITÉS
+              Présentation complète de l'application par rôle
+================================================================================
+
+
+QU'EST-CE QUE SIGNME ?
+--------------------------------------------------------------------------------
+SignMe est l'application de gestion des cartes de signature de la Sainte Cène
+pour l'Église Évangélique du Cameroun (EEC). Elle permet à chaque membre
+d'une église locale de signer sa participation (en présentiel ou à distance
+via Mobile Money), de suivre son historique, et permet aux responsables de
+l'église (pasteur, secrétaire, trésorier, anciens) de gérer les membres, les
+publications et les finances de leur communauté.
+
+L'application existe sous deux formes séparées :
+
+  1. L'APPLICATION MOBILE (sur smartphone) — c'est celle décrite dans ce
+     document. Elle est utilisée par les membres de l'église : paroissiens,
+     anciens, secrétaires, trésoriers et pasteurs.
+
+  2. L'INTERFACE WEB ADMINISTRATEUR — totalement séparée, réservée à
+     l'administrateur technique de l'application. Elle ne fait pas partie
+     de l'application mobile et n'est pas couverte par ce document. Un
+     administrateur ne peut d'ailleurs PAS se connecter sur l'application
+     mobile : c'est bloqué volontairement pour des raisons de sécurité.
+
+L'application fonctionne même sans connexion Internet pour la consultation
+des données déjà chargées (mode "hors-ligne") : si l'utilisateur perd sa
+connexion, les informations qu'il a déjà vues restent affichées normalement.
+Dès que la connexion revient, tout se met à jour automatiquement et
+discrètement, sans que l'utilisateur ait besoin de faire quoi que ce soit.
+
+
+--------------------------------------------------------------------------------
+LES 5 RÔLES DE L'APPLICATION MOBILE
+--------------------------------------------------------------------------------
+Chaque utilisateur a un seul rôle, attribué par le pasteur ou la secrétaire
+de son église. Du rôle le plus simple au plus étendu :
+
+   1. PAROISSIEN       — le membre simple de l'église
+   2. ANCIEN            — un responsable de groupe, avec un statut spécial
+                          "ancien de service" qui ajoute des droits
+   3. TRÉSORIER         — gère le suivi financier de l'église
+   4. SECRÉTAIRE        — gère les membres et les publications
+   5. PASTEUR           — a accès à (presque) tout, sauf les fonctions
+                          réservées à l'administrateur technique
+
+Plus le rôle est élevé dans cette liste, plus l'utilisateur a accès à des
+fonctionnalités supplémentaires — mais TOUS les rôles ont accès aux
+fonctionnalités de base décrites dans la première section ci-dessous.
+
+
+================================================================================
+SECTION 1 — CE QUE TOUS LES UTILISATEURS PEUVENT FAIRE
+                (quel que soit leur rôle : paroissien, ancien, trésorier,
+                 secrétaire ou pasteur)
+================================================================================
+
+CONNEXION ET SÉCURITÉ DU COMPTE
+--------------------------------------------------------------------------------
+- Se connecter avec son adresse email et son mot de passe.
+- Se connecter directement avec son compte Google ("Connexion avec Google"),
+  sans avoir à retaper de mot de passe — à condition que cet email Google
+  soit déjà associé à un compte SignMe existant (l'application ne crée
+  jamais de compte automatiquement : les comptes sont toujours créés par le
+  pasteur ou la secrétaire).
+- En cas de mot de passe oublié : recevoir par email un code de vérification
+  à 6 chiffres, le saisir dans l'application, puis choisir un nouveau mot de
+  passe. Ce code expire après un délai, et l'application limite le nombre
+  de renvois possibles pour éviter les abus.
+- Se déconnecter de son compte. Important : il est impossible de se
+  déconnecter lorsque le téléphone n'a pas de connexion Internet — c'est une
+  protection volontaire pour ne jamais perdre l'accès à ses données
+  enregistrées localement sans pouvoir se reconnecter pour les récupérer.
+- Modifier son mot de passe depuis son profil.
+
+ÉCRAN D'ACCUEIL
+--------------------------------------------------------------------------------
+- Voir les dernières actualités et méditations publiées par son église
+  (annonces, messages spirituels, informations diverses).
+- Voir un résumé de son profil (nom, rôle, église d'appartenance).
+
+MA CARTE — LA CARTE DE SIGNATURE
+--------------------------------------------------------------------------------
+- Consulter sa propre carte de signature de Sainte Cène, mois par mois,
+  pour chaque année. La carte indique pour chaque mois si la signature a
+  été effectuée ou non.
+
+SIGNER SA CARTE
+--------------------------------------------------------------------------------
+- Effectuer sa signature "à distance" : l'utilisateur paie sa contribution
+  directement depuis son téléphone via Mobile Money (Orange Money ou MTN
+  Mobile Money, à travers le service Campay), et sa carte est automatiquement
+  mise à jour une fois le paiement confirmé.
+- Suivre l'état du paiement en temps réel (en attente, réussi, échoué).
+
+HISTORIQUE PERSONNEL
+--------------------------------------------------------------------------------
+- Consulter l'historique complet de ses propres signatures, qu'elles aient
+  été faites à distance (Mobile Money) ou en présentiel (enregistrées par
+  un ancien ou le pasteur), avec la date, le montant et le statut de chacune.
+
+PUBLICATIONS
+--------------------------------------------------------------------------------
+- Consulter toutes les annonces et méditations publiées par son église,
+  classées par type (annonce ou méditation).
+
+NOTIFICATIONS
+--------------------------------------------------------------------------------
+- Recevoir des indicateurs visuels (pastilles de notification) lorsque de
+  nouvelles publications ou de nouvelles signatures concernant l'utilisateur
+  sont disponibles.
+
+PROFIL ET PARAMÈTRES
+--------------------------------------------------------------------------------
+- Consulter et modifier ses informations personnelles (téléphone,
+  profession, lieu de résidence, photo de profil, etc.).
+- Changer son mot de passe.
+- Consulter les informations générales de l'application (à propos,
+  conditions, support).
+
+
+================================================================================
+SECTION 2 — L'ANCIEN (en plus des fonctionnalités de la Section 1)
+================================================================================
+Un "ancien" est un responsable nommé par le pasteur pour un mois donné.
+Tant qu'il n'est pas désigné "ancien de service" pour le mois en cours, il a
+exactement les mêmes droits qu'un paroissien.
+
+QUAND IL EST "ANCIEN DE SERVICE" CE MOIS-CI
+--------------------------------------------------------------------------------
+- Enregistrer la signature "en présentiel" d'un autre membre de l'église
+  (par exemple un paroissien qui n'a pas de téléphone ou préfère signer en
+  personne le jour du culte). L'ancien encaisse alors la contribution en
+  espèces et l'enregistre dans l'application au nom du membre concerné.
+- Consulter l'historique des signatures de son propre groupe de
+  responsabilité (pas celui de toute l'église).
+- Consulter la liste des signatures qu'il a lui-même enregistrées pour
+  d'autres membres ("Historique Signatures"), avec une notification quand
+  il y a du nouveau.
+
+Note : être désigné "ancien de service" (et pour quel mois) est décidé par
+le pasteur, pas par l'ancien lui-même.
+
+
+================================================================================
+SECTION 3 — LE TRÉSORIER (en plus des fonctionnalités de la Section 1)
+================================================================================
+Le trésorier a un accès en LECTURE aux finances de l'église, pour vérifier
+et suivre les montants collectés.
+
+- Consulter le rapport financier annuel de l'église : récapitulatif mois par
+  mois des montants collectés.
+- Comparer les résultats financiers entre plusieurs années.
+- Consulter l'historique complet de TOUS les membres de l'église (pas
+  seulement le sien), pour vérifier que les signatures correspondent bien
+  aux montants déclarés.
+
+Le trésorier ne peut pas modifier les membres, ni gérer les publications,
+ni désigner les anciens — son rôle est uniquement financier et de
+consultation.
+
+
+================================================================================
+SECTION 4 — LA SECRÉTAIRE (en plus des fonctionnalités de la Section 1)
+================================================================================
+La secrétaire gère l'administration courante de l'église : les membres et
+la communication.
+
+GESTION DES MEMBRES
+--------------------------------------------------------------------------------
+- Voir la liste complète des membres de l'église.
+- Créer un nouveau compte membre (ancien, paroissien ou trésorier).
+- Modifier les informations d'un membre (nom, téléphone, photo, etc.).
+- Importer ou modifier la photo de n'importe quel membre.
+
+Important : la secrétaire NE PEUT PAS activer ou désactiver un compte membre
+(seul le pasteur peut le faire), ni changer le rôle d'un membre (réservé au
+pasteur également) — ces deux actions sont volontairement réservées au
+pasteur pour éviter les abus.
+
+GESTION DES PUBLICATIONS
+--------------------------------------------------------------------------------
+- Créer de nouvelles annonces ou méditations pour l'église.
+- Modifier ses propres publications.
+- Supprimer ses propres publications (la secrétaire ne peut pas supprimer
+  une publication créée par quelqu'un d'autre — seul le pasteur le peut, en
+  plus de l'auteur lui-même).
+
+RAPPORT SECRÉTAIRE
+--------------------------------------------------------------------------------
+- Consulter un tableau de bord mensuel avec : le nombre total de membres,
+  combien ont signé, combien n'ont pas encore signé, le taux de signature
+  en pourcentage, et le montant total collecté sur le mois.
+- Voir la liste détaillée des membres ayant signé, et de ceux n'ayant pas
+  encore signé, mois par mois.
+
+
+================================================================================
+SECTION 5 — LE PASTEUR (l'accès le plus étendu de l'application mobile)
+================================================================================
+Le pasteur a accès à toutes les fonctionnalités décrites ci-dessus pour
+l'ancien, le trésorier et la secrétaire, PLUS les fonctions suivantes qui
+lui sont exclusivement réservées :
+
+GESTION DES ANCIENS DE SERVICE
+--------------------------------------------------------------------------------
+- Désigner, mois par mois, quels membres seront "anciens de service" et
+  donc autorisés à enregistrer des signatures en présentiel pour les autres.
+- Définir les jours et horaires de disponibilité de chaque ancien désigné.
+- Révoquer une désignation si nécessaire.
+
+SIGNER LES CARTES (SANS RESTRICTION D'HORAIRE)
+--------------------------------------------------------------------------------
+- Enregistrer lui-même une signature en présentiel pour n'importe quel
+  membre, à tout moment — sans la contrainte d'horaires qui s'applique aux
+  anciens de service.
+
+GESTION COMPLÈTE DES MEMBRES
+--------------------------------------------------------------------------------
+- Tout ce que peut faire la secrétaire, PLUS :
+  - Activer ou désactiver le compte d'un membre (par exemple si quelqu'un
+    quitte l'église ou doit être suspendu temporairement).
+  - Changer le rôle d'un membre (par exemple promouvoir un paroissien au
+    rôle d'ancien, ou de secrétaire).
+  - Créer des comptes pour tous les rôles (secrétaire, trésorier, ancien,
+    paroissien).
+
+GESTION COMPLÈTE DES PUBLICATIONS
+--------------------------------------------------------------------------------
+- Modifier ou supprimer N'IMPORTE QUELLE publication, même celles créées
+  par la secrétaire ou un autre auteur.
+
+FINANCES ET RAPPORTS
+--------------------------------------------------------------------------------
+- Accès complet aux rapports financiers annuels, à la comparaison entre
+  années, et au rapport secrétaire mensuel.
+
+
+================================================================================
+EN RÉSUMÉ — TABLEAU DES DROITS PAR RÔLE
+================================================================================
+
+  Fonctionnalité                          Paroiss.  Ancien*  Trésor.  Secrét.  Pasteur
+  --------------------------------------  --------  -------  -------  -------  -------
+  Se connecter, voir actualités              Oui      Oui      Oui      Oui      Oui
+  Signer sa carte (Mobile Money)              Oui      Oui      Oui      Oui      Oui
+  Voir son historique personnel               Oui      Oui      Oui      Oui      Oui
+  Signer en présentiel pour un autre          Non      Oui*     Non      Non      Oui
+  Voir l'historique de TOUTE l'église         Non      Non      Oui      Non      Oui
+  Voir / gérer les finances                   Non      Non    Lecture    Non      Oui
+  Voir la liste des membres                   Non      Non      Non      Oui      Oui
+  Créer / modifier des membres                Non      Non      Non      Oui      Oui
+  Activer / désactiver un membre              Non      Non      Non      Non      Oui
+  Changer le rôle d'un membre                 Non      Non      Non      Non      Oui
+  Créer / modifier des publications           Non      Non      Non      Oui      Oui
+  Supprimer la publication d'un autre         Non      Non      Non      Non      Oui
+  Désigner les anciens de service             Non      Non      Non      Non      Oui
+  Rapport secrétaire mensuel                  Non      Non      Non      Oui      Oui
+
+  * L'ancien n'a le droit de signer en présentiel pour un autre membre que
+    pendant les mois où il est désigné "ancien de service" par le pasteur.
+
+
+================================================================================
+À PROPOS DE L'ADMINISTRATEUR
+================================================================================
+Le rôle "administrateur" existe dans le système, mais il est entièrement
+séparé de l'application mobile :
+
+- Un administrateur ne peut PAS se connecter à l'application mobile, ni
+  avec son mot de passe, ni avec Google — c'est bloqué techniquement.
+- L'administrateur dispose de sa propre interface web, distincte, pour des
+  tâches de gestion technique globale qui ne concernent pas le quotidien
+  d'une église (et qui n'est pas couverte par ce document).
+
+Cette séparation garantit que l'application installée sur les téléphones
+des membres ne donne jamais accès, même par erreur, aux fonctions
+d'administration technique du système.
+
+================================================================================
+                                FIN DU DOCUMENT
+================================================================================

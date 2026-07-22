@@ -6,7 +6,7 @@ class AppException implements Exception {
   final int?   statusCode;
 
   @override
-  String toString() => 'AppException($statusCode): $message';
+  String toString() => message;
 }
 
 /// 401 — Token invalide / expiré
@@ -27,19 +27,29 @@ class ValidationException extends AppException {
   }
 }
 
+/// 429 — Trop de requêtes (rate limit / brute force)
+class RateLimitException extends AppException {
+  RateLimitException({
+    required super.message,
+    this.retryAfterSeconds,
+  }) : super(statusCode: 429);
+
+  final int? retryAfterSeconds;
+}
+
 /// 403 — Accès interdit
 class ForbiddenException extends AppException {
-  ForbiddenException({super.message = 'Accès refusé'}) : super(statusCode: 403);
+  ForbiddenException({super.message = "Une erreur s'est produite."}) : super(statusCode: 403);
 }
 
 /// 404 — Ressource introuvable
 class NotFoundException extends AppException {
-  NotFoundException({super.message = 'Ressource introuvable'}) : super(statusCode: 404);
+  NotFoundException({super.message = "Une erreur s'est produite. Veuillez réessayer..."}) : super(statusCode: 404);
 }
 
 /// 5xx — Erreur serveur
 class ServerException extends AppException {
-  ServerException({super.message = 'Erreur serveur. Veuillez réessayer.'}) : super(statusCode: 500);
+  ServerException({super.message = "Une erreur s'est produite. Veuillez réessayer..."}) : super(statusCode: 500);
 }
 
 /// Pas de connexion internet

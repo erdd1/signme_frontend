@@ -1,45 +1,91 @@
-/// Endpoints de l'API EEC SignCard (Sanctum)
-abstract final class ApiConfig {
+import 'app_environment.dart';
 
-  // ── Base URL ─────────────────────────────────────────────────────────────
-  /// L'IP WiFi locale : 192.168.1.112 (à adapter selon votre réseau)
-  /// En production, utiliser le domaine réel
-  static const String baseUrl = 'http://192.168.1.112:8000/api/v1';
-  static const String _base   = baseUrl; // alias privé pour les endpoints
+/// Endpoints de l'API EEC SignCard (chemins relatifs à [baseUrl]).
+abstract final class ApiConfig {
+  static String get baseUrl => AppEnvironment.apiBaseUrl;
 
   // ── Auth ─────────────────────────────────────────────────────────────────
-  static const String login         = '$_base/auth/login';
-  static const String logout        = '$_base/auth/logout';
-  static const String me            = '$_base/auth/me';
-  static const String forgotPassword = '$_base/auth/forgot-password';
-  static const String refreshToken  = '$_base/auth/refresh';
+  static const String login = '/auth/login';
+  static const String googleLogin = '/auth/google';
+  static const String logout = '/auth/logout';
+  static const String me = '/auth/me';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String verifyPasswordResetOTP = '/auth/verify-password-reset-otp';
+  static const String resendPasswordResetOTP = '/auth/resend-password-reset-otp';
+  static const String confirmPasswordReset = '/auth/confirm-password-reset';
+  static const String resetPassword = '/auth/reset-password';
+  static const String changePassword = '/auth/change-password';
+  static const String refreshToken = '/auth/refresh';
 
   // ── Signatures ────────────────────────────────────────────────────────────
-  static const String signatureDistance   = '$_base/signatures/distance';
-  static const String signaturePresentiel = '$_base/signatures/presentiel';
-  static const String signatureMaCarte   = '$_base/signatures/ma-carte';
-  static const String signatureHistorique = '$_base/signatures';
-  static const String signatureFees       = '$_base/signatures/fees';
-  static String signatureTransactionStatus(int transactionId) => '$_base/signatures/transaction/$transactionId/status';
-  static String signatureMemberStatus(int userId) => '$_base/signatures/members/$userId/status';
+  static const String signatureDistance = '/signatures/distance';
+  static const String signaturePresentiel = '/signatures/presentiel';
+  static const String signatureMaCarte = '/signatures/ma-carte';
+  static const String signatureHistorique = '/signatures/historique';
+  static const String signatureFees = '/signatures/fees';
+  static String signatureTransactionStatus(int transactionId) =>
+      '/signatures/transaction/$transactionId/status';
+  static String signatureMemberStatus(int userId) =>
+      '/signatures/members/$userId/status';
 
   // ── Publications ──────────────────────────────────────────────────────────
-  static const String publications = '$_base/publications';
+  static const String publications = '/publications';
+
+  // ── Evenements (module collecte de fonds) ──────────────────────────────────
+  static const String evenements = '/evenements';
+  static const String evenementsGestion = '/evenements/gestion';
+  static String evenementDetail(String uuid) => '/evenements/$uuid';
+  static String evenementPublish(String uuid) => '/evenements/$uuid/publish';
+  static String evenementCancelScheduled(String uuid) =>
+      '/evenements/$uuid/cancel-scheduled';
+  static String evenementTerminer(String uuid) => '/evenements/$uuid/terminer';
+  static String evenementArchiver(String uuid) => '/evenements/$uuid/archiver';
+  static String evenementDesarchiver(String uuid) =>
+      '/evenements/$uuid/desarchiver';
+  static String evenementContributions(String uuid) =>
+      '/evenements/$uuid/contributions';
+  static String contributionStatus(String uuid) =>
+      '/contributions/transaction/$uuid/status';
+  static const String contributionsEvenements = '/contributions-evenements';
+
+  // ── Mes contributions (module "Mes dépenses") ──────────────────────────────
+  static const String mesContributions = '/mes-contributions';
+  static const String mesContributionsStats = '/mes-contributions/stats';
 
   // ── Rapports ──────────────────────────────────────────────────────────────
-  static const String rapportAnnuel   = '$_base/rapports/annuel';
-  static const String rapportMensuel  = '$_base/rapports/mensuel';
+  static const String rapportAnnuel = '/rapports/finances/annuel';
+  static const String rapportMensuel = '/rapports/finances/mois';
+  static const String rapportComparaison = '/rapports/comparaison';
+  static const String rapportSecretaire = '/rapports/secretaire';
 
-  // ── Users / Membres ───────────────────────────────────────────────────────
-  static const String users          = '$_base/users';
-  static const String usersPasteur   = '$_base/users/paroissiens';
+  // ── Users ─────────────────────────────────────────────────────────────────
+  static const String users = '/users';
+  static String userPhoto(int userId) => '/users/$userId/photo';
+  static const String usersPasteur = '/users/paroissiens';
+  static const String usersStats = '/users/stats';
 
-  // ── Anciennes désignations ────────────────────────────────────────────────
-  static const String ancienDesignations = '$_base/anciens-designations';
+  // ── Listes gérées (champs démographiques users) ────────────────────────────
+  static const String groupes = '/groupes';
+  static String groupeDetail(int id) => '/groupes/$id';
+  static const String quartiers = '/quartiers';
+  static String quartierDetail(int id) => '/quartiers/$id';
+  static const String villes = '/villes';
+  static String villeDetail(int id) => '/villes/$id';
+
+  // ── Anciens ───────────────────────────────────────────────────────────────
+  static const String ancienDesignations = '/anciens-designations';
 
   // ── Paiements ─────────────────────────────────────────────────────────────
-  static const String payments = '$_base/payments';
+  static const String payments = '/payments';
 
-  // ── Notifications ─────────────────────────────────────────────────────────
-  static const String notifications = '$_base/notifications';
+  // ── Notifications / Badges ────────────────────────────────────────────────
+  static const String notifications             = '/notifications';
+  static const String notificationBadges        = '/notifications/badges';
+  static const String notificationBadgesMarkRead = '/notifications/badges/mark-read';
+
+  // ── Support ───────────────────────────────────────────────────────────────
+  static const String supportWhatsapp = '/support/whatsapp';
+
+  // ── Notifications push (FCM) ────────────────────────────────────────────────
+  static const String deviceTokens = '/device-tokens';
 }

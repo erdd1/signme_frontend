@@ -87,6 +87,25 @@ class PublicationCardShimmer extends StatelessWidget {
   }
 }
 
+/// Shimmer compact — case du tableau « Ma Carte » (montant)
+class TableCellShimmer extends StatelessWidget {
+  const TableCellShimmer({
+    super.key,
+    this.width = 36,
+    this.height = 10,
+  });
+
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: AppShimmerBox(width: width, height: height, radius: 4),
+    );
+  }
+}
+
 /// Shimmer — ligne de tableau
 class TableRowShimmer extends StatelessWidget {
   const TableRowShimmer({super.key});

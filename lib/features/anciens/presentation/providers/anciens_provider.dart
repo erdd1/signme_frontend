@@ -1,75 +1,80 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../../../../core/config/api_config.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/providers/connectivity_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/ancien_model.dart';
 import '../../domain/entities/ancien_entity.dart';
+import '../../data/datasources/anciens_local_datasource.dart';
 
-// ── Data Source ────────────────────────────────────────────────────────────
+// ── Data Source Typé ───────────────────────────────────────────────────────
 class AncienDataSource {
-  AncienDataSource(this.dio);
-  final Dio dio;
+  AncienDataSource(this.dio, this.local, this.connectivity);
 
-  /// Récupère les anciens + leurs désignations pour un mois/année
-  /// Le backend filtre automatiquement par l'église de l'utilisateur authentifié
+  final Dio dio;
+  final AnciensLocalDataSource local;
+  final ConnectivityService connectivity;
+
   Future<List<AncienEntity>> getAnciens({
     required int mois,
     required int annee,
   }) async {
-    try {
-      print('🔍 [AncienDataSource] Requête GET $ApiConfig.ancienDesignations?mois=$mois&annee=$annee');
-      
-      final resp = await dio.get(
-        ApiConfig.ancienDesignations,
-        queryParameters: {
-          'mois': mois,
-          'annee': annee,
-        },
-      );
-      
-      print('📡 [AncienDataSource] Status: ${resp.statusCode}');
-      print('📦 [AncienDataSource] Response data: ${resp.data}');
-      
-      if (resp.statusCode == 200) {
-        // Backend retourne: {success?, data: {designes: [...], non_designes: [...], mois, annee, eglise_id, total_designes}}
-        // OU directement: {designes: [...], non_designes: [...], ...}
-        final respData = resp.data is Map ? resp.data : {};
-        final data = respData['data'] ?? respData;
-        
-        final List<dynamic> designes = data['designes'] as List? ?? [];
-        final List<dynamic> nonDesignes = data['non_designes'] as List? ?? [];
-        
-        print('✅ [AncienDataSource] Designés: ${designes.length}, Non-désignés: ${nonDesignes.length}');
-        
-        // Merger les deux listes et enrichir avec mois/annee
-        final List<Map<String, dynamic>> allAnciens = [
-          ...designes.map((e) {
+    final isOnline = await connectivity.isOnline;
+
+    if (isOnline) {
+      try {
+        final resp = await dio.get(
+          ApiConfig.ancienDesignations,
+          queryParameters: {'mois': mois, 'annee': annee},
+        );
+
+        if (resp.statusCode == 200) {
+          final respData = resp.data is Map ? resp.data : {};
+          final data = respData['data'] ?? respData;
+
+          final List<dynamic> designesRaw   = data['designes'] as List? ?? [];
+          final List<dynamic> nonDesignesRaw = data['non_designes'] as List? ?? [];
+
+          AncienEntity _mapEntry(dynamic e) {
             final map = Map<String, dynamic>.from(e as Map);
-            map['mois'] = mois;
+            map['mois']  = mois;
             map['annee'] = annee;
-            return map;
-          }),
-          ...nonDesignes.map((e) {
-            final map = Map<String, dynamic>.from(e as Map);
-            map['mois'] = mois;
-            map['annee'] = annee;
-            return map;
-          }),
-        ];
-        
-        return allAnciens
-            .map((e) => AncienModel.fromJson(e))
-            .toList();
+            return AncienModel.fromJson(map);
+          }
+
+          final all = [
+            ...designesRaw.map(_mapEntry),
+            ...nonDesignesRaw.map(_mapEntry),
+          ];
+
+          // Persister en cache Isar
+          final rawAll = [
+            ...designesRaw.cast<Map<String, dynamic>>()
+                .map((e) => {...e, 'mois': mois, 'annee': annee, 'designe': true}),
+            ...nonDesignesRaw.cast<Map<String, dynamic>>()
+                .map((e) => {...e, 'mois': mois, 'annee': annee, 'designe': false}),
+          ];
+          await local.save(mois, annee, rawAll);
+
+          return all;
+        }
+        return [];
+      } catch (_) {
+        // Fallback cache ci-dessous
       }
-      print('⚠️ [AncienDataSource] Status non-200: ${resp.statusCode}');
-      return [];
-    } catch (e) {
-      print('❌ [AncienDataSource] Erreur: $e');
-      rethrow;
     }
+
+    // ── Hors ligne : retourner le cache ──────────────────────────────────
+    final cached = await local.get(mois, annee);
+    if (cached != null) {
+      return cached.map((e) => AncienModel.fromJson(e)).toList();
+    }
+    return [];
   }
 
-  /// Désigne un ancien avec paramètres (jours, horaires)
+
   Future<bool> designateAncien({
     required int ancienId,
     required int mois,
@@ -78,56 +83,34 @@ class AncienDataSource {
     String? horairesDebut,
     String? horairesFin,
   }) async {
-    try {
-      print('📝 [AncienDataSource] Désignation: ancien=$ancienId, mois=$mois, annee=$annee');
-      print('   jours=$joursTravail, debut=$horairesDebut, fin=$horairesFin');
-      
-      final data = {
-        'ancien_id': ancienId,
-        'mois': mois,
-        'annee': annee,
-        if (joursTravail != null) 'jours_travail': joursTravail,
-        if (horairesDebut != null) 'horaire_debut': horairesDebut,
-        if (horairesFin != null) 'horaire_fin': horairesFin,
-      };
-      print('   📤 POST ${ApiConfig.ancienDesignations} avec: $data');
-      
-      final resp = await dio.post(
-        ApiConfig.ancienDesignations,
-        data: data,
-      );
-      
-      print('   ✅ Réponse ${resp.statusCode}: ${resp.data}');
-      return resp.statusCode == 201 || resp.statusCode == 200;
-    } catch (e) {
-      print('   ❌ Erreur lors de la désignation: $e');
-      throw Exception('Impossible de désigner ancien: $e');
-    }
+    final Map<String, dynamic> payload = {
+      'ancien_id': ancienId,
+      'mois': mois,
+      'annee': annee,
+      if (joursTravail != null) 'jours_travail': joursTravail,
+      if (horairesDebut != null) 'horaire_debut': horairesDebut,
+      if (horairesFin != null) 'horaire_fin': horairesFin,
+    };
+    
+    final resp = await dio.post(ApiConfig.ancienDesignations, data: payload);
+    return resp.statusCode == 201 || resp.statusCode == 200;
   }
 
-  /// Révoque la désignation d'un ancien
   Future<bool> revokeAncien(int designationId) async {
-    try {
-      print('🗑️  [AncienDataSource] Révocation: designationId=$designationId');
-      final url = '${ApiConfig.ancienDesignations}/$designationId';
-      print('   📤 DELETE $url');
-      
-      final resp = await dio.delete(url);
-      
-      print('   ✅ Réponse ${resp.statusCode}: ${resp.data}');
-      return resp.statusCode == 200 || resp.statusCode == 204;
-    } catch (e) {
-      print('   ❌ Erreur lors de la révocation: $e');
-      throw Exception('Impossible de révoquer ancien: $e');
-    }
+    final resp = await dio.delete('${ApiConfig.ancienDesignations}/$designationId');
+    return resp.statusCode == 200 || resp.statusCode == 204;
   }
 }
 
 final ancienDataSourceProvider = Provider<AncienDataSource>((ref) {
-  return AncienDataSource(ref.watch(dioProvider));
+  return AncienDataSource(
+    ref.watch(dioProvider),
+    AnciensLocalDataSource(),
+    ref.read(connectivityServiceProvider),
+  );
 });
 
-// ── State ──────────────────────────────────────────────────────────────────
+// ── State Typé ─────────────────────────────────────────────────────────────
 class AncienState {
   const AncienState({
     this.anciens = const [],
@@ -152,72 +135,104 @@ class AncienState {
     bool? isLoading,
     String? error,
     bool? success,
-    bool clearError = false,
-    bool clearSuccess = false,
   }) =>
       AncienState(
         anciens: anciens ?? this.anciens,
         mois: mois ?? this.mois,
         annee: annee ?? this.annee,
         isLoading: isLoading ?? this.isLoading,
-        error: clearError ? null : error ?? this.error,
-        success: clearSuccess ? false : success ?? this.success,
+        error: error ?? this.error,
+        success: success ?? this.success,
       );
 }
 
 // ── Notifier ───────────────────────────────────────────────────────────────
 class AncienNotifier extends StateNotifier<AncienState> {
+  static const int minYear = 2026;
+  static const int maxYear = 2030;
   AncienNotifier(this._ds) : super(const AncienState()) {
-    // Initialiser avec le mois/année actuel
     final now = DateTime.now();
-    _loadAnciens(now.month, now.year);
+
+    final year = now.year.clamp(2026, 2030);
+
+    _loadAnciens(now.month, year);
   }
 
   final AncienDataSource _ds;
 
-  /// Charge les anciens pour un mois/année spécifique
-  /// Le backend détermine l'église de l'utilisateur via le token d'authentification
-  Future<void> _loadAnciens(int mois, int annee) async {
-    print('📅 [AncienNotifier] Chargement des anciens: mois=$mois, annee=$annee');
-    state = state.copyWith(
-      isLoading: true,
-      clearError: true,
-      mois: mois,
-      annee: annee,
-    );
+  Future<void> _loadAnciens(int mois, int annee, {bool silent = false}) async {
+    final isSameMonth = state.mois == mois && state.annee == annee;
+    final hasData = isSameMonth && state.anciens.isNotEmpty;
+
+    // Ne montrer le shimmer que si on change réellement de mois/année ou
+    // qu'on n'a encore aucune donnée — un rafraîchissement silencieux du
+    // mois déjà affiché ne doit jamais faire disparaître la liste.
+    if (!silent || !hasData) {
+      state = state.copyWith(isLoading: true, mois: mois, annee: annee);
+    } else {
+      state = state.copyWith(mois: mois, annee: annee);
+    }
+
     try {
       final items = await _ds.getAnciens(mois: mois, annee: annee);
-      print('✅ [AncienNotifier] ${items.length} anciens chargés');
       state = state.copyWith(anciens: items, isLoading: false);
     } catch (e) {
-      print('❌ [AncienNotifier] Erreur: $e');
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        error: hasData ? null : messageFromError(e),
+      );
     }
   }
 
-  /// Change le mois/année et recharge
-  Future<void> changeMonth(int mois, int annee) => _loadAnciens(mois, annee);
+  /// Rafraîchit silencieusement le mois courant (appelé à chaque ouverture
+  /// de l'écran) sans jamais cacher les données déjà affichées.
+  Future<void> refreshSilently() => _loadAnciens(state.mois, state.annee, silent: true);
 
-  /// Mois suivant
-  Future<void> nextMonth() {
-    final now = DateTime(state.annee, state.mois + 1);
-    return _loadAnciens(now.month, now.year);
+  Future<void> changeMonth(int mois, int annee) async {
+    if (annee < minYear || annee > maxYear) {
+      return;
+    }
+
+    await _loadAnciens(mois, annee);
   }
 
-  /// Mois précédent
-  Future<void> previousMonth() {
-    final now = DateTime(state.annee, state.mois - 1);
-    return _loadAnciens(now.month, now.year);
+  Future<void> nextMonth() async {
+    // Limite haute : Décembre 2030
+    if (state.annee == maxYear && state.mois == 12) {
+      return;
+    }
+
+    final mois =
+    state.mois == 12 ? 1 : state.mois + 1;
+
+    final annee =
+    state.mois == 12 ? state.annee + 1 : state.annee;
+
+    await _loadAnciens(mois, annee);
   }
 
-  /// Désigne un ancien avec paramètres
+  Future<void> previousMonth() async {
+    // Limite basse : Janvier 2026
+    if (state.annee == minYear && state.mois == 1) {
+      return;
+    }
+
+    final mois =
+    state.mois == 1 ? 12 : state.mois - 1;
+
+    final annee =
+    state.mois == 1 ? state.annee - 1 : state.annee;
+
+    await _loadAnciens(mois, annee);
+  }
+
   Future<bool> designate({
     required int ancienId,
     List<int>? joursTravail,
     String? horairesDebut,
     String? horairesFin,
   }) async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(isLoading: true);
     try {
       final ok = await _ds.designateAncien(
         ancienId: ancienId,
@@ -229,48 +244,49 @@ class AncienNotifier extends StateNotifier<AncienState> {
       );
       if (ok) {
         await _loadAnciens(state.mois, state.annee);
-        state = state.copyWith(success: true);
         return true;
       }
-      state = state.copyWith(isLoading: false, error: 'Erreur de désignation');
       return false;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(isLoading: false, error: messageFromError(e));
       return false;
     }
   }
 
-  /// Révoque la désignation d'un ancien
   Future<bool> revoke(int designationId) async {
-    print('🗑️  [AncienNotifier] Début de révocation: designationId=$designationId');
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(isLoading: true);
     try {
       final ok = await _ds.revokeAncien(designationId);
-      print('🗑️  [AncienNotifier] Revoke réussi: $ok');
-      
       if (ok) {
-        print('🗑️  [AncienNotifier] Rechargement des anciens...');
         await _loadAnciens(state.mois, state.annee);
-        print('🗑️  [AncienNotifier] Succès de révocation complet');
-        state = state.copyWith(success: true);
         return true;
       }
-      print('🗑️  [AncienNotifier] Revoke retourné false');
-      state = state.copyWith(isLoading: false, error: 'Erreur de révocation');
       return false;
     } catch (e) {
-      print('🗑️  [AncienNotifier] Exception: $e');
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(isLoading: false, error: messageFromError(e));
       return false;
     }
   }
 
-  /// Rafraîchir les données
   Future<void> refresh() => _loadAnciens(state.mois, state.annee);
 }
 
-final ancienProvider =
-    StateNotifierProvider<AncienNotifier, AncienState>((ref) {
+final ancienProvider = StateNotifierProvider<AncienNotifier, AncienState>((ref) {
+  ref.keepAlive();
   return AncienNotifier(ref.watch(ancienDataSourceProvider));
 });
 
+/// Précharge les anciens du mois courant au login.
+final ancienBootstrapProvider = Provider<void>((ref) {
+  ref.keepAlive();
+  ref.listen<AuthState>(
+    authNotifierProvider,
+    (previous, next) {
+      if (next.isInitialized && next.isAuthenticated &&
+          previous?.isAuthenticated != true) {
+        Future<void>.microtask(() => ref.read(ancienProvider.notifier).refreshSilently());
+      }
+    },
+    fireImmediately: true,
+  );
+});

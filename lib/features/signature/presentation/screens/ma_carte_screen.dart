@@ -1,238 +1,362 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/app_assets.dart';
+import '../../../../core/design_system/index.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_shimmer.dart';
-import '../../../../core/widgets/role_menu_drawer.dart';
+import '../../../../core/widgets/index.dart';
 import '../../domain/entities/signature_entity.dart';
-import '../providers/signature_provider.dart';
+import '../../domain/ma_carte_years.dart';
+import '../providers/ma_carte_provider.dart';
 
-class MaCarteScreen extends ConsumerWidget {
+class MaCarteScreen extends ConsumerStatefulWidget {
   const MaCarteScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MaCarteScreen> createState() => _MaCarteScreenState();
+}
+
+class _MaCarteScreenState extends ConsumerState<MaCarteScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final notifier = ref.read(maCarteProvider.notifier);
+      await notifier.loadIfNeeded();
+      await notifier.refreshSilently();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.watch(maCarteBootstrapProvider);
     final state = ref.watch(maCarteProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      drawer: const RoleMenuDrawer(),
-      appBar: AppBar(
-        title: Text(AppStrings.maCarteTitle,
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: state.isLoading && state.data == null
-          ? _buildShimmer()
-          : _buildContent(context, state, ref),
-    );
-  }
-
-  Widget _buildShimmer() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const CarteHeaderShimmer(),
-          const SizedBox(height: 20),
-          Expanded(
-            child: ListView.builder(
-              itemCount: 8,
-              itemBuilder: (_, __) => const Padding(
-                padding: EdgeInsets.only(bottom: 1),
-                child: TableRowShimmer(),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContent(BuildContext context, MaCarteState state, WidgetRef ref) {
-    final data = state.data;
     return RefreshIndicator(
-      color: AppColors.primary,
-      onRefresh: () => ref.read(maCarteProvider.notifier).load(state.year ?? DateTime.now().year),
+      color: SignmeColors.primaryLight,
+      onRefresh: () => ref.read(maCarteProvider.notifier).load(force: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+        padding: const EdgeInsets.fromLTRB(
+          SignmeSpacing.lg,
+          SignmeSpacing.lg,
+          SignmeSpacing.lg,
+          120,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Bannière Signature ─────────────────────────────────────
-            _buildBanner(context, data),
-            const SizedBox(height: 20),
-
-            // ── Table Offrandes ────────────────────────────────────────
-            Container(
-              decoration: BoxDecoration(
-                color:        AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border:       Border.all(color: AppColors.border, width: 0.8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                    child: Text(
-                      AppStrings.offrandes,
-                      style: GoogleFonts.poppins(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  // ── En-tête du tableau ───────────────────────────────
-                  _buildTableHeader(state.year ?? DateTime.now().year),
-                  const Divider(height: 1, color: AppColors.divider),
-                  // ── Lignes ──────────────────────────────────────────
-                  ...List.generate(12, (i) => _buildTableRow(i, data, state.year ?? DateTime.now().year)),
-                ],
-              ),
+            const OnboardingSection(
+              svgPath: SignmeAssets.onboardingSigner,
+              title: 'Votre carte de Sainte-Cène',
+              description:
+                  'Consultez vos signatures et offrandes mois par mois.',
+            ),
+            const SizedBox(height: SignmeSpacing.xl),
+            _StatusBanner(
+              onSigner: () => context.go(AppRoutes.signer),
+            ),
+            const SizedBox(height: SignmeSpacing.lg),
+            _SignatureTable(
+              cartesByYear: state.cartesByYear,
+              loadingYears: state.loadingYears,
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildBanner(BuildContext context, MaCarteData? data) {
-    final hasPending = data?.hasPendingSignature ?? false;
+class _StatusBanner extends StatelessWidget {
+  const _StatusBanner({required this.onSigner});
+
+  final VoidCallback onSigner;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(SignmeSpacing.lg),
       decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: SignmeColors.primaryLight.withOpacity(0.25),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 44, height: 44,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
             ),
-            child: const Icon(Icons.assignment_ind_rounded, color: Colors.white, size: 24),
+            child: const Icon(
+              Icons.credit_card_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: SignmeSpacing.md),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(AppStrings.maCarteSainte,
-                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-                Text(
-                  hasPending ? AppStrings.signaturePending : AppStrings.signatureOk,
-                  style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withOpacity(0.8)),
-                ),
-              ],
+            child: Text(
+              'Mettre à jour votre carte',
+              style: SignmeTypography.labelLarge.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
-          GestureDetector(
-            onTap: () => context.push(AppRoutes.signer),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(AppStrings.signerBtn,
-                  style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+          const SizedBox(width: SignmeSpacing.sm),
+          SizedBox(
+            width: 108,
+            height: 40,
+            child: SignmePrimaryButton(
+              label: AppStrings.signerBtn,
+              onPressed: onSigner,
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildTableHeader(int currentYear) {
-    // Affiche l'année courante + 4 prochaines
-    final years = List.generate(5, (i) => currentYear + i);
+class _SignatureTable extends StatelessWidget {
+  const _SignatureTable({
+    required this.cartesByYear,
+    required this.loadingYears,
+  });
+
+  final Map<int, MaCarteData> cartesByYear;
+  final Set<int> loadingYears;
+
+  static const double _minTableWidth = 360;
+  static const double _monthColWidth = 44;
+  static const double _yearColWidth = 58;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tableWidth = constraints.maxWidth < _minTableWidth
+            ? _minTableWidth
+            : constraints.maxWidth;
+        return Container(
+          decoration: BoxDecoration(
+            color: SignmeColors.white,
+            borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+            border: Border.all(color: SignmeColors.lightGrayBorder),
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: tableWidth,
+              child: Column(
+                children: [
+                  _TableHeader(
+                    monthColWidth: _monthColWidth,
+                    yearColWidth: _yearColWidth,
+                  ),
+                  const Divider(height: 1, color: SignmeColors.lightGrayBorder),
+                  ...List.generate(
+                    12,
+                    (i) => _TableRow(
+                      monthIdx: i,
+                      cartesByYear: cartesByYear,
+                      loadingYears: loadingYears,
+                      monthColWidth: _monthColWidth,
+                      yearColWidth: _yearColWidth,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TableHeader extends StatelessWidget {
+  const _TableHeader({
+    required this.monthColWidth,
+    required this.yearColWidth,
+  });
+
+  final double monthColWidth;
+  final double yearColWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentYear = DateTime.now().year;
     return Container(
-      color: AppColors.surfaceVariant,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(
+        horizontal: SignmeSpacing.md,
+        vertical: SignmeSpacing.md,
+      ),
+      decoration: const BoxDecoration(
+        color: SignmeColors.accentSky,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(SignmeSpacing.radiusLg)),
+      ),
       child: Row(
         children: [
           SizedBox(
-            width: 40,
-            child: Text('Mois',
-                style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          ),
-          ...years.map((y) => Expanded(
+            width: monthColWidth,
             child: Text(
-              y.toString(),
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: y == currentYear ? AppColors.primary : AppColors.textSecondary,
+              'MOIS',
+              style: SignmeTypography.labelSmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color: SignmeColors.primaryDark,
               ),
             ),
-          )),
+          ),
+          ...MaCarteYears.display.map(
+            (y) => SizedBox(
+              width: yearColWidth,
+              child: Text(
+                y.toString(),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: SignmeTypography.labelSmall.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: y == currentYear
+                      ? SignmeColors.primaryLight
+                      : SignmeColors.mediumGray,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildTableRow(int monthIdx, MaCarteData? data, int currentYear) {
-    final sig = data?.signaturesParMois[monthIdx.toString()];
-    final isCurrentMonth = monthIdx == (DateTime.now().month - 1) &&
-        currentYear == DateTime.now().year;
+class _TableRow extends StatelessWidget {
+  const _TableRow({
+    required this.monthIdx,
+    required this.cartesByYear,
+    required this.loadingYears,
+    required this.monthColWidth,
+    required this.yearColWidth,
+  });
+
+  final int monthIdx;
+  final Map<int, MaCarteData> cartesByYear;
+  final Set<int> loadingYears;
+  final double monthColWidth;
+  final double yearColWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final isCurrentMonth =
+        monthIdx == now.month - 1 && MaCarteYears.display.contains(now.year);
 
     return Column(
       children: [
         Container(
-          color: isCurrentMonth ? AppColors.primarySurface : Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+          color: isCurrentMonth
+              ? SignmeColors.accentSky.withOpacity(0.35)
+              : Colors.transparent,
+          padding: const EdgeInsets.symmetric(
+            horizontal: SignmeSpacing.md,
+            vertical: SignmeSpacing.md,
+          ),
           child: Row(
             children: [
               SizedBox(
-                width: 40,
+                width: monthColWidth,
                 child: Text(
-                  AppStrings.moisShort[monthIdx],
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    fontWeight: isCurrentMonth ? FontWeight.w700 : FontWeight.w400,
-                    color: isCurrentMonth ? AppColors.primary : AppColors.textPrimary,
+                  AppStrings.moisShort[monthIdx].toUpperCase(),
+                  style: SignmeTypography.labelSmall.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              // Année courante — données réelles
-              Expanded(child: _cellValue(sig, isCurrentYear: true)),
-              // Autres années — vide
-              ...List.generate(4, (_) => Expanded(child: _cellValue(null, isCurrentYear: false))),
+              ...MaCarteYears.display.map((year) {
+                final isLoading = loadingYears.contains(year);
+                final sig = isLoading
+                    ? null
+                    : cartesByYear[year]?.signaturesParMois[monthIdx.toString()];
+                return SizedBox(
+                  width: yearColWidth,
+                  child: _AmountCell(
+                    isLoading: isLoading,
+                    signature: sig,
+                  ),
+                );
+              }),
             ],
           ),
         ),
-        if (monthIdx < 11) const Divider(height: 1, color: AppColors.divider, indent: 12),
+        if (monthIdx < 11)
+          const Divider(
+            height: 1,
+            color: SignmeColors.lightGrayBorder,
+            indent: SignmeSpacing.md,
+          ),
       ],
     );
   }
+}
 
-  Widget _cellValue(SignatureEntity? sig, {required bool isCurrentYear}) {
-    if (!isCurrentYear || sig == null) {
-      return Text(AppStrings.noSign,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(fontSize: 13, color: AppColors.textHint));
+class _AmountCell extends StatelessWidget {
+  const _AmountCell({
+    required this.isLoading,
+    this.signature,
+  });
+
+  final bool isLoading;
+  final SignatureEntity? signature;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const TableCellShimmer(width: 34, height: 10);
     }
 
-    final fmt   = NumberFormat('#,###', 'fr_FR');
-    final color = sig.isCompleted ? AppColors.signed : (sig.isPending ? AppColors.warning : AppColors.error);
+    if (signature == null) {
+      return const Center(
+        child: Text(
+          '–',
+          style: TextStyle(color: SignmeColors.mediumGray),
+        ),
+      );
+    }
 
-    return Text(
-      fmt.format(sig.amount),
-      textAlign: TextAlign.center,
-      style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: color),
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          NumberFormat('#,###', 'fr_FR').format(signature!.amount),
+          style: SignmeTypography.labelMedium.copyWith(
+            fontWeight: FontWeight.bold,
+            color: signature!.isCompleted
+                ? SignmeColors.success
+                : SignmeColors.warning,
+          ),
+          maxLines: 1,
+        ),
+      ),
     );
   }
 }

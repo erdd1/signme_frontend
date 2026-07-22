@@ -1,300 +1,330 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/design_system/index.dart';
+import '../../../../core/constants/app_assets.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/app_shimmer.dart';
+import '../../../../core/widgets/onboarding_section.dart';
 import '../../domain/entities/ancien_entity.dart';
 import '../providers/anciens_provider.dart';
 import '../widgets/ancien_card.dart';
 import '../widgets/designation_form_dialog.dart';
 
-class AncienDesignationsScreen extends ConsumerWidget {
+class AncienDesignationsScreen extends ConsumerStatefulWidget {
   const AncienDesignationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(ancienProvider);
+  ConsumerState<AncienDesignationsScreen> createState() =>
+      _AncienDesignationsScreenState();
+}
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: _buildAppBar(context, ref, state),
-      body: _buildBody(context, ref, state),
-    );
+class _AncienDesignationsScreenState
+    extends ConsumerState<AncienDesignationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Rafraîchit silencieusement à chaque ouverture de l'écran (les données
+    // déjà affichées restent visibles pendant la mise à jour en arrière-plan).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(ancienProvider.notifier).refreshSilently();
+    });
   }
 
-  // ── AppBar avec sélecteur de mois
-  PreferredSizeWidget _buildAppBar(BuildContext ctx, WidgetRef ref, AncienState state) {
-    return AppBar(
-      backgroundColor: AppColors.surface,
-      elevation: 2,
-      shadowColor: Colors.black12,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(ancienProvider);
+
+    final isMinDate =
+        state.annee == 2026 &&
+            state.mois == 1;
+
+    final isMaxDate =
+        state.annee == 2030 &&
+            state.mois == 12;
+
+    return SingleChildScrollView(
+      child: Column(
         children: [
-          Text(
-            'Anciens de services',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+
+          // ── Section Onboarding (Typée & Centralisée) ──────────────────────
+          const OnboardingSection(
+            svgPath: SignmeAssets.onboardingAnciens,
+            title: 'Gestion des services',
+            description:
+            'Désignez les anciens de service et configurez leurs horaires pour le mois.',
+          ),
+
+          const SizedBox(height: SignmeSpacing.lg),
+
+          // ── Barre de contrôle (Design System) ─────────────────────────────
+          Container(
+
+            padding: const EdgeInsets.symmetric(
+              horizontal: SignmeSpacing.lg,
+              vertical: SignmeSpacing.md,
+            ),
+
+            decoration: BoxDecoration(
+
+              color: SignmeColors.white,
+
+              boxShadow: [
+
+                BoxShadow(
+
+                  color:
+                  SignmeColors.black.withOpacity(0.05),
+
+                  blurRadius: 4,
+
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+
+            child: Row(
+
+              mainAxisAlignment:
+              MainAxisAlignment.spaceBetween,
+
+              children: [
+
+                Expanded(
+                  child: Row(
+                    children: [
+
+                      IconButton(
+                        icon: Icon(
+                          Icons.chevron_left_rounded,
+                          color: isMinDate
+                              ? SignmeColors.mediumGray
+                              : SignmeColors.primaryLight,
+                        ),
+                        onPressed: isMinDate
+                            ? null
+                            : () => ref
+                            .read(ancienProvider.notifier)
+                            .previousMonth(),
+                      ),
+
+                      Expanded(
+                        child: Text(
+
+                          _monthYearLabel(
+                            state.mois,
+                            state.annee,
+                          ),
+
+                          style: SignmeTypography.labelLarge
+                              .copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+
+                      IconButton(
+                        icon: Icon(
+                          Icons.chevron_right_rounded,
+                          color: isMaxDate
+                              ? SignmeColors.mediumGray
+                              : SignmeColors.primaryLight,
+                        ),
+                        onPressed: isMaxDate
+                            ? null
+                            : () => ref
+                            .read(ancienProvider.notifier)
+                            .nextMonth(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                InkWell(
+
+                  onTap: () {
+
+                    _showMonthPicker(
+                      context,
+                      ref,
+                      state,
+                    );
+                  },
+
+                  borderRadius: BorderRadius.circular(
+                    SignmeSpacing.radiusLg,
+                  ),
+
+                  child: Container(
+
+                    padding:
+                    const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+
+                    decoration: BoxDecoration(
+
+                      color: SignmeColors.accentSky
+                          .withOpacity(0.5),
+
+                      borderRadius:
+                      BorderRadius.circular(20),
+                    ),
+
+                    child: Row(
+                      children: [
+
+                        Text(
+
+                          '${state.mois}/${state.annee}',
+
+                          style: SignmeTypography
+                              .labelSmall
+                              .copyWith(
+                            fontWeight:
+                            FontWeight.bold,
+
+                            color:
+                            SignmeColors.primaryLight,
+                          ),
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        const Icon(
+                          Icons.calendar_today_rounded,
+                          size: 14,
+                          color:
+                          SignmeColors.primaryLight,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          Text(
-            _monthYearLabel(state.mois, state.annee),
-            style: GoogleFonts.poppins(
-              fontSize: 12,
-              color: AppColors.textSecondary,
+
+          const SizedBox(height: SignmeSpacing.md),
+
+          // ── Contenu scrollable indépendant ────────────────────────────────
+          SizedBox(
+
+            // Bornée pour rester utilisable sur les écrans courts/paysage
+            // (jamais en dessous de 320) sans devenir démesurée sur tablette.
+            height:
+            (MediaQuery.of(context).size.height * 0.65).clamp(320.0, 900.0),
+
+            child: _buildBody(
+              context,
+              ref,
+              state,
             ),
           ),
         ],
       ),
-      actions: [
-        // Mois précédent
-        IconButton(
-          icon: const Icon(Icons.chevron_left_rounded, color: AppColors.textPrimary),
-          onPressed: () => ref.read(ancienProvider.notifier).previousMonth(),
-        ),
-
-        // Sélecteur de mois/année
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Material(
-            color: AppColors.primarySurface,
-            borderRadius: BorderRadius.circular(8),
-            child: InkWell(
-              onTap: () => _showMonthPicker(ctx, ref, state),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '${state.mois}/${state.annee}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.calendar_month_rounded,
-                        size: 16, color: AppColors.primary),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Mois suivant
-        IconButton(
-          icon: const Icon(Icons.chevron_right_rounded, color: AppColors.textPrimary),
-          onPressed: () => ref.read(ancienProvider.notifier).nextMonth(),
-        ),
-      ],
     );
   }
 
-  // ── Body
   Widget _buildBody(BuildContext ctx, WidgetRef ref, AncienState state) {
-    // Loading
     if (state.isLoading && state.anciens.isEmpty) {
       return ListView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-        itemCount: 4,
+        padding: const EdgeInsets.all(SignmeSpacing.lg),
+        itemCount: 3,
         itemBuilder: (_, __) => const Padding(
           padding: EdgeInsets.only(bottom: 12),
-          child: AppShimmerBox(height: 120, width: double.infinity, radius: 12),
+          child: AppShimmerBox(height: 120, width: double.infinity, radius: SignmeSpacing.radiusLg),
         ),
       );
     }
 
-    // Error
-    if (state.error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline_rounded,
-                size: 48, color: AppColors.warning),
-            const SizedBox(height: 12),
-            Text(
-              'Erreur',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              state.error!,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => ref.read(ancienProvider.notifier).refresh(),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Réessayer'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Empty state
     if (state.anciens.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: () => ref.read(ancienProvider.notifier).refresh(),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            const SizedBox(height: 80),
-            Center(
-              child: Column(
-                children: [
-                  const Icon(Icons.people_outline_rounded,
-                      size: 64, color: AppColors.textHint),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Aucun ancien à désigner',
-                    style: GoogleFonts.poppins(
-                      color: AppColors.textSecondary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'ou tous les anciens sont déjà désignés pour ce mois',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
-                      color: AppColors.textHint,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+      return Center(
+        child: Text(
+          'Aucun ancien pour ce mois', 
+          style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray)
+        )
       );
     }
 
-    // List of anciens
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: SignmeColors.primaryLight,
       onRefresh: () => ref.read(ancienProvider.notifier).refresh(),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-        itemCount: state.anciens.length + (state.isLoading ? 1 : 0),
+        padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.md, SignmeSpacing.lg, 120),
+        itemCount: state.anciens.length,
         itemBuilder: (_, index) {
-          // Loading indicator at end
-          if (index >= state.anciens.length) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: AppShimmerBox(height: 120, width: double.infinity, radius: 12),
-            );
-          }
-
           final ancien = state.anciens[index];
-          return AncienCard(
-            ancien: ancien,
-            onDesignate: () => _showDesignationDialog(
-              ctx,
-              ref,
-              ancien,
+          return Padding(
+            padding: const EdgeInsets.only(bottom: SignmeSpacing.md),
+            child: AncienCard(
+              ancien: ancien,
+              onDesignate: () => _showDesignationDialog(ctx, ref, ancien),
+              onRevoke: ancien.designationId != null ? () => _showRevokeConfirm(ctx, ref, ancien) : null,
             ),
-            onRevoke: ancien.designationId != null
-                ? () => _showRevokeConfirm(ctx, ref, ancien)
-                : null,
           );
         },
       ),
     );
   }
 
-  // ── Month picker dialog
+  // --- Dialogs & Helpers (Design System Compliance) ---
+
   void _showMonthPicker(BuildContext ctx, WidgetRef ref, AncienState state) {
     showDialog(
       context: ctx,
-      builder: (_) => Dialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Sélectionnez un mois',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 20),
-              GridView.count(
-                crossAxisCount: 3,
-                shrinkWrap: true,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                children: List.generate(12, (i) {
-                  final month = i + 1;
-                  final isSelected = month == state.mois;
-                  return GestureDetector(
-                    onTap: () {
-                      ref.read(ancienProvider.notifier).changeMonth(month, state.annee);
-                      Navigator.pop(ctx);
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.border,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          _monthName(month),
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? Colors.white
-                                : AppColors.textPrimary,
-                          ),
-                        ),
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
+        title: Text('Sélectionner le mois', style: SignmeTypography.headlineSmall.copyWith(fontSize: 18, fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: GridView.builder(
+            // Largeur max par colonne (plutôt qu'un nombre de colonnes
+            // fixe) : s'adapte si le dialogue s'élargit sur une tablette.
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 90,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            shrinkWrap: true,
+            itemCount: 12,
+            itemBuilder: (context, i) {
+              final month = i + 1;
+              final bool isSelected = month == state.mois;
+              return InkWell(
+                onTap: () {
+                  ref.read(ancienProvider.notifier).changeMonth(month, state.annee);
+                  Navigator.pop(ctx);
+                },
+                borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected ? SignmeColors.primaryLight : SignmeColors.accentSky.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                  ),
+                  child: Center(
+                    child: Text(
+                      month.toString(),
+                      style: SignmeTypography.bodyLarge.copyWith(
+                        color: isSelected ? SignmeColors.white : SignmeColors.black,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  );
-                }),
-              ),
-            ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  // ── Designation dialog
-  void _showDesignationDialog(
-    BuildContext ctx,
-    WidgetRef ref,
-    AncienEntity ancien,
-  ) {
-    showDialog(
+  void _showDesignationDialog(BuildContext ctx, WidgetRef ref, AncienEntity ancien) {
+     showDialog(
       context: ctx,
       builder: (_) => DesignationFormDialog(
         ancienNom: ancien.nom,
@@ -305,19 +335,9 @@ class AncienDesignationsScreen extends ConsumerWidget {
             horairesDebut: debut,
             horairesFin: fin,
           );
-
-          if (!ctx.mounted) return;
-
-          if (ok) {
+          if (ok && ctx.mounted) {
             ScaffoldMessenger.of(ctx).showSnackBar(
-              SnackBar(
-                content: Text('${ancien.nom} a été désigné avec succès'),
-                backgroundColor: AppColors.success,
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(ctx).showSnackBar(
-              const SnackBar(content: Text('Erreur lors de la désignation')),
+              const SnackBar(content: Text('Désignation réussie'), backgroundColor: SignmeColors.success)
             );
           }
         },
@@ -325,100 +345,30 @@ class AncienDesignationsScreen extends ConsumerWidget {
     );
   }
 
-  // ── Revoke confirmation
-  void _showRevokeConfirm(
-    BuildContext ctx,
-    WidgetRef ref,
-    AncienEntity ancien,
-  ) {
+  void _showRevokeConfirm(BuildContext ctx, WidgetRef ref, AncienEntity ancien) {
     showDialog(
       context: ctx,
-      builder: (dialogContext) => AlertDialog(  // ← Capture le bon contexte!
-        backgroundColor: AppColors.surface,
-        title: Text(
-          'Révoquer la désignation',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'Êtes-vous sûr de vouloir révoquer ${ancien.nom} ?',
-          style: GoogleFonts.poppins(fontSize: 14),
-        ),
+      builder: (diagCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
+        title: Text('Confirmer la révocation', style: SignmeTypography.headlineSmall.copyWith(fontSize: 18, fontWeight: FontWeight.bold)),
+        content: Text('Voulez-vous vraiment retirer ${ancien.nom} de son service ?', style: SignmeTypography.bodyMedium),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),  // ← Utilise dialogContext
-            child: Text(
-              'Annuler',
-              style: GoogleFonts.poppins(color: AppColors.textSecondary),
-            ),
-          ),
-          TextButton(
+          TextButton(onPressed: () => Navigator.pop(diagCtx), child: Text('Annuler', style: TextStyle(color: SignmeColors.mediumGray))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: SignmeColors.error),
             onPressed: () {
-              try {
-                print('🗑️  [Screen] Début de révocation pour ancien: ${ancien.nom}');
-                
-                if (ancien.designationId != null) {
-                  // ✅ Fermer le dialog IMMÉDIATEMENT avec le bon contexte
-                  Navigator.pop(dialogContext);  // ← Utilise dialogContext
-                  
-                  // 🚀 Lancer la révocation en arrière-plan
-                  ref.read(ancienProvider.notifier).revoke(ancien.designationId!).then((ok) {
-                    print('🗑️  [Screen] Révocation complète: ok=$ok');
-                    
-                    if (!ctx.mounted) return;
-
-                    if (ok) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(
-                          content: Text('${ancien.nom} a été révoqué'),
-                          backgroundColor: AppColors.success,
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(content: Text('Erreur lors de la révocation')),
-                      );
-                    }
-                  }).catchError((e) {
-                    print('❌ [Screen] Exception lors de la révocation: $e');
-                    if (ctx.mounted) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(content: Text('Erreur: $e')),
-                      );
-                    }
-                  });
-                }
-              } catch (e) {
-                print('❌ [Screen] Exception synchrone: $e');
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text('Erreur: $e')),
-                  );
-                }
-              }
-            },
-            child: Text(
-              'Révoquer',
-              style: GoogleFonts.poppins(color: AppColors.warning),
-            ),
+              Navigator.pop(diagCtx);
+              ref.read(ancienProvider.notifier).revoke(ancien.designationId!);
+            }, 
+            child: const Text('Révoquer', style: TextStyle(color: Colors.white))
           ),
         ],
       ),
     );
   }
 
-  // ── Helper methods
   String _monthYearLabel(int mois, int annee) {
-    final months = [
-      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-    ];
+    final months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
     return '${months[mois - 1]} $annee';
-  }
-
-  String _monthName(int month) {
-    const names = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
-                   'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-    return names[month - 1];
   }
 }

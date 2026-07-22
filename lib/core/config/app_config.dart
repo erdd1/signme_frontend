@@ -6,7 +6,7 @@ abstract final class AppConfig {
   static const bool isDebug = kDebugMode;
 
   // ── App ───────────────────────────────────────────────────────────────
-  static const String appName    = 'EEC SIGNCARD';
+  static const String appName    = 'SignMe';
   static const String appVersion = '1.0.0';
   static const String buildNumber = '1';
   static const String supportEmail = 'support@eecsigncard.cm';
@@ -18,7 +18,7 @@ abstract final class AppConfig {
   // ── Cache ─────────────────────────────────────────────────────────────
   static const Duration cacheDuration = Duration(minutes: 30);
 
-  // ── Campay ────────────────────────────────────────────────────────────
+  // ── NotchPay (Mobile Money) ──────────────────────────────────────────
   static const List<String> supportedOperators = [
     'ORANGE MONEY',
     'MTN MOBILE MONEY',

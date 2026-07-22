@@ -1,6 +1,5 @@
 /// Historique Personnel Entity
-/// C'est l'historique des SIGNATURES À DISTANCE de l'utilisateur connecté
-/// Uniquement ses propres signatures à distance (distance mode)
+/// Historique des signatures à distance ET présentiel de l'utilisateur connecté
 
 class HistoriquePersonnelEntity {
   final String id;
@@ -11,12 +10,16 @@ class HistoriquePersonnelEntity {
   final String status; // 'completed' | 'pending' | 'failed'
   final int amount; // Montant payé
   final int? fees; // Frais
-  final String signatureType; // 'distance'
-  final String? paymentMethod; // 'ORANGE MONEY' | 'MTN' | 'CASH'
+  final String signatureType; // 'distance' | 'presentiel'
+  final String? paymentMethod; // 'ORANGE MONEY' | 'MTN' | 'CASH' (null pour présentiel)
   final String? paymentPhoneNumber;
   final DateTime createdAt;
   final DateTime? completedAt;
   final String? errorMessage; // Si failed
+  
+  // Champs spécifiques aux signatures présentiel
+  final String? signataireName; // Nom de celui qui a signé (pour présentiel)
+  final String? signatairerole; // Rôle de celui qui a signé (Pasteur, Ancien de service)
 
   HistoriquePersonnelEntity({
     required this.id,
@@ -33,12 +36,16 @@ class HistoriquePersonnelEntity {
     required this.createdAt,
     this.completedAt,
     this.errorMessage,
+    this.signataireName,
+    this.signatairerole,
   });
 
   // Getters utiles
   bool get isCompleted => status == 'completed';
   bool get isPending => status == 'pending';
   bool get isFailed => status == 'failed';
+  bool get isDistance => signatureType == 'distance';
+  bool get isPresentiel => signatureType == 'presentiel';
 
   /// Format de la date pour affichage: "20 mai 2026 à 14:30"
   String get formattedDate {
@@ -57,5 +64,13 @@ class HistoriquePersonnelEntity {
       default:
         return status;
     }
+  }
+
+  /// Description du mode de signature
+  String get signatureTypeFr {
+    if (isPresentiel) {
+      return 'Signé par $signataireName, $signatairerole';
+    }
+    return 'À distance';
   }
 }

@@ -43,3 +43,33 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Signature de release Android — jamais dans le dépôt (voir android/key.properties.example)
+/android/key.properties
+*.jks
+*.keystore
+
+
+# Firebase configuration files
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Flutter generated files
+android/build/
+ios/build/
+linux/flutter/ephemeral/
+macos/Flutter/ephemeral/
+windows/flutter/ephemeral/
+
+# Analysis temporary files
+analysis.txt
+analysis_output.txt
+analyze.txt
+analyze_output.txt
+
+# Environment files
+.env
+.env.*
+
+# AI tools
+.claude/

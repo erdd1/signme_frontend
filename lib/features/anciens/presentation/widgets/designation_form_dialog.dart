@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/design_system/index.dart';
+import '../../../../core/widgets/app_button.dart';
 
 class DesignationFormDialog extends StatefulWidget {
   const DesignationFormDialog({
@@ -27,11 +27,11 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: SignmeColors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(SignmeSpacing.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -39,92 +39,75 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
               // ── Header
               Text(
                 'Désigner ${widget.ancienNom}',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+                style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
                 'Paramétrez sa disponibilité',
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
+                style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: SignmeSpacing.lg),
 
               // ── Section Jours ────────────────────────────────────────
               Text(
                 '📅 Jours de service',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+                style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: SignmeSpacing.sm),
 
               // Option: 24/7
               CheckboxListTile(
                 value: is24h,
+                activeColor: SignmeColors.primaryLight,
                 onChanged: (v) => setState(() {
                   is24h = v ?? false;
                   if (is24h) selectedDays.clear();
                 }),
                 title: Text(
                   'Tous les jours (24/7)',
-                  style: GoogleFonts.poppins(fontSize: 14, color: AppColors.textPrimary),
+                  style: SignmeTypography.bodyMedium,
                 ),
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: SignmeSpacing.xs),
 
               // Jours spécifiques
               if (!is24h)
                 Padding(
-                  padding: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.only(left: SignmeSpacing.sm),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Sélectionnez les jours:',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
+                        style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: SignmeSpacing.sm),
                       _buildDaysGrid(),
                     ],
                   ),
                 )
               else
                 Padding(
-                  padding: const EdgeInsets.only(left: 8, top: 4, bottom: 4),
+                  padding: const EdgeInsets.only(left: SignmeSpacing.sm, top: 4, bottom: 4),
                   child: Text(
                     'L\'ancien peut servir tous les jours',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: AppColors.textHint,
+                    style: SignmeTypography.bodySmall.copyWith(
+                      color: SignmeColors.mediumGray,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
                 ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: SignmeSpacing.lg),
 
               // ── Section Horaires ──────────────────────────────────────
               Text(
                 '⏰ Horaires',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+                style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: SignmeSpacing.sm),
 
               Row(
                 children: [
@@ -135,7 +118,7 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
                       onChanged: (v) => setState(() => timeStart = v),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: SignmeSpacing.md),
                   Expanded(
                     child: _buildTimeField(
                       label: 'Fin',
@@ -146,42 +129,37 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
                 ],
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: SignmeSpacing.xs),
               Text(
                 'Par défaut: 00:00 - 23:59',
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: AppColors.textHint,
-                ),
+                style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: SignmeSpacing.lg),
 
               // ── Resume
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(SignmeSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  color: SignmeColors.accentSky.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                  border: Border.all(color: SignmeColors.primaryLight.withOpacity(0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Résumé:',
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
+                      style: SignmeTypography.labelSmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: SignmeColors.primaryDark,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _buildSummary(),
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: AppColors.textPrimary,
+                      style: SignmeTypography.bodySmall.copyWith(
+                        color: SignmeColors.black,
                         height: 1.6,
                       ),
                     ),
@@ -189,31 +167,24 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: SignmeSpacing.xl),
 
               // ── Buttons
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: SignmeSecondaryButton(
+                      label: 'Annuler',
                       onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        'Annuler',
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                      ),
+                      height: 44,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: SignmeSpacing.md),
                   Expanded(
-                    child: ElevatedButton(
+                    child: SignmePrimaryButton(
+                      label: 'Désigner',
                       onPressed: _handleDesignate,
-                      child: Text(
-                        'Désigner',
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
+                      height: 44,
                     ),
                   ),
                 ],
@@ -246,20 +217,19 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primary : AppColors.background,
+              color: isSelected ? SignmeColors.primaryLight : SignmeColors.white,
               border: Border.all(
-                color: isSelected ? AppColors.primary : AppColors.border,
+                color: isSelected ? SignmeColors.primaryLight : SignmeColors.lightGrayBorder,
                 width: 1.5,
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
             ),
             child: Center(
               child: Text(
                 days[i],
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : AppColors.textPrimary,
+                style: SignmeTypography.labelSmall.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? SignmeColors.white : SignmeColors.black,
                 ),
               ),
             ),
@@ -280,25 +250,32 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
       children: [
         Text(
           label,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textSecondary,
+          style: SignmeTypography.labelSmall.copyWith(
+            fontWeight: FontWeight.bold,
+            color: SignmeColors.mediumGray,
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
-          readOnly: true,
-          controller: TextEditingController(text: value),
-          decoration: InputDecoration(
-            hintText: label,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.border),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          ),
+        InkWell(
           onTap: () => _pickTime(context, value, onChanged),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+              border: Border.all(color: SignmeColors.lightGrayBorder),
+              color: SignmeColors.white,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  value ?? '--:--',
+                  style: SignmeTypography.bodyMedium,
+                ),
+                const Icon(Icons.access_time_rounded, size: 18, color: SignmeColors.primaryLight),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -313,7 +290,9 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
     final now = DateTime.now();
     final time = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(now),
+      initialTime: currentTime != null 
+          ? TimeOfDay(hour: int.parse(currentTime.split(':')[0]), minute: int.parse(currentTime.split(':')[1]))
+          : TimeOfDay.fromDateTime(now),
     );
     if (time != null) {
       final formatted = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
@@ -342,7 +321,7 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
   void _handleDesignate() {
     if (!is24h && selectedDays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez sélectionner au moins un jour')),
+        const SnackBar(content: Text('Veuillez sélectionner au moins un jour'), backgroundColor: SignmeColors.error),
       );
       return;
     }

@@ -1,232 +1,209 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../constants/app_colors.dart';
+import '../design_system/index.dart';
 
-/// Thème Material 3 — police Poppins, couleurs EEC navy blue
+/// SIGNME Theme - Material 3 with modern design system
+/// 
+/// Uses SignmeColors, SignmeTypography, and SignmeSpacing for consistency
+/// across the entire app. Built on navy blue (#001F3F) and modern blue (#2979F0)
+/// with cyan accents.
 abstract final class AppTheme {
   static ThemeData get lightTheme {
     final base = ThemeData(
       useMaterial3: true,
-      colorScheme: _colorScheme,
+      colorScheme: SignmeColors.colorScheme,
     );
 
     return base.copyWith(
-      scaffoldBackgroundColor: AppColors.background,
-      textTheme: _textTheme,
+      scaffoldBackgroundColor: SignmeColors.background,
+      textTheme: SignmeTypography.textTheme,
 
       // ── AppBar ───────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: SignmeColors.surface,
+        foregroundColor: SignmeColors.onSurface,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+        titleTextStyle: SignmeTypography.headlineMedium,
+        iconTheme: const IconThemeData(
+          color: SignmeColors.onSurface,
+          size: 24,
         ),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 24),
       ),
 
       // ── Tab Bar ──────────────────────────────────────────────────────────
       tabBarTheme: TabBarThemeData(
-        labelColor: AppColors.primary,
-        unselectedLabelColor: AppColors.textSecondary,
-        indicatorColor: AppColors.primary,
-        labelStyle:
-            GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600),
-        unselectedLabelStyle:
-            GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w400),
-        dividerColor: AppColors.border,
+        labelColor: SignmeColors.primary,
+        unselectedLabelColor: SignmeColors.textSecondary,
+        indicatorColor: SignmeColors.primary,
+        labelStyle: SignmeTypography.titleMedium.copyWith(
+          color: SignmeColors.primary,
+        ),
+        unselectedLabelStyle: SignmeTypography.titleMedium.copyWith(
+          color: SignmeColors.textSecondary,
+        ),
+        dividerColor: SignmeColors.lightGray,
       ),
 
       // ── Elevated Button ───────────────────────────────────────────────────
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          backgroundColor: SignmeColors.primary,
+          foregroundColor: SignmeColors.onPrimary,
           elevation: 0,
-          textStyle:
-              GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600),
+          textStyle: SignmeTypography.buttonText,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
+            borderRadius:
+                BorderRadius.circular(SignmeSpacing.buttonBorderRadius),
           ),
-          minimumSize: const Size(double.infinity, 54),
+          minimumSize: const Size(double.infinity, SignmeSpacing.buttonHeight),
+          padding: SignmeSpacing.buttonPadding,
         ),
       ),
 
       // ── Input Decoration ─────────────────────────────────────────────────
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surface,
-        hintStyle: GoogleFonts.poppins(color: AppColors.textHint, fontSize: 14),
-        labelStyle:
-            GoogleFonts.poppins(color: AppColors.textSecondary, fontSize: 14),
+        fillColor: SignmeColors.surface,
+        hintStyle: SignmeTypography.placeholder,
+        labelStyle: SignmeTypography.inputLabel,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius:
+              BorderRadius.circular(SignmeSpacing.inputBorderRadius),
+          borderSide: const BorderSide(color: SignmeColors.lightGray),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius:
+              BorderRadius.circular(SignmeSpacing.inputBorderRadius),
+          borderSide: const BorderSide(color: SignmeColors.lightGray),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderRadius:
+              BorderRadius.circular(SignmeSpacing.inputBorderRadius),
+          borderSide: const BorderSide(
+            color: SignmeColors.primary,
+            width: SignmeSpacing.borderMedium,
+          ),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.error),
+          borderRadius:
+              BorderRadius.circular(SignmeSpacing.inputBorderRadius),
+          borderSide: const BorderSide(color: SignmeColors.error),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius:
+              BorderRadius.circular(SignmeSpacing.inputBorderRadius),
+          borderSide: const BorderSide(
+            color: SignmeColors.error,
+            width: SignmeSpacing.borderMedium,
+          ),
+        ),
+        contentPadding: SignmeSpacing.inputPadding,
+        errorStyle: SignmeTypography.error,
+        helperStyle: SignmeTypography.helperText,
       ),
 
       // ── Card ─────────────────────────────────────────────────────────────
       cardTheme: CardThemeData(
-        color: AppColors.surface,
+        color: SignmeColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.border, width: 0.8),
+          borderRadius:
+              BorderRadius.circular(SignmeSpacing.cardBorderRadius),
+          side: const BorderSide(
+            color: SignmeColors.lightGray,
+            width: 0.8,
+          ),
         ),
       ),
 
       // ── Divider ──────────────────────────────────────────────────────────
       dividerTheme: const DividerThemeData(
-        color: AppColors.divider,
-        thickness: 1,
-        space: 1,
+        color: SignmeColors.lightGray,
+        thickness: SignmeSpacing.dividerHeight,
+        space: SignmeSpacing.dividerHeight,
       ),
 
       // ── Bottom App Bar ───────────────────────────────────────────────────
       bottomAppBarTheme: const BottomAppBarThemeData(
-        color: AppColors.navBackground,
+        color: SignmeColors.surface,
         elevation: 8,
-        shadowColor: Colors.black26,
+        shadowColor: Colors.black12,
       ),
 
       // ── Popup Menu ───────────────────────────────────────────────────────
       popupMenuTheme: PopupMenuThemeData(
-        color: AppColors.surface,
+        color: SignmeColors.surface,
         elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        textStyle:
-            GoogleFonts.poppins(fontSize: 14, color: AppColors.textPrimary),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+        ),
+        textStyle: SignmeTypography.bodyMedium,
       ),
 
       // ── Dialog ───────────────────────────────────────────────────────────
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        titleTextStyle: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppColors.textPrimary,
+        backgroundColor: SignmeColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusXl),
         ),
-        contentTextStyle: GoogleFonts.poppins(
-          fontSize: 14,
-          color: AppColors.textSecondary,
-        ),
+        titleTextStyle: SignmeTypography.displaySmall,
+        contentTextStyle: SignmeTypography.bodyMedium,
+        elevation: 4,
       ),
 
       // ── Snack Bar ────────────────────────────────────────────────────────
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        contentTextStyle:
-            GoogleFonts.poppins(color: Colors.white, fontSize: 13),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+        ),
+        contentTextStyle: SignmeTypography.bodyMedium.copyWith(
+          color: SignmeColors.onPrimary,
+        ),
+        backgroundColor: SignmeColors.primary,
       ),
 
       // ── Floating Action Button ────────────────────────────────────────────
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: SignmeColors.primary,
+        foregroundColor: SignmeColors.onPrimary,
         elevation: 4,
       ),
 
       // ── Chip ─────────────────────────────────────────────────────────────
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.primarySurface,
-        labelStyle:
-            GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500),
+        backgroundColor: SignmeColors.lightGray,
+        labelStyle: SignmeTypography.labelMedium,
         side: const BorderSide(color: Colors.transparent),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusSm),
+        ),
+      ),
+
+      // ── Text Button ──────────────────────────────────────────────────────
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: SignmeColors.primary,
+          textStyle: SignmeTypography.titleMedium,
+          minimumSize: const Size(0, SignmeSpacing.buttonHeightSmall),
+        ),
+      ),
+
+      // ── Outlined Button ──────────────────────────────────────────────────
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: SignmeColors.primary,
+          side: const BorderSide(color: SignmeColors.primary),
+          textStyle: SignmeTypography.titleMedium,
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                BorderRadius.circular(SignmeSpacing.buttonBorderRadius),
+          ),
+          minimumSize:
+              const Size(double.infinity, SignmeSpacing.buttonHeight),
+          padding: SignmeSpacing.buttonPadding,
+        ),
       ),
     );
   }
-
-  // ── Color Scheme ─────────────────────────────────────────────────────────
-  static const ColorScheme _colorScheme = ColorScheme(
-    brightness: Brightness.light,
-    primary: AppColors.primary,
-    onPrimary: Colors.white,
-    secondary: AppColors.secondary,
-    onSecondary: Colors.white,
-    error: AppColors.error,
-    onError: Colors.white,
-    surface: AppColors.surface,
-    onSurface: AppColors.textPrimary,
-    surfaceContainerHighest: AppColors.surfaceVariant,
-    onSurfaceVariant: AppColors.textSecondary,
-    outline: AppColors.border,
-  );
-
-  // ── Text Theme ───────────────────────────────────────────────────────────
-  static TextTheme get _textTheme => GoogleFonts.poppinsTextTheme(
-        const TextTheme(
-          displayLarge: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary),
-          displayMedium: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary),
-          headlineLarge: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary),
-          headlineMedium: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary),
-          headlineSmall: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary),
-          titleLarge: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary),
-          titleMedium: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary),
-          titleSmall: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary),
-          bodyLarge: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textPrimary),
-          bodyMedium: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textPrimary),
-          bodySmall: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textSecondary),
-          labelLarge: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary),
-          labelSmall: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary),
-        ),
-      );
 }

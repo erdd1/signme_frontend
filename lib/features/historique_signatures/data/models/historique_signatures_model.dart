@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import '../../domain/entities/historique_signatures_entity.dart';
 
 part 'historique_signatures_model.g.dart';
 
@@ -45,13 +46,14 @@ class HistoriqueSignaturesModel {
   });
 
   factory HistoriqueSignaturesModel.fromJson(Map<String, dynamic> json) {
-    // ✅ FIX: Gérer les conversions de type de façon robuste avec tryParse
     final year = json['year'] is int 
         ? json['year'] as int 
         : int.tryParse(json['year'].toString()) ?? 0;
+    
     final amount = json['amount'] != null 
         ? (json['amount'] is int ? json['amount'] as int : int.tryParse(json['amount'].toString()))
         : null;
+        
     final fees = json['fees'] != null 
         ? (json['fees'] is int ? json['fees'] as int : int.tryParse(json['fees'].toString()))
         : null;
@@ -78,26 +80,29 @@ class HistoriqueSignaturesModel {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'userId': userId,
-      'nomParoissien': nomParoissien,
-      'emailParoissien': emailParoissien,
-      'ancienId': ancienId,
-      'nomAncien': nomAncien,
-      'month': month,
-      'year': year,
-      'status': status,
-      'amount': amount,
-      'fees': fees,
-      'signatureType': signatureType,
-      'location': location,
-      'churchId': churchId,
-      'churchName': churchName,
-      'created_at': createdAt.toIso8601String(),
-      'completed_at': completedAt?.toIso8601String(),
-      'notes': notes,
-    };
+  /// Conversion Senior : Model -> Entity
+  HistoriqueSignaturesEntity toEntity() {
+    return HistoriqueSignaturesEntity(
+      id: id,
+      userId: userId,
+      nomParoissien: nomParoissien,
+      emailParoissien: emailParoissien,
+      ancienId: ancienId,
+      nomAncien: nomAncien,
+      month: month,
+      year: year,
+      status: status,
+      amount: amount,
+      fees: fees,
+      signatureType: signatureType,
+      location: location,
+      churchId: churchId,
+      churchName: churchName,
+      createdAt: createdAt,
+      completedAt: completedAt,
+      notes: notes,
+    );
   }
+
+  Map<String, dynamic> toJson() => _$HistoriqueSignaturesModelToJson(this);
 }

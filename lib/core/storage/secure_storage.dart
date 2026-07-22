@@ -1,11 +1,15 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Clés du stockage sécurisé
+import 'dart:math';
+
 abstract final class _Keys {
-  static const accessToken  = 'access_token';
-  static const refreshToken = 'refresh_token';
-  static const user         = 'user_json';
-  static const rememberMe   = 'remember_me';
+  static const accessToken     = 'access_token';
+  static const refreshToken    = 'refresh_token';
+  static const user            = 'user_json';
+  static const rememberMe      = 'remember_me';
+  static const rememberedEmail = 'remembered_email';
+  static const deviceId        = 'device_id';
 }
 
 /// Service de stockage sécurisé — Keychain (iOS) / Keystore (Android)
@@ -46,6 +50,26 @@ class SecureStorage {
   Future<bool> getRememberMe() async {
     final v = await _storage.read(key: _Keys.rememberMe);
     return v == 'true';
+  }
+
+  Future<void> saveRememberedEmail(String email) =>
+      _storage.write(key: _Keys.rememberedEmail, value: email);
+
+  Future<String?> getRememberedEmail() =>
+      _storage.read(key: _Keys.rememberedEmail);
+
+  Future<void> clearRememberedEmail() =>
+      _storage.delete(key: _Keys.rememberedEmail);
+
+  /// Identifiant stable de l'appareil (tracking sécurité côté API).
+  Future<String> getOrCreateDeviceId() async {
+    final existing = await _storage.read(key: _Keys.deviceId);
+    if (existing != null && existing.isNotEmpty) return existing;
+
+    final id =
+        '${DateTime.now().millisecondsSinceEpoch}_${Random.secure().nextInt(999999999)}';
+    await _storage.write(key: _Keys.deviceId, value: id);
+    return id;
   }
 
   // ── Clear ─────────────────────────────────────────────────────────────────

@@ -1,15 +1,40 @@
+﻿import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
+import '../../../../core/design_system/index.dart';
+import '../../../../core/notifications/push_notification_provider.dart';
 import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../auth/domain/entities/auth_entity.dart';
+import '../../../../core/services/sync_service.dart';
+import '../../../../core/widgets/badge_dot.dart';
+import '../../../../core/widgets/offline_banner.dart';
+import '../../../../core/widgets/role_menu_drawer.dart';
+import '../../../../core/widgets/signme_unsaved_changes_guard.dart';
+import '../../../../core/websocket/ws_provider.dart';
+import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../badge/domain/entities/badge_count_entity.dart';
+import '../../../badge/presentation/providers/badge_provider.dart';
+import '../../../signature/presentation/providers/ma_carte_provider.dart';
+import '../../../finances/presentation/providers/finances_provider.dart';
+import '../../../rapports/presentation/providers/rapports_provider.dart';
+import '../../../anciens/presentation/providers/anciens_provider.dart';
+import '../../../evenements/presentation/providers/evenements_provider.dart';
+import '../../../evenements/presentation/providers/contributions_tresorerie_provider.dart';
+import '../../../home/presentation/providers/home_feed_provider.dart';
+import '../../../historique_personnel/presentation/providers/historique_personnel_combined_provider.dart';
+import '../../../historique_signatures/presentation/providers/historique_signatures_provider.dart';
 
-/// Shell principal — Bottom Navigation adaptatif par rôle + FAB Signer
+const double _kNavHeight = 76.0;
+const double _kFabSize = 62.0;
+const double _kFabLift = 24.0;
+const double _kNavHPad = 16.0;
+const double _kNavBPad = 12.0;
+const double _kNavRadius = 28.0;
+
 class MainShell extends ConsumerWidget {
   const MainShell({super.key, required this.child});
   final Widget child;
@@ -19,180 +44,571 @@ class MainShell extends ConsumerWidget {
     final authState = ref.watch(authNotifierProvider);
     final user = authState.auth?.user;
 
-    // Si l'utilisateur est déconnecté, le routeur va rediriger automatiquement
-    // On affiche juste le child sans les contrôles de navigation
     if (!authState.isAuthenticated || user == null) {
       return child;
     }
 
-    final tabs      = AppPermissions.getNavTabs(user);
+    // ── WebSocket : connexion/déconnexion selon l'état d'auth ──────────────
+    ref.watch(syncBootstrapProvider);
+    // ── Préchargement des modules non couverts par SyncService (état en
+    // mémoire, indépendant du cache Isar) — actifs dès le login, peu importe
+    // l'onglet ouvert par l'utilisateur.
+    ref.watch(maCarteBootstrapProvider);
+    ref.watch(financesBootstrapProvider);
+    ref.watch(rapportSecretaireBootstrapProvider);
+    ref.watch(ancienBootstrapProvider);
+    ref.watch(evenementsGestionBootstrapProvider);
+    ref.watch(contributionsTreasuryBootstrapProvider);
+    ref.watch(historiquePersonnelBootstrapProvider);
+    ref.watch(historiqueSignaturesBootstrapProvider);
+
+    // ── Notifications push : filet de sécurité pour une session déjà
+    // restaurée avant le premier build (le ref.listen ci-dessous ne capte
+    // que les transitions non connecté → connecté).
+    ensureDeviceTokenRegistered(ref, authState.isAuthenticated);
+
+    ref.listen<AuthState>(authNotifierProvider, (previous, next) {
+      if (next.isAuthenticated && previous?.isAuthenticated != true) {
+        final token   = next.auth?.accessToken ?? '';
+        final userId  = next.auth?.user.id ?? 0;
+        final churchId = next.auth?.user.churchId ?? 0;
+        if (token.isNotEmpty && churchId > 0) {
+          ref.read(wsClientProvider).connect(
+            bearerToken: token,
+            churchId:    churchId,
+            userId:      userId,
+          );
+        }
+        // ── Notifications push : enregistre le jeton de cet appareil ──────
+        ensureDeviceTokenRegistered(ref, true);
+      } else if (!next.isAuthenticated) {
+        ref.read(wsClientProvider).disconnect();
+        if (previous?.isAuthenticated == true) {
+          unregisterDeviceToken(ref);
+          resetDeviceTokenRegistrationFlag();
+        }
+      }
+    });
+
+    final tabs = AppPermissions.getNavTabs(user);
     final currentIdx = _currentIndex(context, tabs);
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+
+
+    final badgeState = ref.watch(badgeNotifierProvider);
+    final badges = badgeState.valueOrNull ?? BadgeCountEntity.empty;
+
+    // Masquer la navbar quand le clavier est ouvert
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body:            child,
-      floatingActionButton:         _buildFab(context, user),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar:          _buildBottomNav(context, tabs, currentIdx),
-    );
-  }
-
-  // ── Index actif calculé depuis la route ─────────────────────────────────
-  int _currentIndex(BuildContext ctx, List<NavTab> tabs) {
-    final loc = GoRouterState.of(ctx).matchedLocation;
-    for (int i = 0; i < tabs.length; i++) {
-      switch (tabs[i]) {
-        case NavTab.home:       if (loc.startsWith(AppRoutes.home))       return i;
-        case NavTab.finances:   if (loc.startsWith(AppRoutes.finances))   return i;
-        case NavTab.historique: if (loc.startsWith(AppRoutes.historique)) return i;
-        case NavTab.maCarte:    if (loc.startsWith(AppRoutes.maCarte))    return i;
-      }
-    }
-    return 0;
-  }
-
-  void _onNavTap(BuildContext ctx, NavTab tab) {
-    switch (tab) {
-      case NavTab.home:       ctx.go(AppRoutes.home);
-      case NavTab.finances:   ctx.go(AppRoutes.finances);
-      case NavTab.historique: ctx.go(AppRoutes.historique);
-      case NavTab.maCarte:    ctx.go(AppRoutes.maCarte);
-    }
-  }
-
-  // ── FAB ─────────────────────────────────────────────────────────────────
-  Widget _buildFab(BuildContext ctx, UserEntity user) {
-    // Tous les utilisateurs actifs peuvent accéder à Signer
-    if (!user.actif) return const SizedBox.shrink();
-
-    return Container(
-      width:  64, height: 64,
-      decoration: BoxDecoration(
-        gradient:     AppColors.primaryGradient,
-        shape:        BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color:      AppColors.primary.withOpacity(0.35),
-            blurRadius: 16,
-            offset:     const Offset(0, 6),
+      resizeToAvoidBottomInset: false,
+      extendBody: true,
+      backgroundColor: SignmeColors.white,
+      drawer: const RoleMenuDrawer(),
+      appBar: AppBar(
+        backgroundColor: SignmeColors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        centerTitle: false,
+        title: _buildAppBarTitleForRoute(context),
+        actions: [
+          if (GoRouterState.of(context).matchedLocation == AppRoutes.home)
+            Builder(
+              builder: (ctx) => Padding(
+                padding: const EdgeInsets.only(right: SignmeSpacing.sm),
+                child: IconButton(
+                  icon: const Icon(Icons.menu_rounded,
+                      color: SignmeColors.black, size: 28),
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
+                ),
+              ),
+            ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          child,
+          // ── Bannière hors ligne ──
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: OfflineBanner(),
+          ),
+          // ── Navbar: Positioned D'ABORD, animations À L'INTÉRIEUR ──
+          Positioned(
+            left: _kNavHPad,
+            right: _kNavHPad,
+            bottom: _kNavBPad + bottomInset,
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              offset: keyboardVisible ? const Offset(0, 1.5) : Offset.zero,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: keyboardVisible ? 0.0 : 1.0,
+                child: _FloatingNavBar(
+                  tabs: tabs,
+                  currentIndex: currentIdx,
+                  isTabRoute: _isTabRoute(context, tabs),
+                  badges: badges,
+                  onNavTap: (t) => _onNavTap(context, ref, t),
+                  fab: _buildFab(context, ref, user),
+                ),
+              ),
+            ),
           ),
         ],
       ),
-      child: Material(
-        color:        Colors.transparent,
-        shape:        const CircleBorder(),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => ctx.push(AppRoutes.signer),
-          child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),
+    );
+  }
+
+  Widget _buildAppBarTitleForRoute(BuildContext context) {
+    final route = GoRouterState.of(context).matchedLocation;
+    final String label = switch (route) {
+      AppRoutes.home => "SignMe",
+      AppRoutes.finances => "Mes Finances",
+      AppRoutes.historique => "Mon Historique",
+      AppRoutes.historiquePersonnel => "Mon Historique",
+      AppRoutes.profile => "Mon Profil",
+      AppRoutes.maCarte => "Ma Carte",
+      AppRoutes.users => "Gérer utilisateurs",
+      AppRoutes.signer => "Signer une carte",
+      AppRoutes.anciensDesignations => "Anciens de services",
+      AppRoutes.rapportSecretaire => "Rapport secrétaire",
+      AppRoutes.historiqueSignatures => "Historique Signatures",
+      AppRoutes.publications => "Gérer publications",
+      AppRoutes.parametres => "Paramètres",
+      AppRoutes.userCreate => "Nouveau membre",
+      AppRoutes.userStats => "Statistiques fidèles",
+      AppRoutes.evenementCreate => "Créer un événement",
+      AppRoutes.gestionEvenements => "Gérer les événements",
+      AppRoutes.contributionsEvenement => "Contributions événement",
+      AppRoutes.mesDepenses => "Mes dépenses",
+      _ when route.startsWith('${AppRoutes.users}/') &&
+          route.endsWith('/edit') =>
+        "Modifier le membre",
+      _ when route.startsWith('${AppRoutes.users}/') => "Détails utilisateur",
+      _ => "SignMe",
+    };
+    final fontSize = route == AppRoutes.home ? 24.0 : 20.0;
+    return ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(bounds),
+      child: Text(
+        label,
+        style: GoogleFonts.poppins(
+          color: SignmeColors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: fontSize,
         ),
       ),
     );
   }
 
-  // ── Bottom Navigation ────────────────────────────────────────────────────
-  Widget _buildBottomNav(BuildContext ctx, List<NavTab> tabs, int currentIndex) {
-    // Calcule le nombre de slots de chaque côté du FAB
-    final half   = tabs.length ~/ 2;
-    final leftTabs  = tabs.sublist(0, half);
-    final rightTabs = tabs.sublist(half);
+  bool _isTabRoute(BuildContext ctx, List<NavTab> tabs) {
+    final loc = GoRouterState.of(ctx).matchedLocation;
+    return tabs.any((t) => _routeMatches(loc, t));
+  }
 
-    return BottomAppBar(
-      height:      72,
-      color:       AppColors.navBackground,
-      elevation:   8,
-      shadowColor: Colors.black26,
-      shape:       const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+  bool _routeMatches(String loc, NavTab t) => switch (t) {
+        NavTab.home => loc == AppRoutes.home,
+        NavTab.finances => loc == AppRoutes.finances,
+        NavTab.historique =>
+          loc == AppRoutes.historique || loc == AppRoutes.historiquePersonnel,
+        NavTab.profile => loc == AppRoutes.profile,
+        NavTab.maCarte => loc == AppRoutes.maCarte,
+      };
+
+  int _currentIndex(BuildContext ctx, List<NavTab> tabs) {
+    final loc = GoRouterState.of(ctx).matchedLocation;
+    for (int i = 0; i < tabs.length; i++) {
+      if (_routeMatches(loc, tabs[i])) return i;
+    }
+    return 0;
+  }
+
+  /// Point de passage UNIQUE pour toute navigation déclenchée depuis la
+  /// coquille (navbar, FAB) : ces actions utilisent `go()` (remplace la
+  /// pile de routes) et non `pop()`, donc [SignmeUnsavedChangesGuard] (qui
+  /// n'intercepte que les retours) ne les couvre pas. On consulte ici le
+  /// même [formDirtyProvider] et on affiche la même confirmation avant de
+  /// laisser passer la navigation, pour ne jamais perdre une saisie en
+  /// cours d'un tap accidentel sur un autre onglet.
+  Future<void> _guardedNavigate(
+    BuildContext ctx,
+    WidgetRef ref,
+    VoidCallback navigate,
+  ) async {
+    if (ref.read(formDirtyProvider)) {
+      final confirmed = await confirmDiscardChanges(ctx);
+      if (!confirmed) return;
+      ref.read(formDirtyProvider.notifier).state = false;
+    }
+    navigate();
+  }
+
+  void _onNavTap(BuildContext ctx, WidgetRef ref, NavTab tab) {
+    // Retaper sur l'onglet déjà actif : remonte le contenu en haut plutôt
+    // que de renaviguer (même geste que WhatsApp sur l'item "Discussions").
+    if (tab == NavTab.home && GoRouterState.of(ctx).matchedLocation == AppRoutes.home) {
+      final controller = ref.read(homeScrollControllerProvider);
+      if (controller.hasClients) {
+        controller.animateTo(
+          0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      return;
+    }
+
+    _guardedNavigate(ctx, ref, () {
+      // ── Reset badge de l'onglet tapé ────────────────────────────────────
+      switch (tab) {
+        case NavTab.home:
+          ref.read(badgeNotifierProvider.notifier).markRead('publications');
+          ref.read(badgeNotifierProvider.notifier).markRead('evenements');
+        case NavTab.historique:
+          ref.read(badgeNotifierProvider.notifier).markRead('historique');
+        default:
+          break;
+      }
+
+      ctx.go(switch (tab) {
+        NavTab.home => AppRoutes.home,
+        NavTab.finances => AppRoutes.finances,
+        NavTab.historique => AppRoutes.historique,
+        NavTab.profile => AppRoutes.profile,
+        NavTab.maCarte => AppRoutes.maCarte,
+      });
+    });
+  }
+
+  Widget _buildFab(BuildContext ctx, WidgetRef ref, UserEntity user) {
+    if (!user.actif) {
+      return const SizedBox(
+        width: _kFabSize,
+        height: _kFabSize,
+      );
+    }
+
+    return _DockedFab(
+      icon: Icons.add_rounded,
+      onTap: () => _guardedNavigate(ctx, ref, () => ctx.go(AppRoutes.signer)),
+    );
+  }
+}
+
+// ── Navbar flottante avec FAB encastré ──────────────────────────────────
+class _FloatingNavBar extends StatelessWidget {
+  const _FloatingNavBar({
+    required this.tabs,
+    required this.currentIndex,
+    required this.isTabRoute,
+    required this.badges,
+    required this.onNavTap,
+    required this.fab,
+  });
+
+  final List<NavTab> tabs;
+  final int currentIndex;
+  final bool isTabRoute;
+  final BadgeCountEntity badges;
+  final void Function(NavTab) onNavTap;
+  final Widget fab;
+
+  @override
+  Widget build(BuildContext context) {
+    final half = tabs.length ~/ 2;
+
+    return SizedBox(
+      height: _kNavHeight + _kFabLift,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
         children: [
-          // Gauche
-          ...leftTabs.map((tab) {
-            final idx = tabs.indexOf(tab);
-            return _NavItem(
-              tab:     tab,
-              isActive: currentIndex == idx,
-              onTap:   () => _onNavTap(ctx, tab),
-            );
-          }),
+          // â”€â”€ Fond arrondi avec trou + Glassmorphism â”€â”€
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: _kNavHeight,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(_kNavRadius),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(_kNavRadius),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
+                  ),
+                  child: CustomPaint(
+                    painter: _NotchedNavPainter(
+                      color: SignmeColors.surface.withValues(alpha: 0.85),
+                      radius: _kNavRadius,
+                      notchRadius: _kFabSize / 2 + 8,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
 
-          // Espace FAB
-          const SizedBox(width: 56),
+          // â”€â”€ Items de navigation gauche â”€â”€
+          Positioned(
+            left: 0,
+            bottom: 0,
+            height: _kNavHeight,
+            width: (MediaQuery.of(context).size.width - _kNavHPad * 2) / 2 -
+                _kFabSize / 2,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: tabs.sublist(0, half).map((t) {
+                return Expanded(
+                  child: _NavItem(
+                    tab: t,
+                    isActive: currentIndex == tabs.indexOf(t) && isTabRoute,
+                    badgeCount: _badgeCountForTab(t),
+                    onTap: () => onNavTap(t),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
 
-          // Droite
-          ...rightTabs.map((tab) {
-            final idx = tabs.indexOf(tab);
-            return _NavItem(
-              tab:     tab,
-              isActive: currentIndex == idx,
-              onTap:   () => _onNavTap(ctx, tab),
-            );
-          }),
+          // â”€â”€ Items de navigation droite â”€â”€
+          Positioned(
+            right: 0,
+            bottom: 0,
+            height: _kNavHeight,
+            width: (MediaQuery.of(context).size.width - _kNavHPad * 2) / 2 -
+                _kFabSize / 2,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: tabs.sublist(half).map((t) {
+                return Expanded(
+                  child: _NavItem(
+                    tab: t,
+                    isActive: currentIndex == tabs.indexOf(t) && isTabRoute,
+                    badgeCount: _badgeCountForTab(t),
+                    onTap: () => onNavTap(t),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          // ── FAB centré, encastré dans l'encoche ──
+          Positioned(
+            bottom: (_kNavHeight / 2) - (_kFabSize / 2),
+            left: 0,
+            right: 0,
+            child: Center(child: fab),
+          ),
         ],
+      ),
+    );
+  }
+
+  int _badgeCountForTab(NavTab tab) => switch (tab) {
+        NavTab.home => badges.publications + badges.evenements,
+        NavTab.historique => badges.historique,
+        _ => 0,
+      };
+}
+
+// â”€â”€ Painter : fond blanc arrondi + encoche circulaire centrale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _NotchedNavPainter extends CustomPainter {
+  const _NotchedNavPainter({
+    required this.color,
+    required this.radius,
+    required this.notchRadius,
+  });
+
+  final Color color;
+  final double radius;
+  final double notchRadius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    const margin = 6.0;
+    final nr = notchRadius + margin;
+
+    final path = Path()
+      ..moveTo(radius, 0)
+      ..lineTo(cx - nr, 0)
+      ..arcToPoint(
+        Offset(cx + nr, 0),
+        radius: Radius.circular(nr),
+        clockwise: false,
+      )
+      ..lineTo(size.width - radius, 0)
+      ..arcToPoint(Offset(size.width, radius),
+          radius: Radius.circular(radius))
+      ..lineTo(size.width, size.height - radius)
+      ..arcToPoint(Offset(size.width - radius, size.height),
+          radius: Radius.circular(radius))
+      ..lineTo(radius, size.height)
+      ..arcToPoint(Offset(0, size.height - radius),
+          radius: Radius.circular(radius))
+      ..lineTo(0, radius)
+      ..arcToPoint(Offset(radius, 0), radius: Radius.circular(radius))
+      ..close();
+
+    canvas.drawShadow(
+      path,
+      Colors.black.withValues(alpha: 0.20),
+      14,
+      false,
+    );
+
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_NotchedNavPainter old) =>
+      old.color != color ||
+      old.radius != radius ||
+      old.notchRadius != notchRadius;
+}
+
+// â”€â”€ FAB premium â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+class _DockedFab extends StatelessWidget {
+  const _DockedFab({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: _kFabSize,
+      height: _kFabSize,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white,
+              width: 4,
+            ),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                SignmeColors.primaryDark,
+                SignmeColors.primaryLight,
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: SignmeColors.primaryDark.withValues(alpha: 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            color: SignmeColors.onPrimary,
+            size: 28,
+          ),
+        ),
       ),
     );
   }
 }
 
-// ── Nav Item ──────────────────────────────────────────────────────────────────
+// â”€â”€ NavItem avec badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _NavItem extends StatelessWidget {
-  const _NavItem({required this.tab, required this.isActive, required this.onTap});
-  final NavTab  tab;
-  final bool    isActive;
+  const _NavItem({
+    required this.tab,
+    required this.isActive,
+    required this.onTap,
+    this.badgeCount = 0,
+  });
+
+  final NavTab tab;
+  final bool isActive;
   final VoidCallback onTap;
-
-  IconData get _icon => switch (tab) {
-    NavTab.home       => Icons.home_outlined,
-    NavTab.finances   => Icons.bar_chart_outlined,
-    NavTab.historique => Icons.history_outlined,
-    NavTab.maCarte    => Icons.credit_card_outlined,
-  };
-
-  IconData get _activeIcon => switch (tab) {
-    NavTab.home       => Icons.home_rounded,
-    NavTab.finances   => Icons.bar_chart_rounded,
-    NavTab.historique => Icons.history_rounded,
-    NavTab.maCarte    => Icons.credit_card_rounded,
-  };
-
-  String get _label => switch (tab) {
-    NavTab.home       => AppStrings.home,
-    NavTab.finances   => AppStrings.finances,
-    NavTab.historique => AppStrings.historique,
-    NavTab.maCarte    => AppStrings.maCarte,
-  };
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
+    final icon = switch (tab) {
+      NavTab.home => isActive ? Icons.home_rounded : Icons.home_outlined,
+      NavTab.finances =>
+        isActive ? Icons.bar_chart_rounded : Icons.bar_chart_outlined,
+      NavTab.historique =>
+        isActive ? Icons.history_rounded : Icons.history_outlined,
+      NavTab.profile =>
+        isActive ? Icons.person_rounded : Icons.person_outline_rounded,
+      NavTab.maCarte =>
+        isActive ? Icons.credit_card_rounded : Icons.credit_card_outlined,
+    };
+    final label = switch (tab) {
+      NavTab.home => "Accueil",
+      NavTab.finances => "Finances",
+      NavTab.historique => 'Historique',
+      NavTab.profile => 'Profil',
+      NavTab.maCarte => "Ma Carte",
+    };
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap:    onTap,
-      child: SizedBox(
-        width: 64,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // ── Icône avec badge ─────────────────────────────────────────
+          BadgeDot(
+            count: badgeCount,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: SignmeSpacing.sm,
+                vertical: SignmeSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? SignmeColors.primaryLight.withValues(alpha: 0.14)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Icon(
-                isActive ? _activeIcon : _icon,
-                key:   ValueKey(isActive),
-                size:  24,
-                color: isActive ? AppColors.navActive : AppColors.navInactive,
+                icon,
+                size: 22,
+                color: isActive
+                    ? SignmeColors.primaryLight
+                    : SignmeColors.black,
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              _label,
-              style: GoogleFonts.poppins(
-                fontSize:   10,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                color:      isActive ? AppColors.navActive : AppColors.navInactive,
+          ),
+          const SizedBox(height: SignmeSpacing.xs),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              style: SignmeTypography.labelSmall.copyWith(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                color: isActive ? SignmeColors.primaryLight : SignmeColors.black,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -2,23 +2,28 @@
 abstract final class AppStrings {
 
   // ── App ─────────────────────────────────────────────────────────────────
-  static const appName     = 'EEC SIGNCARD';
-  static const appTagline  = 'Système de signature — Église Évangélique du Cameroun';
+  static const appName     = 'SignMe';
+  static const appTagline  = 'Application de signature de documents';
+
+
 
   // ── Auth ─────────────────────────────────────────────────────────────────
   static const welcome         = 'Bienvenue';
   static const welcome2        = 'Bonjour,';
-  static const loginSubtitle   = 'Connectez-vous à votre espace EEC SignCard';
-  static const email           = 'Adresse email';
-  static const emailHint       = 'votre@email.com';
+  static const loginSubtitle   = 'Bienvenu, veuillez vous connecter pour continuer';
+  static const email           = 'Adresse Email';
+  static const emailHint       = 'user@example.com';
   static const password        = 'Mot de passe';
-  static const passwordHint    = '••••••••';
-  static const forgotPassword  = 'Mot de passe oublié ?';
-  static const loginBtn        = 'SE CONNECTER';
+  static const passwordHint    = 'Entrez votre mot de passe';
+  static const forgotPassword  = 'Mot de passe oublié?';
+  static const loginBtn        = 'Se connecter';
+  static const rememberMe      = 'Se souvenir de moi';
+  static const sessionExpired  =
+      'Votre session a expiré. Veuillez vous reconnecter.';
   static const logout          = 'Déconnexion';
   static const resetPassword   = 'Réinitialiser\nle mot de passe';
-  static const resetSubtitle   = 'Entrez votre email pour recevoir un lien de réinitialisation.';
-  static const sendResetLink   = 'ENVOYER LE LIEN';
+  static const resetSubtitle   = 'Entrez votre email pour recevoir un code permettant la réinitialisation du mot de passe.';
+  static const sendResetLink   = 'ENVOYER UN CODE';
   static const backToLogin     = 'RETOUR À LA CONNEXION';
 
   // ── Validation ────────────────────────────────────────────────────────────
@@ -83,6 +88,18 @@ abstract final class AppStrings {
   // ── Profil ────────────────────────────────────────────────────────────────
   static const editProfile      = 'Modifier le profil';
   static const changePassword   = 'Changer le mot de passe';
+  static const changePasswordHint =
+      'Pour votre sécurité, vous serez déconnecté après la modification.';
+  static const currentPassword  = 'Mot de passe actuel';
+  static const newPassword      = 'Nouveau mot de passe';
+  static const newPasswordHint  = 'Minimum 8 caractères';
+  static const confirmNewPassword = 'Confirmer le nouveau mot de passe';
+  static const confirmPasswordHint = 'Répétez le nouveau mot de passe';
+  static const savePassword     = 'Enregistrer le mot de passe';
+  static const minPassword8     = 'Minimum 8 caractères';
+  static const newPasswordMustDiffer =
+      'Le nouveau mot de passe doit être différent';
+  static const passwordMismatch = 'Les mots de passe ne correspondent pas';
   static const appVersion       = 'Version';
 
   // ── Mois ─────────────────────────────────────────────────────────────────
@@ -98,11 +115,25 @@ abstract final class AppStrings {
 
   // ── Labels rôles ─────────────────────────────────────────────────────────
   static const Map<String, String> roleLabels = {
-    'administrateur': 'ADMINISTRATEUR',
     'pasteur':        'PASTEUR',
     'secretaire':     'SECRÉTAIRE',
     'tresorier':      'TRÉSORIER',
     'ancien':         'ANCIEN',
     'paroissien':     'PAROISSIEN',
   };
+
+  // ── Régions du Cameroun (originaireDe) ──────────────────────────────────
+  // Doit rester identique à App\Models\User::REGIONS côté backend.
+  static const List<String> regionsCameroun = [
+    'Adamaoua',
+    'Centre',
+    'Est',
+    'Extrême-Nord',
+    'Littoral',
+    'Nord',
+    'Nord-Ouest',
+    'Ouest',
+    'Sud',
+    'Sud-Ouest',
+  ];
 }

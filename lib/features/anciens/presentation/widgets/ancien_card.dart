@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/design_system/index.dart';
+import '../../../../core/widgets/profile_photo_avatar.dart';
 import '../../domain/entities/ancien_entity.dart';
 
 class AncienCard extends StatelessWidget {
@@ -18,72 +17,40 @@ class AncienCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDesigned = ancien.isDesigned;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: SignmeColors.white,
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
         border: Border.all(
-          color: ancien.isDesigned
-              ? AppColors.primary.withValues(alpha: 0.3)
-              : AppColors.border,
-          width: ancien.isDesigned ? 1.5 : 0.8,
+          color: isDesigned
+              ? SignmeColors.primaryLight.withOpacity(0.3)
+              : SignmeColors.lightGrayBorder,
+          width: isDesigned ? 1.5 : 1.0,
         ),
         boxShadow: [
-          if (ancien.isDesigned)
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            )
-          else
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
+          BoxShadow(
+            color: SignmeColors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(SignmeSpacing.md),
         child: Column(
           children: [
             // ── Header: Avatar + Nom + Status
             Row(
               children: [
-                // Avatar
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySurface,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: ancien.photoUrl.isNotEmpty
-                      ? ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: ancien.photoUrl,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => const Icon(
-                              Icons.person_rounded,
-                              size: 24,
-                              color: AppColors.textSecondary,
-                            ),
-                            errorWidget: (_, __, ___) => const Icon(
-                              Icons.person_rounded,
-                              size: 24,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        )
-                      : const Icon(
-                          Icons.person_rounded,
-                          size: 24,
-                          color: AppColors.textSecondary,
-                        ),
+                ProfilePhotoAvatar(
+                  photoUrl:
+                      ancien.photoUrl.isNotEmpty ? ancien.photoUrl : null,
+                  displayName: ancien.nom,
+                  radius: 26,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: SignmeSpacing.md),
 
                 // Nom + Email
                 Expanded(
@@ -92,47 +59,31 @@ class AncienCard extends StatelessWidget {
                     children: [
                       Text(
                         ancien.nom,
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
+                        style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
                       ),
                       Text(
                         ancien.email,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                        ),
+                        style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray),
                       ),
                     ],
                   ),
                 ),
 
-                // Badge status
+                // Badge status (Design System)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: ancien.isDesigned
-                        ? AppColors.success.withValues(alpha: 0.15)
-                        : AppColors.warning.withValues(alpha: 0.15),
+                    color: (isDesigned ? SignmeColors.success : SignmeColors.warning).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: ancien.isDesigned
-                          ? AppColors.success.withValues(alpha: 0.3)
-                          : AppColors.warning.withValues(alpha: 0.3),
-                    ),
                   ),
                   child: Text(
-                    ancien.isDesigned ? '✓ Désigné' : '○ Libre',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: ancien.isDesigned
-                          ? AppColors.success
-                          : AppColors.warning,
+                    isDesigned ? '✓ Désigné' : '○ Libre',
+                    style: SignmeTypography.labelSmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDesigned ? SignmeColors.success : SignmeColors.warning,
+                      fontSize: 10,
                     ),
                   ),
                 ),
@@ -140,94 +91,37 @@ class AncienCard extends StatelessWidget {
             ),
 
             // ── Infos de désignation (si désigné)
-            if (ancien.isDesigned) ...[
-              const SizedBox(height: 12),
-              Divider(
-                height: 1,
-                color: AppColors.border.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 12),
+            if (isDesigned) ...[
+              const SizedBox(height: SignmeSpacing.md),
+              const Divider(height: 1, color: SignmeColors.lightGrayBorder),
+              const SizedBox(height: SignmeSpacing.md),
 
-              // Mois/Année
-              Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_month_rounded,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    ancien.monthYearLabel,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Disponibilité
-              Row(
-                children: [
-                  Icon(
-                    ancien.joursTravail == null || ancien.joursTravail!.isEmpty
-                        ? Icons.schedule_rounded
-                        : Icons.access_time_rounded,
-                    size: 16,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      ancien.availabilityLabel,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
+              _infoLine(Icons.calendar_month_rounded, ancien.monthYearLabel),
+              const SizedBox(height: 6),
+              _infoLine(
+                isDesigned && (ancien.joursTravail == null || ancien.joursTravail!.isEmpty)
+                    ? Icons.schedule_rounded
+                    : Icons.access_time_rounded,
+                ancien.availabilityLabel,
+                iconColor: SignmeColors.primaryLight,
               ),
 
-              // Date fin de service
               if (ancien.dateFinService != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.timer_outlined,
-                      size: 16,
-                      color: AppColors.textHint,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Expire: ${ancien.dateFinService}',
-                      style: GoogleFonts.poppins(
-                        fontSize: 11,
-                        color: AppColors.textHint,
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 6),
+                _infoLine(Icons.timer_outlined, 'Expire: ${ancien.dateFinService}', color: SignmeColors.mediumGray),
               ],
             ],
 
             // ── Actions
-            const SizedBox(height: 12),
+            const SizedBox(height: SignmeSpacing.lg),
             Row(
               children: [
-                if (!ancien.isDesigned)
+                if (!isDesigned)
                   Expanded(
                     child: _ActionButton(
                       icon: Icons.person_add_rounded,
                       label: 'Désigner',
-                      color: AppColors.primary,
+                      color: SignmeColors.primaryLight,
                       onPressed: onDesignate,
                     ),
                   )
@@ -236,7 +130,7 @@ class AncienCard extends StatelessWidget {
                     child: _ActionButton(
                       icon: Icons.person_remove_rounded,
                       label: 'Révoquer',
-                      color: AppColors.warning,
+                      color: SignmeColors.error,
                       onPressed: onRevoke,
                     ),
                   ),
@@ -247,9 +141,26 @@ class AncienCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _infoLine(IconData icon, String text, {Color? iconColor, Color? color}) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: iconColor ?? SignmeColors.mediumGray),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: SignmeTypography.bodySmall.copyWith(
+              color: color ?? SignmeColors.black,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-// ── Action Button Widget
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.icon,
@@ -265,33 +176,29 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withValues(alpha: 0.2)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                ),
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: SignmeTypography.labelMedium.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import '../../domain/entities/historique_personnel_entity.dart';
 
 part 'historique_personnel_model.g.dart';
 
@@ -37,7 +38,6 @@ class HistoriquePersonnelModel {
   });
 
   factory HistoriquePersonnelModel.fromJson(Map<String, dynamic> json) {
-    // ✅ FIX: Gérer les conversions de type de façon ultra-robuste
     final year = json['year'] is int 
         ? json['year'] as int 
         : int.tryParse(json['year'].toString()) ?? 0;
@@ -48,7 +48,6 @@ class HistoriquePersonnelModel {
         ? (json['fees'] is int ? json['fees'] as int : int.tryParse(json['fees'].toString()))
         : null;
     
-    // Convertir nomUtilisateur en String de manière sûre
     String nomUtilisateur = '';
     if (json.containsKey('nomParoissien') && json['nomParoissien'] != null) {
       nomUtilisateur = json['nomParoissien'].toString();
@@ -74,22 +73,25 @@ class HistoriquePersonnelModel {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'userId': userId,
-      'nomParoissien': nomUtilisateur,
-      'month': month,
-      'year': year,
-      'status': status,
-      'amount': amount,
-      'fees': fees,
-      'signatureType': signatureType,
-      'paymentMethod': paymentMethod,
-      'paymentPhoneNumber': paymentPhoneNumber,
-      'created_at': createdAt.toIso8601String(),
-      'completed_at': completedAt?.toIso8601String(),
-      'errorMessage': errorMessage,
-    };
+  /// Méthode Senior pour convertir le modèle de données en entité métier
+  HistoriquePersonnelEntity toEntity() {
+    return HistoriquePersonnelEntity(
+      id: id,
+      userId: userId,
+      nomUtilisateur: nomUtilisateur,
+      month: month,
+      year: year,
+      status: status,
+      amount: amount,
+      fees: fees,
+      signatureType: signatureType,
+      paymentMethod: paymentMethod,
+      paymentPhoneNumber: paymentPhoneNumber,
+      createdAt: createdAt,
+      completedAt: completedAt,
+      errorMessage: errorMessage,
+    );
   }
+
+  Map<String, dynamic> toJson() => _$HistoriquePersonnelModelToJson(this);
 }

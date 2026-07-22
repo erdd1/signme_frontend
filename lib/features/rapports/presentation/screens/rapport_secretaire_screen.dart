@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/design_system/index.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/app_shimmer.dart';
+import '../../../../core/widgets/onboarding_section.dart';
+import '../../domain/entities/rapport_secretaire_entity.dart';
+import '../../domain/entities/rapport_membre_entity.dart';
 import '../providers/rapports_provider.dart';
+import 'rapport_signes_screen.dart';
+import 'rapport_non_signes_screen.dart';
 
 class RapportSecretaireScreen extends ConsumerStatefulWidget {
   const RapportSecretaireScreen({super.key});
@@ -15,65 +21,119 @@ class RapportSecretaireScreen extends ConsumerStatefulWidget {
 }
 
 class _RapportSecretaireScreenState extends ConsumerState<RapportSecretaireScreen> {
-  String? _selectedMonth;
+  late String _selectedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialiser avec le mois courant
+    final now = DateTime.now();
+    _selectedMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    // Rafraîchit silencieusement à chaque ouverture de l'écran (les données
+    // déjà affichées restent visibles pendant la mise à jour en arrière-plan).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(rapportSecretaireProvider.notifier).refreshSilently();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(rapportSecretaireProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text('Rapport secrétaire',
-            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600)),
-        backgroundColor: AppColors.surface,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Sélecteur mois ──────────────────────────────────────────
-            Text(
-              'Sélectionner le mois',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            _buildMonthSelector(),
-            const SizedBox(height: 24),
+    return SingleChildScrollView(
 
-            // ── Contenu rapport ─────────────────────────────────────────
-            if (state.isLoading)
-              Column(
-                children: List.generate(
-                  3,
-                  (_) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: AppShimmerBox(
-                      width: double.infinity,
-                      height: 100,
-                      radius: 12,
-                    ),
+      child: Column(
+
+        crossAxisAlignment:
+        CrossAxisAlignment.start,
+
+        children: [
+
+          const OnboardingSection(
+
+            svgPath:
+            'assets/images/unboarding_rapport_secretaire.svg',
+
+            title: 'Rapports & Statistiques',
+
+            description:
+            'Consultez les statistiques et rapports mensuels de l’église.',
+          ),
+
+          const SizedBox(height: SignmeSpacing.lg),
+
+          Padding(
+
+            padding: const EdgeInsets.fromLTRB(
+              SignmeSpacing.lg,
+              SignmeSpacing.md,
+              SignmeSpacing.lg,
+              120,
+            ),
+
+            child: Column(
+
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+
+              children: [
+
+                Text(
+
+                  'Sélectionner le mois',
+
+                  style: SignmeTypography.labelLarge
+                      .copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              )
-            else if (state.error != null)
-              Center(
-                child: Text(
-                  state.error!,
-                  style: GoogleFonts.poppins(color: AppColors.error),
+
+                const SizedBox(
+                  height: SignmeSpacing.md,
                 ),
-              )
-            else
-              _buildRapportContent(state.data),
-          ],
-        ),
+
+                _buildMonthSelector(),
+
+                const SizedBox(
+                  height: SignmeSpacing.xl,
+                ),
+
+                // ── Affichage du message d'erreur (optionnel) ─────────────────
+                if (state.error != null && state.error!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: SignmeSpacing.lg),
+                    child: Container(
+                      padding: const EdgeInsets.all(SignmeSpacing.md),
+                      decoration: BoxDecoration(
+                        color: SignmeColors.error.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                        border: Border.all(color: SignmeColors.error.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: SignmeColors.error, size: 20),
+                          const SizedBox(width: SignmeSpacing.md),
+                          Expanded(
+                            child: Text(
+                              state.error!,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: SignmeTypography.bodySmall.copyWith(
+                                color: SignmeColors.error,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                // ── Les cartes restent toujours visibles ────────────────────
+                _buildRapportContent(state, _selectedMonth),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -92,19 +152,18 @@ class _RapportSecretaireScreenState extends ConsumerState<RapportSecretaireScree
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isSel ? AppColors.primary : AppColors.surface,
-              borderRadius: BorderRadius.circular(10),
+              color: isSel ? SignmeColors.primaryLight : SignmeColors.white,
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
               border: Border.all(
-                  color: isSel ? AppColors.primary : AppColors.border),
+                  color: isSel ? SignmeColors.primaryLight : SignmeColors.lightGrayBorder),
             ),
             child: Text(
               AppStrings.moisShort[i],
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
-                color: isSel ? Colors.white : AppColors.textPrimary,
+              style: SignmeTypography.labelSmall.copyWith(
+                fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+                color: isSel ? Colors.white : SignmeColors.black,
               ),
             ),
           ),
@@ -113,101 +172,176 @@ class _RapportSecretaireScreenState extends ConsumerState<RapportSecretaireScree
     );
   }
 
-  Widget _buildRapportContent(Map<String, dynamic> data) {
+  Widget _buildRapportContent(RapportState state, String month) {
+    // Convertir les données JSON en objets RapportMembreEntity
+    final signesMembers = state.data.signes
+            ?.map<RapportMembreEntity>(
+                (item) => RapportMembreEntity.fromJson(item))
+            .toList() ??
+        [];
+
+    final nonSignesMembers = state.data.nonSignes
+            ?.map<RapportMembreEntity>(
+                (item) => RapportMembreEntity.fromJson(item))
+            .toList() ??
+        [];
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Total membres
-        _buildStatCard(
+        _StatCard(
           icon: Icons.people_rounded,
-          label: 'Membres',
-          value: '${data['total_members'] ?? 0}',
+          label: 'Total Membres',
+          value: '${state.data.totalMembers}',
+          color: SignmeColors.primaryLight,
+          isLoading: state.isLoading,
         ),
-        const SizedBox(height: 12),
-
-        // Actifs
-        _buildStatCard(
-          icon: Icons.check_circle_rounded,
-          label: 'Actifs',
-          value: '${data['active_members'] ?? 0}',
+        const SizedBox(height: SignmeSpacing.md),
+        GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => RapportSignesScreen(
+                  signes: signesMembers,
+                  month: month,
+                ),
+              ),
+            );
+          },
+          child: _StatCard(
+            icon: Icons.check_circle_rounded,
+            label: 'Signatures',
+            value: '${state.data.membersSigned}',
+            color: SignmeColors.success,
+            isLoading: state.isLoading,
+            isClickable: true,
+          ),
         ),
-        const SizedBox(height: 12),
-
-        // Inactifs
-        _buildStatCard(
-          icon: Icons.cancel_rounded,
-          label: 'Inactifs',
-          value: '${data['inactive_members'] ?? 0}',
-          color: AppColors.error,
+        const SizedBox(height: SignmeSpacing.md),
+        GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => RapportNonSignesScreen(
+                  nonSignes: nonSignesMembers,
+                  month: month,
+                ),
+              ),
+            );
+          },
+          child: _StatCard(
+            icon: Icons.cancel_rounded,
+            label: 'Non Signés',
+            value: '${state.data.membersNotSigned}',
+            color: SignmeColors.error,
+            isLoading: state.isLoading,
+            isClickable: true,
+          ),
         ),
-        const SizedBox(height: 12),
-
-        // Signatures
-        _buildStatCard(
-          icon: Icons.edit_outlined,
-          label: 'Signatures',
-          value: '${data['signatures_count'] ?? 0}',
-          color: const Color(0xFF6B5B95),
+        const SizedBox(height: SignmeSpacing.md),
+        _StatCard(
+          icon: Icons.trending_up_rounded,
+          label: 'Taux de Signature',
+          value: '${state.data.signatureRate.toStringAsFixed(1)}%',
+          color: Colors.purple,
+          isLoading: state.isLoading,
         ),
-        const SizedBox(height: 12),
-
-        // Montant total
-        _buildStatCard(
+        const SizedBox(height: SignmeSpacing.md),
+        _StatCard(
           icon: Icons.account_balance_wallet_rounded,
-          label: 'Montant collecté',
-          value: '${(data['total_amount'] ?? 0)} FCFA',
-          color: const Color(0xFF2E8B57),
+          label: 'Montant Collecté',
+          value: '${state.data.totalAmount.toStringAsFixed(0)} F',
+          color: SignmeColors.primaryCyan,
+          isLoading: state.isLoading,
         ),
       ],
     );
   }
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    Color color = AppColors.primary,
-  }) {
+}
+
+/// Widget réutilisable pour les cartes de statistiques
+/// Affiche le shimmer pendant le chargement, reste visible même en cas d'erreur
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final bool isLoading;
+  final bool isClickable;
+
+  const _StatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    this.isLoading = false,
+    this.isClickable = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(SignmeSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 0.8),
+        color: SignmeColors.white,
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        border: Border.all(color: SignmeColors.lightGrayBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 24, color: color),
+            child: Icon(icon, color: color, size: 24),
           ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
+          const SizedBox(width: SignmeSpacing.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: SignmeTypography.bodySmall.copyWith(
+                    color: SignmeColors.mediumGray,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                if (isLoading)
+                  // ── Shimmer pour la valeur pendant le chargement ───────────
+                  const AppShimmerBox(
+                    width: 80,
+                    height: 24,
+                    radius: SignmeSpacing.radiusMd,
+                  )
+                else
+                  // ── Affichage de la valeur ────────────────────────────────
+                  Text(
+                    value,
+                    style: SignmeTypography.headlineSmall.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: SignmeColors.black,
+                    ),
+                  ),
+              ],
+            ),
           ),
+          // ── Icône flèche pour les cartes clickables ─────────────────────
+          if (isClickable)
+            Icon(
+              Icons.arrow_forward_rounded,
+              color: color.withValues(alpha: 0.5),
+              size: 20,
+            ),
         ],
       ),
     );

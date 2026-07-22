@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../constants/app_colors.dart';
+import '../../features/auth/domain/entities/user_entity.dart';
+import '../design_system/index.dart';
+import '../constants/app_assets.dart';
 import '../permissions/app_permissions.dart';
 import '../router/app_router.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
+import '../../features/badge/domain/entities/badge_count_entity.dart';
+import '../../features/badge/presentation/providers/badge_provider.dart';
+import 'app_snackbar.dart';
+import 'badge_dot.dart';
 
 /// Menu drawer contextuel selon le rôle de l'utilisateur
 class RoleMenuDrawer extends ConsumerWidget {
@@ -13,218 +18,251 @@ class RoleMenuDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authNotifierProvider);
-    final user = auth.auth?.user;
+    final authState = ref.watch(authNotifierProvider);
+    final UserEntity? user = authState.auth?.user;
 
     if (user == null) return const SizedBox.shrink();
 
+    // ── Lecture des badges (silencieux si erreur) ─────────────────────────
+    final badgeState = ref.watch(badgeNotifierProvider);
+    final badges = badgeState.valueOrNull ?? BadgeCountEntity.empty;
+
     return Drawer(
-      backgroundColor: AppColors.surface,
+      backgroundColor: SignmeColors.white,
       child: Column(
         children: [
-          // ── Header du drawer ──────────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 40, 20, 24),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF1B5E8F), Color(0xFF0E3A52)],
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user.nom,
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  user.churchNom ?? 'EEC',
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.8),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // ── Header Premium ──────────────────────────────────────────
+          _buildHeader(user),
 
-          // ── Menu items ────────────────────────────────────────────────
+          // ── Menu items typés ────────────────────────────────────────
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: SignmeSpacing.md),
               children: [
-                // Mon Profil
-                _MenuItem(
-                  icon: Icons.person_outline_rounded,
-                  label: 'Mon Profil',
-                  onTap: () {
-                    context.pop(); // Fermer drawer
-                    context.go(AppRoutes.profile);
-                  },
-                ),
+                _buildSectionTitle('NAVIGATION'),
 
-                // Mon Historique (signatures à distance)
-                _MenuItem(
-                  icon: Icons.history_outlined,
-                  label: 'Mon Historique',
-                  onTap: () {
-                    context.pop();
-                    context.go(AppRoutes.historiquePersonnel);
-                  },
-                ),
-
-                const Divider(height: 24, indent: 20, endIndent: 20),
-
-                // ── Fonctionnalités par rôle ──────────────────────────
-                if (AppPermissions.canViewMembers(user)) ...[
+                // Finances
+                if (AppPermissions.canViewFinances(user))
                   _MenuItem(
-                    icon: Icons.people_outline_rounded,
-                    label: 'Gérer Utilisateurs',
-                    onTap: () {
-                      context.pop();
-                      context.go(AppRoutes.users);
-                    },
+                    iconPath: SignmeAssets.finances,
+                    label: 'Finances',
+                    onTap: () => _navigate(context, AppRoutes.finances),
                   ),
-                ],
 
-                if (user.isAncien || user.isPasteur) ...[
+                // Gestion des membres
+                if (AppPermissions.canViewMembers(user))
                   _MenuItem(
-                    icon: Icons.receipt_long_outlined,
+                    iconPath: SignmeAssets.manageUsers,
+                    label: 'Gérer utilisateurs',
+                    onTap: () => _navigate(context, AppRoutes.users),
+                  ),
+
+                // Historique Signatures (Clergé/Anciens) — avec badge
+                if (user.role == 'ancien' || user.role == 'pasteur')
+                  _MenuItem(
+                    iconPath: SignmeAssets.historySignatures,
                     label: 'Historique Signatures',
+                    badgeCount: badges.historiqueSignatures,
                     onTap: () {
-                      context.pop();
-                      context.go(AppRoutes.historiqueSignatures);
+                      // Reset badge avant navigation
+                      ref
+                          .read(badgeNotifierProvider.notifier)
+                          .markRead('historique_signatures');
+                      _navigate(context, AppRoutes.historiqueSignatures);
                     },
                   ),
-                ],
 
-                if (user.isPasteur) ...[
+                // Administration Pasteur
+                if (user.role == 'pasteur') ...[
                   _MenuItem(
-                    icon: Icons.group_rounded,
+                    iconPath: SignmeAssets.serviceAnciens,
                     label: 'Anciens de services',
-                    onTap: () {
-                      context.pop();
-                      context.go(AppRoutes.anciensDesignations);
-                    },
+                    onTap: () =>
+                        _navigate(context, AppRoutes.anciensDesignations),
                   ),
                   _MenuItem(
-                    icon: Icons.edit_outlined,
+                    iconPath: SignmeAssets.signCard,
                     label: 'Signer les cartes',
-                    onTap: () {
-                      context.pop();
-                      context.go(AppRoutes.signer);
-                    },
+                    onTap: () => _navigate(context, AppRoutes.signer),
                   ),
                 ],
 
-                if (AppPermissions.canManagePublications(user)) ...[
+                // Publications
+                if (AppPermissions.canManagePublications(user))
                   _MenuItem(
-                    icon: Icons.article_outlined,
+                    iconPath: SignmeAssets.managePubs,
                     label: 'Gérer publications',
-                    onTap: () {
-                      context.pop();
-                      // TODO: Implémenter gestion publications
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Fonctionnalité à venir')),
-                      );
-                    },
+                    onTap: () => _navigate(context, AppRoutes.publications),
                   ),
-                ],
 
-                if (user.isSecretaire) ...[
+                // Créer un événement (collecte de fonds)
+                if (AppPermissions.canManageEvenements(user))
                   _MenuItem(
-                    icon: Icons.assessment_outlined,
-                    label: 'Rapport secrétaire',
-                    onTap: () {
-                      context.pop();
-                      context.go(AppRoutes.rapportSecretaire);
-                    },
+                    iconPath: SignmeAssets.add,
+                    label: 'Créer un événement',
+                    onTap: () => _navigate(context, AppRoutes.evenementCreate),
                   ),
-                ],
 
-                const Divider(height: 24, indent: 20, endIndent: 20),
+                // Gérer les événements (Actifs / Archivés, montant collecté,
+                // nombre de contributeurs) — Pasteur/Secrétaire/Trésorier
+                if (AppPermissions.canViewContributionsEvenement(user))
+                  _MenuItem(
+                    iconPath: SignmeAssets.managePubs,
+                    label: 'Gérer les événements',
+                    onTap: () => _navigate(context, AppRoutes.gestionEvenements),
+                  ),
 
-                // Paramètres (tous les rôles)
+                // Contributions événement (vue trésorerie)
+                if (AppPermissions.canViewContributionsEvenement(user))
+                  _MenuItem(
+                    iconPath: SignmeAssets.finances,
+                    label: 'Contributions événement',
+                    onTap: () => _navigate(context, AppRoutes.contributionsEvenement),
+                  ),
+
+                // Mes dépenses (tous rôles)
                 _MenuItem(
-                  icon: Icons.settings_outlined,
+                  iconPath: SignmeAssets.finances,
+                  label: 'Mes dépenses',
+                  onTap: () => _navigate(context, AppRoutes.mesDepenses),
+                ),
+
+                // Rapport Secrétaire
+                if (user.role == 'secretaire' || user.role == 'pasteur')
+                  _MenuItem(
+                    iconPath: SignmeAssets.reportSec,
+                    label: 'Rapport secrétaire',
+                    onTap: () =>
+                        _navigate(context, AppRoutes.rapportSecretaire),
+                  ),
+
+                const Divider(
+                    height: 32,
+                    indent: 20,
+                    endIndent: 20,
+                    color: SignmeColors.lightGrayBorder),
+                _buildSectionTitle('OPTIONS SUPPLEMENTAIRES'),
+
+                _MenuItem(
+                  iconPath: SignmeAssets.settings,
                   label: 'Paramètres',
+                  onTap: () => _navigate(context, AppRoutes.parametres),
+                ),
+
+                _MenuItem(
+                  iconPath: SignmeAssets.logout,
+                  label: 'Déconnexion',
+                  iconColor: SignmeColors.error,
+                  labelColor: SignmeColors.error,
                   onTap: () {
-                    context.pop();
-                    // TODO: Implémenter paramètres
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Paramètres à venir')),
-                    );
+                    Scaffold.of(context).closeDrawer();
+                    _showLogoutDialog(context, ref);
                   },
                 ),
+                const SizedBox(height: 120),
               ],
-            ),
-          ),
-
-          // ── Footer: Déconnexion ───────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: _MenuItem(
-              icon: Icons.logout_rounded,
-              label: 'Déconnexion',
-              iconColor: AppColors.error,
-              labelColor: AppColors.error,
-              onTap: () {
-                // 1. On capture le notifier pendant que le widget est encore vivant
-                final authNotifier = ref.read(authNotifierProvider.notifier);
-
-                // 2. On ferme le drawer
-                context.pop();
-
-                // 3. On passe le notifier capturé à la boîte de dialogue
-                _showLogoutDialog(context, authNotifier);
-              },
             ),
           ),
         ],
       ),
     );
   }
-  void _showLogoutDialog(BuildContext context, AuthNotifier authNotifier) {
+
+  Widget _buildHeader(UserEntity user) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
+            child: Text(
+              user.nom[0].toUpperCase(),
+              style: SignmeTypography.headlineSmall
+                  .copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: SignmeSpacing.md),
+          Text(
+            user.nom,
+            style: SignmeTypography.labelLarge
+                .copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            user.churchNom ?? ' EEC Communauté',
+            style: SignmeTypography.bodySmall
+                .copyWith(color: Colors.white.withValues(alpha: 0.7)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      child: Text(
+        title,
+        style: SignmeTypography.labelSmall.copyWith(
+          color: SignmeColors.mediumGray,
+          letterSpacing: 1.2,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  void _navigate(BuildContext context, String route) {
+    Scaffold.of(context).closeDrawer();
+    context.go(route);
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    final authNotifier = ref.read(authNotifierProvider.notifier);
+
     showDialog(
       context: context,
-      barrierDismissible: false, // Empêche de fermer en cliquant à côté pendant l'action
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          'Déconnexion',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'Êtes-vous sûr de vouloir vous déconnecter ?',
-          style: GoogleFonts.poppins(),
-        ),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
+        title: Text('Déconnexion',
+            style: SignmeTypography.headlineSmall
+                .copyWith(fontWeight: FontWeight.bold)),
+        content: const Text('Voulez-vous vraiment vous déconnecter ?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text('Annuler', style: GoogleFonts.poppins()),
-          ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler')),
           TextButton(
             onPressed: () async {
-              // Fermer le dialogue
-              Navigator.of(dialogContext).pop();
-
-              // Appeler le logout via le notifier capturé (pas de dépendance au widget ref)
-              await authNotifier.logout();
+              final success = await authNotifier.logout();
+              if (!ctx.mounted) return;
+              if (success) {
+                Navigator.pop(ctx);
+              } else {
+                Navigator.pop(ctx);
+                AppSnackbar.warning(
+                  context,
+                  'Connexion Internet requise pour se déconnecter.',
+                );
+              }
             },
-            child: Text(
-              'Déconnexion',
-              style: GoogleFonts.poppins(
-                color: AppColors.error,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: const Text('Déconnecter',
+                style: TextStyle(
+                    color: SignmeColors.error, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -232,52 +270,61 @@ class RoleMenuDrawer extends ConsumerWidget {
   }
 }
 
-/// Widget réutilisable pour item menu
 class _MenuItem extends StatelessWidget {
   const _MenuItem({
-    required this.icon,
+    required this.iconPath,
     required this.label,
     required this.onTap,
-    this.iconColor = AppColors.primary,
-    this.labelColor = AppColors.textPrimary,
+    this.iconColor = SignmeColors.primaryLight,
+    this.labelColor = SignmeColors.black,
+    this.badgeCount = 0,
   });
 
-  final IconData icon;
+  final String iconPath;
   final String label;
   final VoidCallback onTap;
   final Color iconColor;
   final Color labelColor;
+
+  /// Nombre de badges non lus pour cet item (0 = pas de badge)
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+            // ── Icône avec badge ─────────────────────────────────────────
+            BadgeDot(
+              count: badgeCount,
+              child: Container(
+                width: 36,
+                height: 36,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.1),
+                  borderRadius:
+                      BorderRadius.circular(SignmeSpacing.radiusMd),
+                ),
+                child: Image.asset(iconPath,
+                    color: iconColor, fit: BoxFit.contain),
               ),
-              child: Icon(icon, size: 20, color: iconColor),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 label,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
+                style: SignmeTypography.bodyMedium.copyWith(
                   fontWeight: FontWeight.w500,
                   color: labelColor,
                 ),
               ),
             ),
             Icon(Icons.chevron_right_rounded,
-                size: 20, color: labelColor.withOpacity(0.5)),
+                size: 18, color: labelColor.withValues(alpha: 0.3)),
           ],
         ),
       ),

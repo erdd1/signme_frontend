@@ -1,370 +1,264 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:timeago/timeago.dart' as timeago;
-import 'package:cached_network_image/cached_network_image.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_strings.dart';
-import '../../../../core/constants/app_sizes.dart';
-import '../../../../core/router/app_router.dart';
-import '../../../../core/widgets/app_shimmer.dart';
-import '../../../../core/widgets/role_menu_drawer.dart';
+import '../../../../core/design_system/index.dart';
+import '../../../../core/constants/app_assets.dart';
+import '../../../../core/widgets/index.dart';
+import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../domain/entities/publication_entity.dart';
-import '../providers/publications_provider.dart';
+import '../../../../core/router/app_router.dart';
+import '../../../publications/presentation/providers/publications_provider.dart';
+import '../../../evenements/presentation/providers/evenements_provider.dart';
+import '../../../evenements/presentation/widgets/evenement_card.dart';
+import '../providers/home_feed_provider.dart';
+import '../widgets/news_card.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authNotifierProvider);
+    final user = auth.auth?.user;
+    final feedAsync = ref.watch(homeFeedProvider);
+    final scrollController = ref.watch(homeScrollControllerProvider);
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final _scrollCtrl = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    timeago.setLocaleMessages('fr', timeago.FrMessages());
-    _scrollCtrl.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _scrollCtrl.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollCtrl.position.pixels >= _scrollCtrl.position.maxScrollExtent - 200) {
-      ref.read(publicationsProvider.notifier).loadMore();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final authState  = ref.watch(authNotifierProvider);
-    final pubState   = ref.watch(publicationsProvider);
-    final user       = authState.auth?.user;
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      drawer: const RoleMenuDrawer(),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () => ref.read(publicationsProvider.notifier).refresh(),
-        child: CustomScrollView(
-          controller: _scrollCtrl,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // ── AppBar ────────────────────────────────────────────────────
-            _buildAppBar(context, user?.nom ?? ''),
-
-            // ── Welcome + Church Card ─────────────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildWelcomeCard(user),
-                    const SizedBox(height: 12),
-                    if (user?.churchNom != null) _buildChurchCard(user!.churchNom!),
-                    const SizedBox(height: 20),
-                    Text(
-                      AppStrings.newsFeed,
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ),
+    return RefreshIndicator(
+      color: SignmeColors.primaryLight,
+      onRefresh: () async {
+        await Future.wait([
+          ref.read(publicationsListProvider(const {'per_page': 5}).notifier).refresh(),
+          ref.read(evenementsListProvider.notifier).refresh(),
+        ]);
+      },
+      child: SingleChildScrollView(
+        controller: scrollController,
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _UserHeader(user: user, ref: ref),
+            const SizedBox(height: SignmeSpacing.lg),
+            _ChurchCard(churchName: user?.churchNom),
+            const SizedBox(height: SignmeSpacing.lg),
+            const OnboardingSection(
+              svgPath: SignmeAssets.onboardingHome,
+              title: 'Ravis de vous revoir',
+              description: "Que voulez-vous faire aujourd'hui Mme/Mr ?",
             ),
-
-            // ── Publications ──────────────────────────────────────────────
-            if (pubState.isLoading && pubState.publications.isEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, __) => const PublicationCardShimmer(),
-                    childCount: 5,
-                  ),
-                ),
-              )
-            else if (pubState.publications.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 60),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.article_outlined, size: 56, color: AppColors.textHint),
-                      const SizedBox(height: 12),
-                      Text(AppStrings.noPublication,
-                          style: GoogleFonts.poppins(color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (ctx, i) {
-                      if (i < pubState.publications.length) {
-                        return _PublicationCard(pub: pubState.publications[i]);
-                      }
-                      return pubState.isLoading
-                          ? const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 8),
-                              child: PublicationCardShimmer(),
-                            )
-                          : const SizedBox.shrink();
-                    },
-                    childCount: pubState.publications.length + (pubState.hasMore ? 1 : 0),
-                  ),
-                ),
-              ),
-
-            // ── Bottom padding ────────────────────────────────────────────
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            const SizedBox(height: SignmeSpacing.xxxl),
+            _ActualitesSection(
+              feedAsync: feedAsync,
+              onRetry: () {
+                ref.read(publicationsListProvider(const {'per_page': 5}).notifier).refresh();
+                ref.read(evenementsListProvider.notifier).refresh();
+              },
+            ),
+            const SizedBox(height: 120),
           ],
         ),
       ),
     );
   }
+}
 
-  // ── AppBar Sliver ─────────────────────────────────────────────────────────
-  SliverAppBar _buildAppBar(BuildContext context, String nom) {
-    return SliverAppBar(
-      floating:    true,
-      snap:        true,
-      pinned:      false,
-      backgroundColor: AppColors.surface,
-      elevation:   0,
-      shadowColor: Colors.black12,
-      title: Row(
-        children: [
-          // Logo
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.primarySurface,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.verified_user_rounded, size: 18, color: AppColors.primary),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            AppStrings.appName,
-            style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary, size: 24),
-          onPressed: () {},
-        ),
-        IconButton(
-          icon: const Icon(Icons.menu_rounded, color: AppColors.textPrimary, size: 24),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
-      ],
-    );
-  }
+class _UserHeader extends StatelessWidget {
+  const _UserHeader({this.user, required this.ref});
+  final UserEntity? user;
+  final WidgetRef ref;
 
-  // ── Welcome Card ──────────────────────────────────────────────────────────
-  Widget _buildWelcomeCard(dynamic user) {
-    final roleLbl = user != null
-        ? (AppStrings.roleLabels[user.role] ?? user.role.toUpperCase())
-        : '';
-    return Row(
-      children: [
-        // Avatar
-        Container(
-          width: 56, height: 56,
-          decoration: BoxDecoration(
-            color: AppColors.primarySurface,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.border),
-          ),
-          child: user?.photoUrl != null
-              ? ClipOval(child: CachedNetworkImage(imageUrl: user!.photoUrl!, fit: BoxFit.cover))
-              : const Icon(Icons.person_rounded, size: 28, color: AppColors.textSecondary),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(AppStrings.welcome2,
-                  style: GoogleFonts.poppins(fontSize: 13, color: AppColors.textSecondary)),
-              Text(
-                user?.nom ?? '',
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-              ),
-            ],
-          ),
-        ),
-        // Badge rôle
-        if (roleLbl.isNotEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color:        AppColors.primarySurface,
-              borderRadius: BorderRadius.circular(20),
-              border:       Border.all(color: AppColors.primary.withOpacity(0.2)),
-            ),
-            child: Text(
-              roleLbl,
-              style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
-            ),
-          ),
-      ],
-    );
-  }
-
-  // ── Church Card ───────────────────────────────────────────────────────────
-  Widget _buildChurchCard(String churchNom) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color:        AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border:       Border.all(color: AppColors.border, width: 0.8),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
-      ),
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.sm, SignmeSpacing.lg, 0),
       child: Row(
         children: [
-          const Icon(Icons.church_rounded, size: 22, color: AppColors.primary),
-          const SizedBox(width: 12),
+          ProfilePhotoAvatar(
+            photoUrl: user?.photoUrl,
+            displayName: user?.nom,
+            radius: 32,
+          ),
+          const SizedBox(width: SignmeSpacing.lg),
           Expanded(
-            child: Text(
-              churchNom,
-              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bonjour,',
+                  style: SignmeTypography.bodySmall.copyWith(
+                    color: SignmeColors.darkGray,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  user?.nom ?? 'Membre',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: SignmeTypography.headlineSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: SignmeColors.black,
+                  ),
+                ),
+              ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textSecondary),
+          if (user != null) SignmeRoleBadge(role: user!.role, compact: true),
         ],
       ),
     );
   }
 }
 
-// ── Publication Card ──────────────────────────────────────────────────────────
-class _PublicationCard extends StatelessWidget {
-  const _PublicationCard({required this.pub});
-  final PublicationEntity pub;
-
-  Color get _typeColor {
-    switch (pub.type) {
-      case 'MEDITATION':  return const Color(0xFF7C3AED);
-      case 'ANNONCE':     return AppColors.secondary;
-      case 'TEMOIGNAGE':  return AppColors.success;
-      case 'PRIERE':      return AppColors.warning;
-      default:            return AppColors.textSecondary;
-    }
-  }
+class _ChurchCard extends StatelessWidget {
+  const _ChurchCard({this.churchName});
+  final String? churchName;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color:        AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border:       Border.all(color: AppColors.border, width: 0.8),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+      child: Container(
+        padding: const EdgeInsets.all(SignmeSpacing.md),
+        decoration: BoxDecoration(
+          color: SignmeColors.white,
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+          border: Border.all(color: SignmeColors.lightGrayBorder),
+          boxShadow: [
+            BoxShadow(
+              color: SignmeColors.primaryDark.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: SignmeColors.primaryLight,
+                borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                child: Image.asset(
+                  SignmeAssets.eeclogo,
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            const SizedBox(width: SignmeSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    churchName ?? 'Ma paroisse',
+                    style: SignmeTypography.labelLarge.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    'Membre actif',
+                    style: SignmeTypography.bodySmall.copyWith(
+                      color: SignmeColors.mediumGray,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.verified_rounded,
+              color: SignmeColors.success.withOpacity(0.85),
+              size: 22,
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+
+
+class _ActualitesSection extends ConsumerWidget {
+  const _ActualitesSection({
+    required this.feedAsync,
+    required this.onRetry,
+  });
+
+  final AsyncValue<List<HomeFeedItem>> feedAsync;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header ──────────────────────────────────────────────────────
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _avatar(),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(pub.auteurNom,
-                        style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: _typeColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(pub.type,
-                              style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.w600, color: _typeColor)),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '• ${timeago.format(pub.createdAt, locale: 'fr')}',
-                          style: GoogleFonts.poppins(fontSize: 11, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ],
+              Text(
+                'Actualités',
+                style: SignmeTypography.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: SignmeSpacing.sm,
+                  vertical: SignmeSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: SignmeColors.accentSky,
+                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+                ),
+                child: Text(
+                  'À la une',
+                  style: SignmeTypography.labelSmall.copyWith(
+                    color: SignmeColors.primaryLight,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-
-          // ── Titre ────────────────────────────────────────────────────────
-          Text(pub.titre,
-              style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primary)),
-
-          // ── Référence ────────────────────────────────────────────────────
-          if (pub.reference != null) ...[
-            const SizedBox(height: 2),
-            Text('Référence : ${pub.reference}',
-                style: GoogleFonts.poppins(fontSize: 12, color: AppColors.textSecondary)),
-          ],
-          const SizedBox(height: 6),
-
-          // ── Contenu ──────────────────────────────────────────────────────
-          Text(
-            pub.contenu,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(fontSize: 13, color: AppColors.textPrimary, height: 1.5),
+          const SizedBox(height: SignmeSpacing.md),
+          SignmeAsyncValue<List<HomeFeedItem>>(
+            value: feedAsync,
+            onRetry: onRetry,
+            emptyTitle: 'Pas encore d\'actualités',
+            emptyMessage:
+                'Les annonces, méditations et événements de votre église apparaîtront ici.',
+            isEmpty: (list) => list.isEmpty,
+            data: (items) => Column(
+              children: items
+                  .map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: SignmeSpacing.md),
+                      child: switch (item) {
+                        HomeFeedPublication(:final publication) => NewsCard(publication: publication),
+                        HomeFeedEvenement(:final evenement) => EvenementCard(
+                            evenement: evenement,
+                            onContribuer: () => context.push(
+                              AppRoutes.contributionFormPath(evenement.uuid),
+                              extra: evenement,
+                            ),
+                          ),
+                      },
+                    ),
+                  )
+                  .toList(),
+            ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _avatar() {
-    if (pub.auteurPhoto != null) {
-      return CircleAvatar(
-        radius: 20,
-        backgroundImage: CachedNetworkImageProvider(pub.auteurPhoto!),
-      );
-    }
-    return CircleAvatar(
-      radius: 20,
-      backgroundColor: AppColors.primarySurface,
-      child: Text(
-        pub.auteurNom.isNotEmpty ? pub.auteurNom[0].toUpperCase() : 'A',
-        style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.primary),
       ),
     );
   }

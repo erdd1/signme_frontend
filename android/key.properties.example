@@ -1,0 +1,16 @@
+# Copie ce fichier en "key.properties" (même dossier), remplis les valeurs,
+# et NE LE COMMIT JAMAIS (déjà exclu via .gitignore).
+#
+# Génère d'abord ton keystore de release (une seule fois, à conserver
+# précieusement — sans lui, impossible de publier une mise à jour) :
+#
+#   keytool -genkey -v -keystore signme-release.jks -keyalg RSA -keysize 2048 \
+#     -validity 10000 -alias signme
+#
+# Place le .jks généré hors du dépôt (ex: à côté du projet, jamais dedans),
+# puis renseigne son chemin ci-dessous.
+
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=signme
+storeFile=../signme-release.jks
