@@ -3,49 +3,838 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/widgets/index.dart';
+import '../../../auth/domain/entities/user_lookup_refs.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/entities/contribution_entity.dart';
-import '../providers/contributions_tresorerie_provider.dart';
+import '../../domain/entities/contribution_filter_event_entity.dart';
+import '../providers/contributions_treasury_filter_provider.dart';
 
-/// Onglet drawer "Contributions événement" — Pasteur/Secrétaire/Trésorier.
+/// Tableau de bord financier « Contributions événement »
+/// (Pasteur / Secrétaire / Trésorier).
 ///
-/// Affiche l'ensemble des contributions de l'église : date, montant, frais,
-/// montant payé, contributeur, événement lié, statut, référence CamPay, note,
-/// numéro de paiement.
-class ContributionsEvenementScreen extends ConsumerWidget {
+/// Architecture :
+/// - Stats globales et filtrées → backend (SUM SQL)
+/// - Liste → pagination infinie (load-more au scroll)
+/// - Dropdowns Événement et Groupe → données backend exhaustives
+class ContributionsEvenementScreen extends ConsumerStatefulWidget {
   const ContributionsEvenementScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final contributionsAsync = ref.watch(contributionsTreasuryProvider);
+  ConsumerState<ContributionsEvenementScreen> createState() =>
+      _ContributionsEvenementScreenState();
+}
+
+class _ContributionsEvenementScreenState
+    extends ConsumerState<ContributionsEvenementScreen> {
+  // ── Filtres actifs ──────────────────────────────────────────────────────────
+  var _filters = ContributionsTreasuryFilter.empty;
+
+  // ── Scroll controller pour le load-more ─────────────────────────────────────
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController()..addListener(_onScroll);
+    // Chargement initial : page 1 sans filtre
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref
+          .read(contributionsTreasuryListProvider.notifier)
+          .fetch(_filters, reset: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200) {
+      final listState = ref.read(contributionsTreasuryListProvider);
+      if (!listState.isLoading && listState.hasMore) {
+        ref.read(contributionsTreasuryListProvider.notifier).loadMore(_filters);
+      }
+    }
+  }
+
+  void _onFilterChanged(ContributionsTreasuryFilter newFilters) {
+    setState(() => _filters = newFilters);
+    ref
+        .read(contributionsTreasuryListProvider.notifier)
+        .fetch(newFilters, reset: true);
+  }
+
+  void _resetFilters() => _onFilterChanged(ContributionsTreasuryFilter.empty);
+
+  @override
+  Widget build(BuildContext context) {
+    final listState = ref.watch(contributionsTreasuryListProvider);
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
       body: RefreshIndicator(
         color: SignmeColors.primaryLight,
-        onRefresh: () => ref.read(contributionsTreasuryProvider.notifier).refresh(),
-        child: SignmeAsyncValue<List<ContributionEntity>>(
-          value: contributionsAsync,
-          onRetry: () => ref.read(contributionsTreasuryProvider.notifier).refresh(),
-          emptyTitle: 'Aucune contribution',
-          emptyMessage: 'Les contributions aux événements apparaîtront ici.',
-          isEmpty: (list) => list.isEmpty,
-          data: (contributions) => ListView.separated(
-            padding: const EdgeInsets.fromLTRB(
-              SignmeSpacing.lg,
-              SignmeSpacing.lg,
-              SignmeSpacing.lg,
-              120,
+        onRefresh: () => ref
+            .read(contributionsTreasuryListProvider.notifier)
+            .refresh(_filters),
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            // ── Card bleu — synthèse globale (toujours sans filtre) ───────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  SignmeSpacing.lg, SignmeSpacing.lg,
+                  SignmeSpacing.lg, SignmeSpacing.md,
+                ),
+                child: _SynthesisCard(globalFilter: ContributionsTreasuryFilter.empty),
+              ),
             ),
-            itemCount: contributions.length,
-            separatorBuilder: (_, __) => const SizedBox(height: SignmeSpacing.md),
-            itemBuilder: (context, i) => _ContributionCard(contribution: contributions[i]),
-          ),
+
+            // ── Section filtres ───────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+                child: _FilterSection(
+                  filters: _filters,
+                  onChanged: _onFilterChanged,
+                  onReset: _resetFilters,
+                ),
+              ),
+            ),
+
+            // ── Résumé de la sélection ────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  SignmeSpacing.lg, SignmeSpacing.md,
+                  SignmeSpacing.lg, SignmeSpacing.md,
+                ),
+                child: _SelectionSummaryCard(filters: _filters),
+              ),
+            ),
+
+            // ── En-tête liste ─────────────────────────────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  SignmeSpacing.lg, SignmeSpacing.sm,
+                  SignmeSpacing.lg, SignmeSpacing.sm,
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Liste des contributions',
+                      style: SignmeTypography.headlineSmall.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (listState.items.isNotEmpty)
+                      Text(
+                        '${listState.items.length} résultat${listState.items.length > 1 ? 's' : ''}',
+                        style: SignmeTypography.bodySmall
+                            .copyWith(color: SignmeColors.mediumGray),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Liste de contributions ────────────────────────────────────────
+            if (listState.error != null && listState.items.isEmpty)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.wifi_off_rounded,
+                          size: 48, color: SignmeColors.mediumGray),
+                      const SizedBox(height: SignmeSpacing.md),
+                      Text('Impossible de charger les contributions.',
+                          style: SignmeTypography.bodyMedium
+                              .copyWith(color: SignmeColors.mediumGray)),
+                      const SizedBox(height: SignmeSpacing.md),
+                      TextButton.icon(
+                        onPressed: () => ref
+                            .read(contributionsTreasuryListProvider.notifier)
+                            .refresh(_filters),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Réessayer'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (listState.items.isEmpty && listState.isLoading)
+              const SliverFillRemaining(
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (listState.items.isEmpty)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.receipt_long_rounded,
+                          size: 48, color: SignmeColors.mediumGray),
+                      const SizedBox(height: SignmeSpacing.md),
+                      Text(
+                        'Aucune contribution pour cette sélection.',
+                        style: SignmeTypography.bodyMedium
+                            .copyWith(color: SignmeColors.mediumGray),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+                sliver: SliverList.separated(
+                  itemCount: listState.items.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: SignmeSpacing.md),
+                  itemBuilder: (context, i) =>
+                      _ContributionCard(contribution: listState.items[i]),
+                ),
+              ),
+
+            // ── Load-more / indicateur bas de liste ───────────────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  SignmeSpacing.lg, SignmeSpacing.md,
+                  SignmeSpacing.lg, 120,
+                ),
+                child: _LoadMoreIndicator(
+                  isLoading: listState.isLoading && listState.items.isNotEmpty,
+                  hasMore: listState.hasMore,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SynthesisCard — grand card bleu de synthèse globale
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SynthesisCard extends ConsumerWidget {
+  const _SynthesisCard({required this.globalFilter});
+
+  /// Toujours [ContributionsTreasuryFilter.empty] : le card bleu affiche
+  /// les stats GLOBALES (sans aucun filtre appliqué).
+  final ContributionsTreasuryFilter globalFilter;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(contributionsTreasuryStatsProvider(globalFilter));
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusXl),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: SignmeColors.primaryLight.withOpacity(0.30),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(SignmeSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // En-tête
+          Row(
+            children: [
+              const Icon(Icons.account_balance_wallet_rounded,
+                  color: Colors.white70, size: 20),
+              const SizedBox(width: SignmeSpacing.sm),
+              Text(
+                'Aperçu global',
+                style: SignmeTypography.labelLarge.copyWith(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: SignmeSpacing.sm, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+                ),
+                child: Text(
+                  'Données jusqu\'à présent',
+                  style: SignmeTypography.labelSmall
+                      .copyWith(color: Colors.white70),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: SignmeSpacing.xl),
+
+          // 3 métriques
+          statsAsync.when(
+            loading: () => Row(
+              children: List.generate(
+                3,
+                (_) => Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                          height: 12,
+                          width: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(4),
+                          )),
+                      const SizedBox(height: 6),
+                      Container(
+                          height: 20,
+                          width: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(4),
+                          )),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            error: (_, __) => Text(
+              'Stats indisponibles',
+              style: SignmeTypography.bodySmall.copyWith(color: Colors.white70),
+            ),
+            data: (stats) => Row(
+              children: [
+                _StatColumn(
+                  icon: Icons.wallet_rounded,
+                  label: 'Total contributions',
+                  value: FinanceFormatters.fcfa(stats.netRecu),
+                  sublabel: 'Montant donné',
+                ),
+                _StatColumn(
+                  icon: Icons.receipt_rounded,
+                  label: 'Total frais perçus',
+                  value: FinanceFormatters.fcfa(stats.totalFrais),
+                  sublabel: 'Frais de transaction',
+                ),
+                _StatColumn(
+                  icon: Icons.church_rounded,
+                  label: 'Reçu par l\'église',
+                  value: FinanceFormatters.fcfa(stats.netRecu),
+                  sublabel: 'Montant net',
+                  highlighted: true,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: SignmeSpacing.lg),
+
+          // Ligne info : total payé
+          statsAsync.maybeWhen(
+            data: (stats) => Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: SignmeSpacing.md, vertical: SignmeSpacing.sm),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      color: Colors.white70, size: 16),
+                  const SizedBox(width: SignmeSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total payé par les contributeurs : ${FinanceFormatters.fcfa(stats.totalPaye)}',
+                          style: SignmeTypography.labelMedium.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          'Contributions + Frais',
+                          style: SignmeTypography.labelSmall
+                              .copyWith(color: Colors.white60),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatColumn extends StatelessWidget {
+  const _StatColumn({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.sublabel,
+    this.highlighted = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String sublabel;
+  final bool highlighted;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+            ),
+            child: Icon(icon, color: Colors.white, size: 20),
+          ),
+          const SizedBox(height: SignmeSpacing.sm),
+          Text(label,
+              style: SignmeTypography.labelSmall
+                  .copyWith(color: Colors.white70),
+              maxLines: 2),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: SignmeTypography.labelLarge.copyWith(
+              color: highlighted ? SignmeColors.primaryCyan : Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: highlighted ? 15 : 14,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(sublabel,
+              style: SignmeTypography.labelSmall
+                  .copyWith(color: Colors.white54),
+              maxLines: 1),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _FilterSection — 4 dropdowns 2×2 + bouton réinitialiser
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FilterSection extends ConsumerWidget {
+  const _FilterSection({
+    required this.filters,
+    required this.onChanged,
+    required this.onReset,
+  });
+
+  final ContributionsTreasuryFilter filters;
+  final ValueChanged<ContributionsTreasuryFilter> onChanged;
+  final VoidCallback onReset;
+
+  static const _months = [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+  ];
+
+  List<int> _years() {
+    final now = DateTime.now().year;
+    return List.generate(6, (i) => now - i);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final eventsAsync = ref.watch(contributionsFilterEventsProvider);
+    final groupesAsync = ref.watch(contributionsFilterGroupesProvider);
+
+    final events = eventsAsync.valueOrNull ?? <ContributionFilterEventEntity>[];
+    final groupes = groupesAsync.valueOrNull ?? <GroupeRef>[];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: SignmeColors.white,
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        border: Border.all(color: SignmeColors.lightGrayBorder),
+        boxShadow: [
+          BoxShadow(
+            color: SignmeColors.primaryDark.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(SignmeSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // En-tête filtres
+          Row(
+            children: [
+              const Icon(Icons.tune_rounded,
+                  color: SignmeColors.primaryLight, size: 18),
+              const SizedBox(width: SignmeSpacing.sm),
+              Text(
+                'Filtres',
+                style: SignmeTypography.labelLarge
+                    .copyWith(fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              if (filters.hasAnyFilter)
+                GestureDetector(
+                  onTap: onReset,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.refresh_rounded,
+                          color: SignmeColors.primaryLight, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Réinitialiser',
+                        style: SignmeTypography.labelSmall.copyWith(
+                          color: SignmeColors.primaryLight,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: SignmeSpacing.md),
+
+          // Ligne 1 : Événement + Groupe
+          Row(
+            children: [
+              Expanded(
+                child: SignmeCompactDropdown<ContributionFilterEventEntity?>(
+                  label: 'Événement',
+                  value: events.where((e) => e.id == filters.eventId).firstOrNull,
+                  items: events,
+                  itemLabel: (e) => e == null ? 'Tous les événements' : e.titre,
+                  hint: 'Tous les événements',
+                  onChanged: (e) => onChanged(
+                    filters.copyWith(
+                      eventId: e?.id,
+                      eventLabel: e?.titre,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: SignmeSpacing.sm),
+              Expanded(
+                child: SignmeCompactDropdown<GroupeRef?>(
+                  label: 'Groupe',
+                  value: groupes.where((g) => g.id == filters.groupeId).firstOrNull,
+                  items: groupes,
+                  itemLabel: (g) => g == null ? 'Tous les groupes' : g.nom,
+                  hint: 'Tous les groupes',
+                  onChanged: (g) => onChanged(
+                    filters.copyWith(
+                      groupeId: g?.id,
+                      groupeLabel: g?.nom,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: SignmeSpacing.sm),
+
+          // Ligne 2 : Année + Mois
+          Row(
+            children: [
+              Expanded(
+                child: SignmeCompactDropdown<int?>(
+                  label: 'Année',
+                  value: filters.year,
+                  items: _years(),
+                  itemLabel: (y) => y == null ? 'Toutes' : y.toString(),
+                  hint: 'Toutes les années',
+                  onChanged: (y) => onChanged(filters.copyWith(year: y)),
+                ),
+              ),
+              const SizedBox(width: SignmeSpacing.sm),
+              Expanded(
+                child: SignmeCompactDropdown<int?>(
+                  label: 'Mois',
+                  value: filters.month,
+                  items: List.generate(12, (i) => i + 1),
+                  itemLabel: (m) => m == null ? 'Tous les mois' : _months[m - 1],
+                  hint: 'Tous les mois',
+                  onChanged: (m) => onChanged(filters.copyWith(month: m)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _SelectionSummaryCard — résumé dynamique de la sélection
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SelectionSummaryCard extends ConsumerWidget {
+  const _SelectionSummaryCard({required this.filters});
+
+  final ContributionsTreasuryFilter filters;
+
+  String get _periodeLabel {
+    if (filters.year == null) return 'Toutes périodes';
+    final months = [
+      'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
+      'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc',
+    ];
+    if (filters.month != null) {
+      return '${months[filters.month! - 1]} ${filters.year}';
+    }
+    return 'Tous ${filters.year}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(contributionsTreasuryStatsProvider(filters));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: SignmeColors.white,
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        border: Border.all(color: SignmeColors.lightGrayBorder),
+        boxShadow: [
+          BoxShadow(
+            color: SignmeColors.primaryDark.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(SignmeSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Résumé de la sélection',
+            style: SignmeTypography.labelLarge
+                .copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: SignmeSpacing.sm),
+
+          // Étiquettes de la sélection
+          Row(
+            children: [
+              _FilterChip(
+                icon: Icons.calendar_today_rounded,
+                label: 'Période',
+                value: _periodeLabel,
+              ),
+              const SizedBox(width: SignmeSpacing.sm),
+              _FilterChip(
+                icon: Icons.event_rounded,
+                label: 'Événement',
+                value: filters.eventLabel ?? 'Tous',
+              ),
+              const SizedBox(width: SignmeSpacing.sm),
+              _FilterChip(
+                icon: Icons.group_rounded,
+                label: 'Groupe',
+                value: filters.groupeLabel ?? 'Tous',
+              ),
+            ],
+          ),
+          const Divider(height: SignmeSpacing.lg, color: SignmeColors.lightGrayBorder),
+
+          // Stats filtrées
+          statsAsync.when(
+            loading: () => const Center(
+              child: SizedBox(
+                  height: 32,
+                  width: 32,
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
+            error: (_, __) => Text(
+              'Impossible de charger les statistiques.',
+              style: SignmeTypography.bodySmall
+                  .copyWith(color: SignmeColors.mediumGray),
+            ),
+            data: (stats) => Row(
+              children: [
+                _SummaryStatColumn(
+                  label: 'Total contributions',
+                  value: FinanceFormatters.fcfa(stats.netRecu),
+                  color: SignmeColors.primaryLight,
+                ),
+                _SummaryStatColumn(
+                  label: 'Total frais',
+                  value: FinanceFormatters.fcfa(stats.totalFrais),
+                  color: SignmeColors.warning,
+                ),
+                _SummaryStatColumn(
+                  label: 'Reçu par l\'église',
+                  value: FinanceFormatters.fcfa(stats.netRecu),
+                  color: SignmeColors.success,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 12, color: SignmeColors.primaryLight),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  label,
+                  style: SignmeTypography.labelSmall
+                      .copyWith(color: SignmeColors.mediumGray),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: SignmeTypography.labelMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: SignmeColors.black,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryStatColumn extends StatelessWidget {
+  const _SummaryStatColumn({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: SignmeTypography.labelSmall
+                .copyWith(color: SignmeColors.darkGray),
+            maxLines: 1,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: SignmeTypography.labelMedium.copyWith(
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _LoadMoreIndicator — bas de liste
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _LoadMoreIndicator extends StatelessWidget {
+  const _LoadMoreIndicator({required this.isLoading, required this.hasMore});
+
+  final bool isLoading;
+  final bool hasMore;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(SignmeSpacing.md),
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    if (!hasMore) return const SizedBox.shrink();
+    return const SizedBox.shrink();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _ContributionCard — carte individuelle (inchangée par rapport à l'original)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ContributionCard extends StatelessWidget {
   const _ContributionCard({required this.contribution});
@@ -65,14 +854,14 @@ class _ContributionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Un `Border` ne peut pas avoir un `borderRadius` si ses côtés n'ont pas
-    // tous la même couleur (limitation Flutter) — le liseré gauche coloré
-    // est donc peint comme un rectangle séparé plutôt que via BoxDecoration.
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
         boxShadow: [
-          BoxShadow(color: SignmeColors.primaryDark.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+              color: SignmeColors.primaryDark.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
         ],
       ),
       child: ClipRRect(
@@ -105,129 +894,150 @@ class _ContributionCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SignmeLeadingIconAvatar(icon: Icons.event_rounded, color: _statutColor),
-              const SizedBox(width: SignmeSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            contribution.evenementTitre ?? 'Événement',
-                            style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SignmeLeadingIconAvatar(
+                icon: Icons.event_rounded, color: _statutColor),
+            const SizedBox(width: SignmeSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          contribution.evenementTitre ?? 'Événement',
+                          style: SignmeTypography.labelLarge
+                              .copyWith(fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: _statutColor.withOpacity(0.1),
+                          borderRadius:
+                              BorderRadius.circular(SignmeSpacing.radiusFull),
+                        ),
+                        child: Text(
+                          _statutLabel,
+                          style: SignmeTypography.labelSmall.copyWith(
+                            color: _statutColor,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: _statutColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
-                          ),
-                          child: Text(
-                            _statutLabel,
-                            style: SignmeTypography.labelSmall.copyWith(
-                              color: _statutColor,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          contribution.contributeurNom ?? 'Contributeur',
+                          style: SignmeTypography.bodySmall
+                              .copyWith(color: SignmeColors.mediumGray),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            contribution.contributeurNom ?? 'Contributeur',
-                            style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      ),
+                      const SizedBox(width: SignmeSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: SignmeColors.accentSky,
+                          borderRadius:
+                              BorderRadius.circular(SignmeSpacing.radiusFull),
                         ),
-                        const SizedBox(width: SignmeSpacing.sm),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: SignmeColors.accentSky,
-                            borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+                        child: Text(
+                          contribution.contributeurGroupeNom ?? 'Sans groupe',
+                          style: SignmeTypography.labelSmall.copyWith(
+                            color: SignmeColors.primaryLight,
+                            fontWeight: FontWeight.w600,
                           ),
-                          child: Text(
-                            contribution.contributeurGroupeNom ?? 'Sans groupe',
-                            style: SignmeTypography.labelSmall.copyWith(
-                              color: SignmeColors.primaryLight,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
-          const Divider(height: SignmeSpacing.lg, color: SignmeColors.lightGrayBorder),
-          Row(
-            children: [
-              Expanded(child: _infoColumn('Montant', FinanceFormatters.fcfaShort(contribution.montant))),
-              Expanded(child: _infoColumn('Frais', FinanceFormatters.fcfaShort(contribution.frais))),
-              Expanded(
-                  child: _infoColumn('Payé', FinanceFormatters.fcfaShort(contribution.montantTotal),
-                      highlight: true)),
-            ],
-          ),
-          const SizedBox(height: SignmeSpacing.sm),
+            ),
+          ],
+        ),
+        const Divider(
+            height: SignmeSpacing.lg, color: SignmeColors.lightGrayBorder),
+        Row(
+          children: [
+            Expanded(
+                child: _infoColumn(
+                    'Montant', FinanceFormatters.fcfaShort(contribution.montant))),
+            Expanded(
+                child: _infoColumn(
+                    'Frais', FinanceFormatters.fcfaShort(contribution.frais))),
+            Expanded(
+                child: _infoColumn(
+                    'Payé (Total)',
+                    FinanceFormatters.fcfaShort(contribution.montantTotal),
+                    highlight: true)),
+          ],
+        ),
+        const SizedBox(height: SignmeSpacing.sm),
+        Text(
+          DateFormat('dd MMM yyyy à HH:mm', 'fr_FR')
+              .format(contribution.createdAt),
+          style: SignmeTypography.labelSmall
+              .copyWith(color: SignmeColors.mediumGray),
+        ),
+        if (contribution.paymentReference != null) ...[
+          const SizedBox(height: 2),
           Text(
-            DateFormat('dd MMM yyyy à HH:mm', 'fr_FR').format(contribution.createdAt),
-            style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
+            'Réf. trx.${contribution.paymentReference}',
+            style: SignmeTypography.labelSmall
+                .copyWith(color: SignmeColors.mediumGray),
           ),
-          if (contribution.paymentReference != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              'Réf. paiement : ${contribution.paymentReference}',
-              style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
-            ),
-          ],
-          if (contribution.paymentNumber != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              '${contribution.paymentOperator ?? ''} · ${contribution.paymentNumber}',
-              style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
-            ),
-          ],
-          if (contribution.note != null && contribution.note!.isNotEmpty) ...[
-            const SizedBox(height: SignmeSpacing.sm),
-            Container(
-              padding: const EdgeInsets.all(SignmeSpacing.sm),
-              decoration: BoxDecoration(
-                color: SignmeColors.accentSky.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(SignmeSpacing.radiusSm),
-              ),
-              child: Text(
-                contribution.note!,
-                style: SignmeTypography.bodySmall.copyWith(fontStyle: FontStyle.italic),
-              ),
-            ),
-          ],
         ],
-      );
+        if (contribution.paymentNumber != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            '${contribution.paymentOperator ?? ''} · ${contribution.paymentNumber}',
+            style: SignmeTypography.labelSmall
+                .copyWith(color: SignmeColors.mediumGray),
+          ),
+        ],
+        if (contribution.note != null && contribution.note!.isNotEmpty) ...[
+          const SizedBox(height: SignmeSpacing.sm),
+          Container(
+            padding: const EdgeInsets.all(SignmeSpacing.sm),
+            decoration: BoxDecoration(
+              color: SignmeColors.accentSky.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusSm),
+            ),
+            child: Text(
+              contribution.note!,
+              style: SignmeTypography.bodySmall
+                  .copyWith(fontStyle: FontStyle.italic),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _infoColumn(String label, String value, {bool highlight = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.darkGray)),
+        Text(label,
+            style: SignmeTypography.labelSmall
+                .copyWith(color: SignmeColors.darkGray)),
         const SizedBox(height: 2),
         Text(
           value,

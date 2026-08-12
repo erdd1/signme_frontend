@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,8 +23,8 @@ import '../../../finances/presentation/providers/finances_provider.dart';
 import '../../../rapports/presentation/providers/rapports_provider.dart';
 import '../../../anciens/presentation/providers/anciens_provider.dart';
 import '../../../evenements/presentation/providers/evenements_provider.dart';
-import '../../../evenements/presentation/providers/contributions_tresorerie_provider.dart';
 import '../../../home/presentation/providers/home_feed_provider.dart';
+
 import '../../../historique_personnel/presentation/providers/historique_personnel_combined_provider.dart';
 import '../../../historique_signatures/presentation/providers/historique_signatures_provider.dart';
 
@@ -58,9 +58,9 @@ class MainShell extends ConsumerWidget {
     ref.watch(rapportSecretaireBootstrapProvider);
     ref.watch(ancienBootstrapProvider);
     ref.watch(evenementsGestionBootstrapProvider);
-    ref.watch(contributionsTreasuryBootstrapProvider);
     ref.watch(historiquePersonnelBootstrapProvider);
     ref.watch(historiqueSignaturesBootstrapProvider);
+
 
     // ── Notifications push : filet de sécurité pour une session déjà
     // restaurée avant le premier build (le ref.listen ci-dessous ne capte

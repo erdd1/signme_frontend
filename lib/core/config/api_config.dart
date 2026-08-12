@@ -47,6 +47,9 @@ abstract final class ApiConfig {
   static String contributionStatus(String uuid) =>
       '/contributions/transaction/$uuid/status';
   static const String contributionsEvenements = '/contributions-evenements';
+  static const String contributionsEvenementsStats = '/contributions-evenements/stats';
+  static const String contributionsEvenementsFilterEvents = '/contributions-evenements/filters/events';
+
 
   // ── Mes contributions (module "Mes dépenses") ──────────────────────────────
   static const String mesContributions = '/mes-contributions';
