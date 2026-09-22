@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
@@ -51,7 +52,17 @@ class _AuthInterceptor extends Interceptor {
   final SecureStorage _storage;
   final Dio _dio;
   final SessionExpiredCallback? onSessionExpired;
-  bool _isRefreshing = false;
+
+  /// Regroupe les 401 concurrents (ex. plusieurs widgets du Home qui
+  /// appellent l'API en parallèle avec un token expiré) sur UNE SEULE
+  /// requête de refresh réseau : avec un simple booléen, seule la première
+  /// requête tentait le refresh et toutes celles arrivées en 401 pendant
+  /// cette fenêtre échouaient immédiatement (AuthException) même si le
+  /// refresh réussissait juste après — l'utilisateur voyait alors certains
+  /// widgets se charger normalement et d'autres afficher une erreur
+  /// d'authentification, sans raison apparente et sans être réellement
+  /// déconnecté.
+  Completer<bool>? _refreshCompleter;
 
   @override
   Future<void> onRequest(
@@ -84,23 +95,35 @@ class _AuthInterceptor extends Interceptor {
       return handler.next(err);
     }
 
-    if (err.response?.statusCode == 401 && !_isRefreshing) {
-      _isRefreshing = true;
+    if (err.response?.statusCode == 401) {
       try {
-        final refreshed = await _tryRefresh();
+        final refreshed = await _sharedRefresh();
         if (refreshed) {
           final token = await _storage.getAccessToken();
           err.requestOptions.headers['Authorization'] = 'Bearer $token';
           final cloneReq = await _dio.fetch(err.requestOptions);
-          _isRefreshing = false;
           return handler.resolve(cloneReq);
         }
       } catch (_) {}
-      _isRefreshing = false;
       await _storage.clearSession();
       await onSessionExpired?.call();
     }
     handler.next(err);
+  }
+
+  /// Si un refresh est déjà en cours, attend son résultat au lieu d'en
+  /// déclencher un second (aussi bien pour éviter la double révocation que
+  /// pour ne pas multiplier les allers-retours réseau à grande échelle).
+  Future<bool> _sharedRefresh() {
+    final inFlight = _refreshCompleter;
+    if (inFlight != null) return inFlight.future;
+
+    final completer = Completer<bool>();
+    _refreshCompleter = completer;
+    _tryRefresh()
+        .then(completer.complete, onError: (_) => completer.complete(false))
+        .whenComplete(() => _refreshCompleter = null);
+    return completer.future;
   }
 
   Future<bool> _tryRefresh() async {
@@ -145,8 +168,13 @@ class _ErrorInterceptor extends Interceptor {
 
       case DioExceptionType.badResponse:
         final code = err.response?.statusCode;
-        final msg = err.response?.data?['message']?.toString();
-        final errs = _parseErrors(err.response?.data);
+        final responseData = err.response?.data;
+        // `responseData` n'est un Map (JSON) que si la requête n'a pas forcé
+        // responseType.bytes (ex. téléchargement de PDF) — dans ce cas une
+        // erreur serveur arrive quand même sous forme d'octets bruts, pas de
+        // JSON, donc jamais indexable par clé.
+        final msg = responseData is Map ? responseData['message']?.toString() : null;
+        final errs = _parseErrors(responseData);
 
         switch (code) {
           case 401:

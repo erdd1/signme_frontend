@@ -8,16 +8,7 @@ abstract final class ContributionFeeCalculator {
   static const int montantMax = 1000000;
   static const int multipleDe = 50;
 
-  // TODO(TEST TEMPORAIRE) : montant de 15 FCFA (frais 5 FCFA) ajouté
-  // uniquement pour tester le flux de paiement CamPay sans débiter de
-  // grosses sommes. À SUPPRIMER avant mise en production définitive — miroir
-  // exact du TODO côté backend (ContributionFeeCalculatorService).
-  static const int _montantTestTemporaire = 15;
-
   static bool isValidAmount(int montant) {
-    // TODO(TEST TEMPORAIRE) : à supprimer.
-    if (montant == _montantTestTemporaire) return true;
-
     return montant >= montantMin &&
         montant <= montantMax &&
         montant % multipleDe == 0;
@@ -26,9 +17,6 @@ abstract final class ContributionFeeCalculator {
   /// Retourne les frais applicables, ou null si le montant est hors barème.
   static int? calculate(int montant) {
     if (!isValidAmount(montant)) return null;
-
-    // TODO(TEST TEMPORAIRE) : à supprimer.
-    if (montant == _montantTestTemporaire) return 5;
 
     if (montant >= 500 && montant <= 950) return 50;
     if (montant >= 1000 && montant <= 5000) return 100;

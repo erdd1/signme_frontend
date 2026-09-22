@@ -74,8 +74,10 @@ class HistoriqueSignaturesModel {
       location: json['location']?.toString(),
       churchId: (json['churchId'] ?? '').toString(),
       churchName: (json['churchName'] ?? '').toString(),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      completedAt: json['completed_at'] != null ? DateTime.parse(json['completed_at'] as String) : null,
+      // tryParse (jamais parse) : un champ manquant/malformé ne doit jamais
+      // faire planter le parsing de toute la liste.
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      completedAt: DateTime.tryParse(json['completed_at']?.toString() ?? ''),
       notes: json['notes'] as String?,
     );
   }

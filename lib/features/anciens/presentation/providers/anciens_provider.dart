@@ -232,6 +232,10 @@ class AncienNotifier extends StateNotifier<AncienState> {
     String? horairesDebut,
     String? horairesFin,
   }) async {
+    // Le bouton se désactive via `isLoading`, mais seulement au prochain
+    // frame — un double-tap très rapide peut encore appeler cette méthode
+    // deux fois avant ce rendu.
+    if (state.isLoading) return false;
     state = state.copyWith(isLoading: true);
     try {
       final ok = await _ds.designateAncien(
@@ -254,6 +258,7 @@ class AncienNotifier extends StateNotifier<AncienState> {
   }
 
   Future<bool> revoke(int designationId) async {
+    if (state.isLoading) return false;
     state = state.copyWith(isLoading: true);
     try {
       final ok = await _ds.revokeAncien(designationId);

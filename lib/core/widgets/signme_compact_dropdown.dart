@@ -10,20 +10,8 @@ import '../design_system/index.dart';
 /// aligné à droite, stylé avec les tokens SignMe, défilant au-delà de
 /// [maxVisibleItems]. Supporte optionnellement l'ajout [onAddNew] et la
 /// suppression [onDelete] d'entrées, comme [SignmeDropdown].
-///
-/// Inséré dans l'overlay RACINE de l'application (et non celui du Navigator
-/// imbriqué de la route courante) pour toujours s'afficher au-dessus de la
-/// navbar flottante de [MainShell].
-///
-/// Usage:
-/// ```dart
-/// SignmeCompactDropdown<QuartierRef>(
-///   label: 'Quartier',
-///   value: null,
-///   items: quartiers,
-///   itemLabel: (q) => q.nom,
-///   onChanged: (q) => ...,
-/// )
+
+
 /// ```
 class SignmeCompactDropdown<T> extends StatefulWidget {
   const SignmeCompactDropdown({

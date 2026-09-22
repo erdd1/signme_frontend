@@ -69,14 +69,12 @@ class MainShell extends ConsumerWidget {
 
     ref.listen<AuthState>(authNotifierProvider, (previous, next) {
       if (next.isAuthenticated && previous?.isAuthenticated != true) {
-        final token   = next.auth?.accessToken ?? '';
         final userId  = next.auth?.user.id ?? 0;
         final churchId = next.auth?.user.churchId ?? 0;
-        if (token.isNotEmpty && churchId > 0) {
+        if (churchId > 0) {
           ref.read(wsClientProvider).connect(
-            bearerToken: token,
-            churchId:    churchId,
-            userId:      userId,
+            churchId: churchId,
+            userId:   userId,
           );
         }
         // ── Notifications push : enregistre le jeton de cet appareil ──────
@@ -93,11 +91,6 @@ class MainShell extends ConsumerWidget {
     final tabs = AppPermissions.getNavTabs(user);
     final currentIdx = _currentIndex(context, tabs);
     final bottomInset = MediaQuery.of(context).padding.bottom;
-
-
-
-    final badgeState = ref.watch(badgeNotifierProvider);
-    final badges = badgeState.valueOrNull ?? BadgeCountEntity.empty;
 
     // Masquer la navbar quand le clavier est ouvert
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
@@ -153,7 +146,6 @@ class MainShell extends ConsumerWidget {
                   tabs: tabs,
                   currentIndex: currentIdx,
                   isTabRoute: _isTabRoute(context, tabs),
-                  badges: badges,
                   onNavTap: (t) => _onNavTap(context, ref, t),
                   fab: _buildFab(context, ref, user),
                 ),
@@ -186,11 +178,17 @@ class MainShell extends ConsumerWidget {
       AppRoutes.evenementCreate => "Créer un événement",
       AppRoutes.gestionEvenements => "Gérer les événements",
       AppRoutes.contributionsEvenement => "Contributions événement",
+      AppRoutes.sortiesFinancieres => "Sorties financières",
+      AppRoutes.retraits => "Retraits",
       AppRoutes.mesDepenses => "Mes dépenses",
+      AppRoutes.aboutChurch => "À propos de votre Église",
+      AppRoutes.celebrations => "Célébrations",
       _ when route.startsWith('${AppRoutes.users}/') &&
           route.endsWith('/edit') =>
-        "Modifier le membre",
+      "Modifier le membre",
       _ when route.startsWith('${AppRoutes.users}/') => "Détails utilisateur",
+      _ when route.startsWith('/evenements/') && !route.endsWith('/contribuer') =>
+      "Détail de l'événement",
       _ => "SignMe",
     };
     final fontSize = route == AppRoutes.home ? 24.0 : 20.0;
@@ -217,13 +215,13 @@ class MainShell extends ConsumerWidget {
   }
 
   bool _routeMatches(String loc, NavTab t) => switch (t) {
-        NavTab.home => loc == AppRoutes.home,
-        NavTab.finances => loc == AppRoutes.finances,
-        NavTab.historique =>
-          loc == AppRoutes.historique || loc == AppRoutes.historiquePersonnel,
-        NavTab.profile => loc == AppRoutes.profile,
-        NavTab.maCarte => loc == AppRoutes.maCarte,
-      };
+    NavTab.home => loc == AppRoutes.home,
+    NavTab.finances => loc == AppRoutes.finances,
+    NavTab.historique =>
+    loc == AppRoutes.historique || loc == AppRoutes.historiquePersonnel,
+    NavTab.profile => loc == AppRoutes.profile,
+    NavTab.maCarte => loc == AppRoutes.maCarte,
+  };
 
   int _currentIndex(BuildContext ctx, List<NavTab> tabs) {
     final loc = GoRouterState.of(ctx).matchedLocation;
@@ -241,10 +239,10 @@ class MainShell extends ConsumerWidget {
   /// laisser passer la navigation, pour ne jamais perdre une saisie en
   /// cours d'un tap accidentel sur un autre onglet.
   Future<void> _guardedNavigate(
-    BuildContext ctx,
-    WidgetRef ref,
-    VoidCallback navigate,
-  ) async {
+      BuildContext ctx,
+      WidgetRef ref,
+      VoidCallback navigate,
+      ) async {
     if (ref.read(formDirtyProvider)) {
       final confirmed = await confirmDiscardChanges(ctx);
       if (!confirmed) return;
@@ -269,15 +267,31 @@ class MainShell extends ConsumerWidget {
     }
 
     _guardedNavigate(ctx, ref, () {
-      // ── Reset badge de l'onglet tapé ────────────────────────────────────
+      // ── Reset badge + rafraîchissement silencieux de l'onglet tapé ──────
+      // Depuis le passage à StatefulShellRoute.indexedStack (onglets gardés
+      // vivants — plus de reconstruction complète à chaque bascule), les
+      // `initState` de ces écrans (qui rafraîchissaient à chaque OUVERTURE)
+      // ne se redéclenchent plus après la première visite : on reproduit ce
+      // même rafraîchissement ici, au moment du tap, pour un comportement
+      // utilisateur identique à avant.
       switch (tab) {
         case NavTab.home:
           ref.read(badgeNotifierProvider.notifier).markRead('publications');
           ref.read(badgeNotifierProvider.notifier).markRead('evenements');
         case NavTab.historique:
           ref.read(badgeNotifierProvider.notifier).markRead('historique');
-        default:
-          break;
+          // Rafraîchit l'année courante (cas majoritaire) — si l'utilisateur
+          // avait sélectionné une autre année dans l'écran, elle reste
+          // rafraîchissable manuellement (pull-to-refresh).
+          ref
+              .read(historiquePersonnelCombinedProvider(DateTime.now().year.toString()).notifier)
+              .refresh();
+        case NavTab.finances:
+          ref.read(financesProvider.notifier).refreshSilently();
+        case NavTab.maCarte:
+          ref.read(maCarteProvider.notifier).refreshSilently();
+        case NavTab.profile:
+          ref.read(authNotifierProvider.notifier).refreshProfile();
       }
 
       ctx.go(switch (tab) {
@@ -298,6 +312,15 @@ class MainShell extends ConsumerWidget {
       );
     }
 
+    // Paroissien non communiant : le bouton reste affiché (toujours présent
+    // dans la navbar) mais ne peut pas signer sa carte — un tap ne fait rien.
+    if (!user.estCommuniant) {
+      return _DockedFab(
+        icon: Icons.add_rounded,
+        onTap: () {},
+      );
+    }
+
     return _DockedFab(
       icon: Icons.add_rounded,
       onTap: () => _guardedNavigate(ctx, ref, () => ctx.go(AppRoutes.signer)),
@@ -306,12 +329,17 @@ class MainShell extends ConsumerWidget {
 }
 
 // ── Navbar flottante avec FAB encastré ──────────────────────────────────
-class _FloatingNavBar extends StatelessWidget {
+// ConsumerWidget dédié (plutôt qu'un `ref.watch(badgeNotifierProvider)` dans
+// MainShell.build()) : les compteurs de badges changent souvent (polling
+// 60s + événements WebSocket temps réel) — les regarder ici confine le
+// rebuild à cette seule navbar au lieu de reconstruire tout le Scaffold
+// (AppBar + Drawer + cette même navbar, dont le flou BackdropFilter est l'un
+// des rendus les plus coûteux de Flutter) à chaque mise à jour.
+class _FloatingNavBar extends ConsumerWidget {
   const _FloatingNavBar({
     required this.tabs,
     required this.currentIndex,
     required this.isTabRoute,
-    required this.badges,
     required this.onNavTap,
     required this.fab,
   });
@@ -319,12 +347,17 @@ class _FloatingNavBar extends StatelessWidget {
   final List<NavTab> tabs;
   final int currentIndex;
   final bool isTabRoute;
-  final BadgeCountEntity badges;
   final void Function(NavTab) onNavTap;
   final Widget fab;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final badges = ref.watch(badgeNotifierProvider).valueOrNull ?? BadgeCountEntity.empty;
+    int badgeCountForTab(NavTab tab) => switch (tab) {
+      NavTab.home => badges.publications + badges.evenements,
+      NavTab.historique => badges.historique,
+      _ => 0,
+    };
     final half = tabs.length ~/ 2;
 
     return SizedBox(
@@ -333,7 +366,7 @@ class _FloatingNavBar extends StatelessWidget {
         clipBehavior: Clip.none,
         alignment: Alignment.bottomCenter,
         children: [
-          // â”€â”€ Fond arrondi avec trou + Glassmorphism â”€â”€
+          // ── Fond arrondi avec trou + Glassmorphism ──
           Positioned(
             left: 0,
             right: 0,
@@ -363,7 +396,7 @@ class _FloatingNavBar extends StatelessWidget {
             ),
           ),
 
-          // â”€â”€ Items de navigation gauche â”€â”€
+          // ── Items de navigation gauche ──
           Positioned(
             left: 0,
             bottom: 0,
@@ -377,7 +410,7 @@ class _FloatingNavBar extends StatelessWidget {
                   child: _NavItem(
                     tab: t,
                     isActive: currentIndex == tabs.indexOf(t) && isTabRoute,
-                    badgeCount: _badgeCountForTab(t),
+                    badgeCount: badgeCountForTab(t),
                     onTap: () => onNavTap(t),
                   ),
                 );
@@ -385,7 +418,7 @@ class _FloatingNavBar extends StatelessWidget {
             ),
           ),
 
-          // â”€â”€ Items de navigation droite â”€â”€
+          // ── Items de navigation droite ──
           Positioned(
             right: 0,
             bottom: 0,
@@ -399,7 +432,7 @@ class _FloatingNavBar extends StatelessWidget {
                   child: _NavItem(
                     tab: t,
                     isActive: currentIndex == tabs.indexOf(t) && isTabRoute,
-                    badgeCount: _badgeCountForTab(t),
+                    badgeCount: badgeCountForTab(t),
                     onTap: () => onNavTap(t),
                   ),
                 );
@@ -418,15 +451,9 @@ class _FloatingNavBar extends StatelessWidget {
       ),
     );
   }
-
-  int _badgeCountForTab(NavTab tab) => switch (tab) {
-        NavTab.home => badges.publications + badges.evenements,
-        NavTab.historique => badges.historique,
-        _ => 0,
-      };
 }
 
-// â”€â”€ Painter : fond blanc arrondi + encoche circulaire centrale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Painter : fond blanc arrondi + encoche circulaire centrale ────────────
 class _NotchedNavPainter extends CustomPainter {
   const _NotchedNavPainter({
     required this.color,
@@ -478,11 +505,11 @@ class _NotchedNavPainter extends CustomPainter {
   @override
   bool shouldRepaint(_NotchedNavPainter old) =>
       old.color != color ||
-      old.radius != radius ||
-      old.notchRadius != notchRadius;
+          old.radius != radius ||
+          old.notchRadius != notchRadius;
 }
 
-// â”€â”€ FAB premium â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── FAB premium ─────────────────────────────────────────────────────────
 class _DockedFab extends StatelessWidget {
   const _DockedFab({required this.icon, required this.onTap});
 
@@ -530,7 +557,7 @@ class _DockedFab extends StatelessWidget {
   }
 }
 
-// â”€â”€ NavItem avec badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── NavItem avec badge ───────────────────────────────────────────────────
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.tab,
@@ -549,13 +576,13 @@ class _NavItem extends StatelessWidget {
     final icon = switch (tab) {
       NavTab.home => isActive ? Icons.home_rounded : Icons.home_outlined,
       NavTab.finances =>
-        isActive ? Icons.bar_chart_rounded : Icons.bar_chart_outlined,
+      isActive ? Icons.bar_chart_rounded : Icons.bar_chart_outlined,
       NavTab.historique =>
-        isActive ? Icons.history_rounded : Icons.history_outlined,
+      isActive ? Icons.history_rounded : Icons.history_outlined,
       NavTab.profile =>
-        isActive ? Icons.person_rounded : Icons.person_outline_rounded,
+      isActive ? Icons.person_rounded : Icons.person_outline_rounded,
       NavTab.maCarte =>
-        isActive ? Icons.credit_card_rounded : Icons.credit_card_outlined,
+      isActive ? Icons.credit_card_rounded : Icons.credit_card_outlined,
     };
     final label = switch (tab) {
       NavTab.home => "Accueil",

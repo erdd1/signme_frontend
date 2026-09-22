@@ -120,6 +120,13 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
     String evenementUuid, {
     bool requiresGroupeSelection = false,
   }) async {
+    // Le bouton se désactive via `isLoading`, mais seulement au prochain
+    // frame — un double-tap très rapide peut encore atteindre ce callback
+    // avant que ce rendu n'ait eu lieu. Garde de ré-entrance ici, à la
+    // source, plutôt que de compter uniquement sur l'UI : un paiement
+    // dupliqué n'est pas une simple gêne visuelle.
+    if (state.isLoading) return false;
+
     final isCard = state.paymentMethod == 'card';
 
     if (ContributionFeeCalculator.calculate(state.montant) == null) {

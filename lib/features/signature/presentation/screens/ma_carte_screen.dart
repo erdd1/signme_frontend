@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/design_system/index.dart';
+import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_shimmer.dart';
 import '../../../../core/widgets/index.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/signature_entity.dart';
 import '../../domain/ma_carte_years.dart';
 import '../providers/ma_carte_provider.dart';
@@ -32,6 +34,15 @@ class _MaCarteScreenState extends ConsumerState<MaCarteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authNotifierProvider).auth?.user;
+    if (user != null && !AppPermissions.canViewMaCarte(user)) {
+      return const SignmeNoPermissionState(
+        title: 'Fonctionnalité bloquée',
+        message: AppPermissions.notCommuniantMessage,
+        icon: Icons.credit_card_off_rounded,
+      );
+    }
+
     ref.watch(maCarteBootstrapProvider);
     final state = ref.watch(maCarteProvider);
 

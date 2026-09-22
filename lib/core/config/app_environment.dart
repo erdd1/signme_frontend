@@ -20,6 +20,16 @@ abstract final class AppEnvironment {
     defaultValue: false,
   );
 
+  // ── Partage d'événement (Android App Links / iOS Universal Links) ─────
+  // Domaine public HTTPS servant la page de partage + les fichiers
+  // .well-known (voir routes/web.php côté backend). Doit toujours pointer
+  // vers le MÊME domaine que "signmecy.org" déclaré dans AndroidManifest.xml
+  // (android:host) et Runner.entitlements (applinks:).
+  static const String webBaseUrl = String.fromEnvironment(
+    'WEB_BASE_URL',
+    defaultValue: 'https://signmecy.org',
+  );
+
   // ── Google Sign-In ───────────────────────────────────────────────────
   // Client ID OAuth "Web" créé dans Google Cloud Console (PAS le client
   // Android/iOS). Utilisé comme `serverClientId` pour que l'ID token

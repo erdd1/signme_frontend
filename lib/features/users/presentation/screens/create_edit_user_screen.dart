@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -15,6 +16,7 @@ import '../../../auth/domain/entities/user_lookup_refs.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/user_roles.dart';
 import '../providers/lookup_providers.dart';
+import '../providers/users_data_providers.dart';
 import '../providers/users_provider.dart';
 import '../widgets/add_lookup_bottom_sheet.dart';
 import '../widgets/groupes_multi_select.dart';
@@ -35,6 +37,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
   final _emailCtrl = TextEditingController();
   final _telCtrl = TextEditingController();
   final _professionCtrl = TextEditingController();
+  final _matriculeCtrl = TextEditingController();
 
   String? _selectedRole;
   bool _isEdit = false;
@@ -45,6 +48,13 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
 
   // ── Démographie ──────────────────────────────────────────────────────────
   String? _sexe;
+
+  /// Statut communiant — uniquement pertinent (et obligatoire) pour le rôle
+  /// paroissien ; les autres rôles sont et seront toujours communiants.
+  /// `null` = pas encore choisi (bloque la soumission pour un paroissien).
+  bool? _estCommuniant;
+  bool _matriculeAutoMode = true;
+  bool _isFetchingMatricule = false;
   DateTime? _dateNaissance;
   String? _originaireDe;
   QuartierRef? _quartier;
@@ -60,7 +70,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(formDirtyProvider.notifier).state = false;
     });
-    for (final controller in [_nomCtrl, _emailCtrl, _telCtrl, _professionCtrl]) {
+    for (final controller in [_nomCtrl, _emailCtrl, _telCtrl, _professionCtrl, _matriculeCtrl]) {
       controller.addListener(_markDirty);
     }
   }
@@ -71,6 +81,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     _emailCtrl.dispose();
     _telCtrl.dispose();
     _professionCtrl.dispose();
+    _matriculeCtrl.dispose();
     super.dispose();
   }
 
@@ -103,6 +114,9 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     _selectedRole = user.role;
     _existingPhotoUrl = user.photoUrl;
     _sexe = user.sexe;
+    _estCommuniant = user.estCommuniant;
+    _matriculeCtrl.text = user.matricule ?? '';
+    _matriculeAutoMode = false;
     _dateNaissance = _parseIsoDate(user.dateNaissance);
     _originaireDe = user.originaireDe;
     _quartier = user.quartier;
@@ -254,8 +268,50 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
                 enabled: !isSaving,
                 onChanged: (v) {
                   _markDirty();
-                  setState(() => _selectedRole = v);
+                  setState(() {
+                    _selectedRole = v;
+                    // Un paroissien peut être non communiant, les autres
+                    // rôles sont toujours communiants (imposé côté backend).
+                    if (v != 'paroissien') _estCommuniant = null;
+                  });
                 },
+              ),
+              const SizedBox(height: SignmeSpacing.lg),
+            ],
+            if (_selectedRole == 'paroissien') ...[
+              Text(
+                'Statut',
+                style: SignmeTypography.inputLabel.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: SignmeSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SexeChip(
+                      label: 'Communiant',
+                      selected: _estCommuniant == true,
+                      onTap: isSaving
+                          ? null
+                          : () {
+                              _markDirty();
+                              setState(() => _estCommuniant = true);
+                            },
+                    ),
+                  ),
+                  const SizedBox(width: SignmeSpacing.sm),
+                  Expanded(
+                    child: _SexeChip(
+                      label: 'Non communiant',
+                      selected: _estCommuniant == false,
+                      onTap: isSaving
+                          ? null
+                          : () {
+                              _markDirty();
+                              setState(() => _estCommuniant = false);
+                            },
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: SignmeSpacing.lg),
             ],
@@ -314,6 +370,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
                         : () {
                             _markDirty();
                             setState(() => _sexe = 'homme');
+                            if (_matriculeAutoMode) _fetchNextMatricule();
                           },
                   ),
                 ),
@@ -327,11 +384,120 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
                         : () {
                             _markDirty();
                             setState(() => _sexe = 'femme');
+                            if (_matriculeAutoMode) _fetchNextMatricule();
                           },
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: SignmeSpacing.lg),
+
+            // ── Identifiant (matricule) ──────────────────────────────────
+            Text(
+              'Identifiant',
+              style: SignmeTypography.inputLabel.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: SignmeSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: _SexeChip(
+                    label: 'Génération automatique',
+                    selected: _matriculeAutoMode,
+                    onTap: isSaving
+                        ? null
+                        : () {
+                            _markDirty();
+                            setState(() => _matriculeAutoMode = true);
+                            _fetchNextMatricule();
+                          },
+                  ),
+                ),
+                const SizedBox(width: SignmeSpacing.sm),
+                Expanded(
+                  child: _SexeChip(
+                    label: 'Saisie manuelle',
+                    selected: !_matriculeAutoMode,
+                    onTap: isSaving
+                        ? null
+                        : () {
+                            _markDirty();
+                            setState(() => _matriculeAutoMode = false);
+                          },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: SignmeSpacing.sm),
+            if (_sexe == null)
+              Text(
+                'Sélectionnez le sexe pour définir l\'identifiant.',
+                style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray),
+              )
+            else if (_matriculeAutoMode)
+              Container(
+                padding: SignmeSpacing.inputPadding,
+                decoration: BoxDecoration(
+                  color: SignmeColors.background,
+                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                  border: Border.all(color: SignmeColors.lightGrayBorder),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _isFetchingMatricule
+                            ? 'Génération en cours…'
+                            : (_matriculeCtrl.text.isEmpty
+                                ? '—'
+                                : _matriculeCtrl.text),
+                        style: SignmeTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: _isFetchingMatricule
+                              ? SignmeColors.mediumGray
+                              : SignmeColors.black,
+                        ),
+                      ),
+                    ),
+                    if (_isFetchingMatricule)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      IconButton(
+                        icon: const Icon(Icons.refresh_rounded, size: 20),
+                        onPressed: isSaving ? null : _fetchNextMatricule,
+                        tooltip: 'Régénérer',
+                      ),
+                  ],
+                ),
+              )
+            else
+              SignmeTextInput(
+                label: '',
+                hint: 'Ex. H011 ou F112',
+                controller: _matriculeCtrl,
+                enabled: !isSaving,
+                inputFormatters: [
+                  _UpperCaseTextFormatter(),
+                  FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
+                  LengthLimitingTextInputFormatter(4),
+                ],
+                validator: (v) {
+                  final value = v?.trim() ?? '';
+                  if (value.isEmpty) return 'Identifiant requis';
+                  if (!RegExp(r'^[HF]\d{3}$').hasMatch(value)) {
+                    return 'Format attendu : H001-H999 ou F001-F999';
+                  }
+                  final expectedPrefix = _sexe == 'femme' ? 'F' : 'H';
+                  if (value[0] != expectedPrefix) {
+                    return 'Doit commencer par "$expectedPrefix" pour ce sexe';
+                  }
+                  return null;
+                },
+              ),
             const SizedBox(height: SignmeSpacing.lg),
 
             // ── Date de naissance ────────────────────────────────────────
@@ -537,6 +703,24 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
       );
       return;
     }
+    if (_matriculeCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sélectionnez le sexe et l\'identifiant du membre'),
+          backgroundColor: SignmeColors.error,
+        ),
+      );
+      return;
+    }
+    if (_selectedRole == 'paroissien' && _estCommuniant == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sélectionnez le statut communiant/non communiant'),
+          backgroundColor: SignmeColors.error,
+        ),
+      );
+      return;
+    }
 
     final dateNaissanceIso = _dateNaissance != null
         ? '${_dateNaissance!.year.toString().padLeft(4, '0')}-'
@@ -554,6 +738,10 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
       if (_professionCtrl.text.trim().isNotEmpty)
         'profession': _professionCtrl.text.trim(),
       if (_sexe != null) 'sexe': _sexe,
+      if (_matriculeCtrl.text.trim().isNotEmpty)
+        'matricule': _matriculeCtrl.text.trim(),
+      if (_selectedRole == 'paroissien' && _estCommuniant != null)
+        'estCommuniant': _estCommuniant,
       if (dateNaissanceIso != null) 'dateNaissance': dateNaissanceIso,
       if (_originaireDe != null) 'originaireDe': _originaireDe,
       if (_quartier != null) 'quartierId': _quartier!.id,
@@ -610,6 +798,29 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     }
   }
 
+  Future<void> _fetchNextMatricule() async {
+    if (_sexe == null) return;
+    setState(() => _isFetchingMatricule = true);
+    try {
+      final matricule =
+          await ref.read(usersRemoteDataSourceProvider).nextMatricule(_sexe!);
+      if (!mounted) return;
+      setState(() {
+        _matriculeCtrl.text = matricule;
+        _isFetchingMatricule = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isFetchingMatricule = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e is AppException ? e.message : messageFromError(e)),
+          backgroundColor: SignmeColors.error,
+        ),
+      );
+    }
+  }
+
   Future<void> _pickPhoto(BuildContext context) async {
     try {
       final file = await ProfileImagePicker.pick(context);
@@ -623,6 +834,16 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
         SnackBar(content: Text(e.message), backgroundColor: SignmeColors.error),
       );
     }
+  }
+}
+
+class _UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
 

@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:dio/dio.dart';
 import '../config/app_environment.dart';
+import '../storage/secure_storage.dart';
 import '../utils/app_logger.dart';
 
 /// Événement reçu depuis le WebSocket Reverb.
@@ -32,15 +34,17 @@ class WsEvent {
 ///
 /// Utilisation via [WsProvider] dans Riverpod.
 class WsClient {
-  WsClient();
+  WsClient(this._storage);
+
+  final SecureStorage _storage;
 
   WebSocket? _socket;
   Timer? _pingTimer;
   Timer? _reconnectTimer;
   bool _intentionalDisconnect = false;
   int _reconnectAttempts = 0;
+  final Random _random = Random();
 
-  String? _bearerToken;
   int? _churchId;
   int? _userId;
   String? _socketId;
@@ -57,11 +61,9 @@ class WsClient {
 
   /// Connecte le client au serveur Reverb.
   Future<void> connect({
-    required String bearerToken,
     required int churchId,
     required int userId,
   }) async {
-    _bearerToken = bearerToken;
     _churchId   = churchId;
     _userId     = userId;
     _intentionalDisconnect = false;
@@ -179,13 +181,22 @@ class WsClient {
   Future<void> _subscribePrivate(String channelName, String socketId) async {
     try {
       // ── Authentification via /broadcasting/auth ─────────────────────
+      // Le token est relu depuis le stockage sécurisé à CHAQUE abonnement
+      // (connexion initiale ET chaque reconnexion), jamais mis en cache ici :
+      // une connexion WS reste ouverte des heures, et le token d'accès aura
+      // très probablement été rafraîchi entre-temps par l'intercepteur HTTP
+      // (dio_client.dart) — utiliser un token figé à la connexion initiale
+      // ferait échouer silencieusement la ré-authentification du canal à la
+      // moindre reconnexion (coupure réseau, veille de l'app…) après un
+      // rafraîchissement, coupant le temps réel jusqu'au redémarrage de l'app.
+      final token = await _storage.getAccessToken();
       final base = AppEnvironment.apiBaseUrl.replaceAll('/api/v1', '');
       final dio  = Dio();
       final resp = await dio.post(
         '$base/broadcasting/auth',
         data: {'socket_id': socketId, 'channel_name': channelName},
         options: Options(headers: {
-          'Authorization': 'Bearer $_bearerToken',
+          'Authorization': 'Bearer $token',
           'Accept': 'application/json',
         }),
       );
@@ -211,16 +222,29 @@ class WsClient {
 
   void _scheduleReconnect() {
     if (_intentionalDisconnect) return;
+    // onError ET onDone peuvent tous les deux se déclencher pour la MÊME
+    // coupure (dart:io ferme le stream juste après une erreur) : sans cette
+    // garde, chacun incrémentait _reconnectAttempts et reprogrammait un
+    // timer, faisant grimper le backoff deux fois plus vite que prévu pour
+    // un seul incident réel.
+    if (_reconnectTimer?.isActive ?? false) return;
 
     _reconnectAttempts++;
+    final baseSeconds = (_reconnectAttempts * 2).clamp(2, 60);
+    // Jitter aléatoire (±30 %) : à l'échelle de centaines/milliers de
+    // clients connectés, un backoff purement déterministe fait retenter TOUT
+    // le monde à la même seconde après un incident serveur (redémarrage de
+    // Reverb, coupure réseau globale) — un effet "thundering herd" qui peut
+    // ré-écrouler le serveur juste au moment où il redevient disponible.
+    final jitterRangeMs = (baseSeconds * 300).round();
+    final jitterMs = _random.nextInt(jitterRangeMs * 2 + 1) - jitterRangeMs;
     final delay = Duration(
-      seconds: (_reconnectAttempts * 2).clamp(2, 60),
+      milliseconds: (baseSeconds * 1000 + jitterMs).clamp(1000, 90000),
     );
 
-    AppLogger.debug('[WS] Reconnexion dans ${delay.inSeconds}s '
+    AppLogger.debug('[WS] Reconnexion dans ${delay.inMilliseconds}ms '
         '(tentative $_reconnectAttempts)…');
 
-    _reconnectTimer?.cancel();
     _reconnectTimer = Timer(delay, () {
       if (!_intentionalDisconnect) _connect();
     });

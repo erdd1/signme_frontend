@@ -62,7 +62,14 @@ class SignmePrimaryButton extends StatelessWidget {
                         Icon(icon, size: SignmeSpacing.iconMd, color: SignmeColors.onPrimary),
                         const SizedBox(width: SignmeSpacing.sm),
                       ],
-                      Text(label, style: SignmeTypography.buttonText),
+                      Flexible(
+                        child: Text(
+                          label,
+                          style: SignmeTypography.buttonText,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
                     ],
                   ),
           ),
@@ -127,7 +134,14 @@ class SignmeSecondaryButton extends StatelessWidget {
                     Icon(icon, size: SignmeSpacing.iconMd),
                     const SizedBox(width: SignmeSpacing.sm),
                   ],
-                  Text(label, style: SignmeTypography.titleLarge.copyWith(color: buttonColor, fontWeight: FontWeight.bold)),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: SignmeTypography.titleLarge.copyWith(color: buttonColor, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
                 ],
               ),
       ),
@@ -173,9 +187,13 @@ class SignmeTextButton extends StatelessWidget {
                 Icon(icon, size: SignmeSpacing.iconSm, color: textColor),
                 const SizedBox(width: SignmeSpacing.xs),
               ],
-              Text(
-                label,
-                style: SignmeTypography.titleMedium.copyWith(color: textColor, fontWeight: FontWeight.bold),
+              Flexible(
+                child: Text(
+                  label,
+                  style: SignmeTypography.titleMedium.copyWith(color: textColor, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
               ),
             ],
           ),

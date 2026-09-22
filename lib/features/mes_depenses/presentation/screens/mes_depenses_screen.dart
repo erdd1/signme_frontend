@@ -21,7 +21,6 @@ class MesDepensesScreen extends ConsumerWidget {
     final month = ref.watch(mesDepensesMonthProvider);
     final statsAsync = ref.watch(mesDepensesStatsProvider);
     final listAsync = ref.watch(mesDepensesListProvider);
-    final currentYear = DateTime.now().year;
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
@@ -33,46 +32,66 @@ class MesDepensesScreen extends ConsumerWidget {
             ref.read(mesDepensesListProvider.notifier).refresh(),
           ]);
         },
-        child: SingleChildScrollView(
+        // CustomScrollView + SliverList : seules les cartes visibles sont
+        // construites, quel que soit le nombre de contributions accumulées.
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          padding: const EdgeInsets.fromLTRB(
-            SignmeSpacing.lg,
-            SignmeSpacing.lg,
-            SignmeSpacing.lg,
-            120,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _StatsHeader(statsAsync: statsAsync),
-              const SizedBox(height: SignmeSpacing.xl),
-              SignmeYearSelector(
-                year: year,
-                maxYear: currentYear, // Impossible de sélectionner une année future.
-                onPrevious: () => ref.read(mesDepensesYearProvider.notifier).state = year - 1,
-                onNext: () => ref.read(mesDepensesYearProvider.notifier).state = year + 1,
-              ),
-              const SizedBox(height: SignmeSpacing.md),
-              _MonthFilterRow(selectedMonth: month),
-              const SizedBox(height: SignmeSpacing.lg),
-              SignmeAsyncValue<List<ContributionPersoEntity>>(
-                value: listAsync,
-                onRetry: () => ref.read(mesDepensesListProvider.notifier).refresh(),
-                emptyTitle: 'Aucune contribution',
-                emptyMessage: 'Vos contributions aux événements apparaîtront ici.',
-                isEmpty: (list) => list.isEmpty,
-                fitViewport: false,
-                data: (contributions) => Column(
-                  children: contributions
-                      .map((c) => Padding(
-                            padding: const EdgeInsets.only(bottom: SignmeSpacing.md),
-                            child: ContributionPersoCard(contribution: c),
-                          ))
-                      .toList(),
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.lg, SignmeSpacing.lg, 0),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _StatsHeader(statsAsync: statsAsync),
+                    const SizedBox(height: SignmeSpacing.xl),
+                    SignmeYearSelector(
+                      year: year,
+                      // Bornes strictes : ni recul illimité ni avancée illimitée,
+                      // même fenêtre glissante que historique_personnel_screen.
+                      minYear: DateTime.now().year,
+                      maxYear: DateTime.now().year + 4,
+                      onPrevious: () => ref.read(mesDepensesYearProvider.notifier).state = year - 1,
+                      onNext: () => ref.read(mesDepensesYearProvider.notifier).state = year + 1,
+                    ),
+                    const SizedBox(height: SignmeSpacing.md),
+                    _MonthFilterRow(selectedMonth: month),
+                    const SizedBox(height: SignmeSpacing.lg),
+                    Text(
+                      'Historique de mes contributions aux événements',
+                      style: SignmeTypography.labelLarge.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: SignmeColors.primaryDark,
+                      ),
+                    ),
+                    const SizedBox(height: SignmeSpacing.md),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            ...SignmeAsyncValue.buildSlivers<List<ContributionPersoEntity>>(
+              value: listAsync,
+              onRetry: () => ref.read(mesDepensesListProvider.notifier).refresh(),
+              emptyTitle: 'Aucune contribution',
+              emptyMessage: 'Vos contributions aux événements apparaîtront ici.',
+              isEmpty: (list) => list.isEmpty,
+              data: (contributions) => [
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: SignmeSpacing.md),
+                        child: ContributionPersoCard(contribution: contributions[index]),
+                      ),
+                      childCount: contributions.length,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          ],
         ),
       ),
     );
@@ -150,6 +169,26 @@ class _StatsHeader extends StatelessWidget {
               Expanded(child: _statColumn(Icons.bar_chart_rounded, 'Cette année', stats?.cetteAnnee ?? 0)),
             ],
           ),
+          const SizedBox(height: SignmeSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: _statColumn(
+                  Icons.edit_note_rounded,
+                  'Offrande signatures jusqu\'à présent',
+                  stats?.totalSignatures ?? 0,
+                ),
+              ),
+              Container(width: 1, height: 32, color: Colors.white24),
+              Expanded(
+                child: _statColumn(
+                  Icons.event_rounded,
+                  'Offrande événements jusqu\'à présent',
+                  stats?.totalEvenements ?? 0,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -165,7 +204,12 @@ class _StatsHeader extends StatelessWidget {
             children: [
               Icon(icon, size: 12, color: Colors.white.withOpacity(0.7)),
               const SizedBox(width: 4),
-              Text(label, style: SignmeTypography.labelSmall.copyWith(color: Colors.white.withOpacity(0.7))),
+              Expanded(
+                child: Text(
+                  label,
+                  style: SignmeTypography.labelSmall.copyWith(color: Colors.white.withOpacity(0.7)),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 2),

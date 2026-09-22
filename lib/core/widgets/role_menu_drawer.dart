@@ -9,6 +9,7 @@ import '../router/app_router.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/badge/domain/entities/badge_count_entity.dart';
 import '../../features/badge/presentation/providers/badge_provider.dart';
+import '../../features/celebrations/presentation/providers/celebrations_provider.dart';
 import 'app_snackbar.dart';
 import 'badge_dot.dart';
 
@@ -120,11 +121,35 @@ class RoleMenuDrawer extends ConsumerWidget {
                     onTap: () => _navigate(context, AppRoutes.contributionsEvenement),
                   ),
 
+                // Sorties financières (pasteur, trésorier)
+                if (AppPermissions.canViewSortiesFinancieres(user))
+                  _MenuItem(
+                    iconPath: SignmeAssets.finances,
+                    label: 'Sorties financières',
+                    onTap: () => _navigate(context, AppRoutes.sortiesFinancieres),
+                  ),
+
+                // Retraits vers Orange Money/MTN Mobile Money (pasteur, trésorier)
+                if (AppPermissions.canViewRetraits(user))
+                  _MenuItem(
+                    icon: Icons.account_balance_wallet_rounded,
+                    label: 'Retraits',
+                    onTap: () => _navigate(context, AppRoutes.retraits),
+                  ),
+
                 // Mes dépenses (tous rôles)
                 _MenuItem(
                   iconPath: SignmeAssets.finances,
                   label: 'Mes dépenses',
                   onTap: () => _navigate(context, AppRoutes.mesDepenses),
+                ),
+
+                // Célébrations — anniversaire + occasions calendaires (tous rôles)
+                _MenuItem(
+                  icon: Icons.celebration_rounded,
+                  label: 'Célébrations',
+                  badgeCount: ref.watch(unreadCelebrationsCountProvider),
+                  onTap: () => _navigate(context, AppRoutes.celebrations),
                 ),
 
                 // Rapport Secrétaire
@@ -226,8 +251,17 @@ class RoleMenuDrawer extends ConsumerWidget {
   }
 
   void _navigate(BuildContext context, String route) {
+    // Le drawer Material joue sa propre animation de fermeture (~246ms,
+    // Flutter DrawerController) qui reste au-dessus du contenu — si on
+    // navigue en même temps, la transition vers la destination démarre EN
+    // PARALLÈLE de cette fermeture : les deux animations tournent en même
+    // temps et les éléments du menu restent visiblement superposés à
+    // l'écran de destination pendant qu'il apparaît. On capture le router
+    // AVANT de fermer (le contexte du drawer est démonté une fois fermé) et
+    // on attend la fin de la fermeture avant de lancer la navigation.
+    final router = GoRouter.of(context);
     Scaffold.of(context).closeDrawer();
-    context.go(route);
+    Future.delayed(const Duration(milliseconds: 250), () => router.go(route));
   }
 
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {
@@ -272,15 +306,20 @@ class RoleMenuDrawer extends ConsumerWidget {
 
 class _MenuItem extends StatelessWidget {
   const _MenuItem({
-    required this.iconPath,
+    this.iconPath,
+    this.icon,
     required this.label,
     required this.onTap,
     this.iconColor = SignmeColors.primaryLight,
     this.labelColor = SignmeColors.black,
     this.badgeCount = 0,
-  });
+  }) : assert(iconPath != null || icon != null, 'Fournir iconPath (asset) ou icon (Material).');
 
-  final String iconPath;
+  /// Asset PNG monochrome teinté via [iconColor] — convention historique.
+  final String? iconPath;
+
+  /// Alternative Material Icons, pour un nouvel item sans asset dédié.
+  final IconData? icon;
   final String label;
   final VoidCallback onTap;
   final Color iconColor;
@@ -309,8 +348,9 @@ class _MenuItem extends StatelessWidget {
                   borderRadius:
                       BorderRadius.circular(SignmeSpacing.radiusMd),
                 ),
-                child: Image.asset(iconPath,
-                    color: iconColor, fit: BoxFit.contain),
+                child: icon != null
+                    ? Icon(icon, color: iconColor, size: 20)
+                    : Image.asset(iconPath!, color: iconColor, fit: BoxFit.contain),
               ),
             ),
             const SizedBox(width: 16),

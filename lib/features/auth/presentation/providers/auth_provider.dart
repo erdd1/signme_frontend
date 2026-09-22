@@ -131,10 +131,29 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = state.copyWith(isInitialized: true);
       },
       (auth) async {
+        if (auth != null) await _guardCacheForUser(auth.user.id);
         state = state.copyWith(auth: auth, isInitialized: true);
         if (auth != null) await refreshProfile();
       },
     );
+  }
+
+  /// Vide le cache Isar si l'utilisateur qui s'authentifie n'est PAS celui
+  /// dont les données sont actuellement en cache sur cet appareil — sinon
+  /// les données d'un compte précédent (potentiellement d'une AUTRE église)
+  /// restent visibles jusqu'au premier rafraîchissement réseau de chaque
+  /// écran, ce qui est visible et grave dans une app multi-églises. Couvre
+  /// aussi le cas d'un logout jamais réellement exécuté (app tuée/crashée).
+  Future<void> _guardCacheForUser(int userId) async {
+    try {
+      final lastId = await _storage.getLastCachedUserId();
+      if (lastId != null && lastId != userId) {
+        await IsarService.clearAll();
+      }
+      await _storage.setLastCachedUserId(userId);
+    } catch (e) {
+      AppLogger.error('Échec de la vérification du cache multi-comptes', e);
+    }
   }
 
   Future<bool> login({
@@ -142,6 +161,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String password,
     bool rememberMe = false,
   }) async {
+    // Le bouton "Se connecter" se désactive via `isLoading`, mais seulement
+    // au prochain frame — un double-tap très rapide peut encore atteindre
+    // ce callback avant ce rendu. Garde de ré-entrance ici, à la source :
+    // deux requêtes de connexion simultanées peuvent déclencher un blocage
+    // par rate-limiting que l'utilisateur n'a lui-même pas vraiment demandé.
+    if (state.isLoading) return false;
+
     state = state.copyWith(
       isLoading: true,
       clearFailure: true,
@@ -158,6 +184,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return false;
       },
       (auth) async {
+        await _guardCacheForUser(auth.user.id);
         state = state.copyWith(isLoading: false, auth: auth);
         await refreshProfile();
         return true;
@@ -168,6 +195,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Connexion via Google Sign-In. Retourne `false` sans poser d'erreur
   /// visible si l'utilisateur annule simplement la sélection de compte.
   Future<bool> loginWithGoogle() async {
+    // Même garde de ré-entrance que login() ci-dessus.
+    if (state.isLoading) return false;
+
     state = state.copyWith(
       isLoading: true,
       clearFailure: true,
@@ -204,6 +234,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return false;
       },
       (auth) async {
+        await _guardCacheForUser(auth.user.id);
         state = state.copyWith(isLoading: false, auth: auth);
         await refreshProfile();
         return true;
@@ -262,8 +293,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       try {
         await _googleAuth.signOut();
       } catch (_) {}
-      // Nettoyer le cache Isar local (Offline-First)
-      await IsarService.clearAll();
+      // Nettoyer le cache Isar local (Offline-First) — jamais laisser un
+      // échec d'écriture locale (disque plein, corruption) bloquer la
+      // déconnexion : l'utilisateur doit toujours pouvoir se déconnecter.
+      try {
+        await IsarService.clearAll();
+      } catch (e) {
+        AppLogger.error('Échec du nettoyage du cache local à la déconnexion', e);
+      }
       // Réinitialiser l'état → GoRouter redirige vers /login
       state = const AuthState(isInitialized: true, auth: null);
     }

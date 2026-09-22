@@ -61,11 +61,13 @@ class _CreateEditEvenementScreenState extends ConsumerState<CreateEditEvenementS
   Future<void> _pickImage() async {
     try {
       final file = await EvenementImagePicker.pick(context);
+      if (!mounted) return;
       if (file != null) {
         _markDirty();
         setState(() => _image = file);
       }
     } on EvenementImageTooLargeException catch (e) {
+      if (!mounted) return;
       setState(() => _error = e.message);
     }
   }
@@ -78,7 +80,7 @@ class _CreateEditEvenementScreenState extends ConsumerState<CreateEditEvenementS
       firstDate: isDebut ? now : _dateDebut,
       lastDate: DateTime(now.year + 5),
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
     _markDirty();
     setState(() {
       if (isDebut) {
@@ -98,7 +100,7 @@ class _CreateEditEvenementScreenState extends ConsumerState<CreateEditEvenementS
     );
     if (date == null || !mounted) return;
     final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-    if (time == null) return;
+    if (time == null || !mounted) return;
     _markDirty();
     setState(() {
       _scheduledPublishAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
@@ -141,7 +143,7 @@ class _CreateEditEvenementScreenState extends ConsumerState<CreateEditEvenementS
         if (context.canPop()) context.pop();
       }
     } catch (e) {
-      setState(() => _error = 'Erreur lors de la création de l\'événement.');
+      if (mounted) setState(() => _error = 'Erreur lors de la création de l\'événement.');
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

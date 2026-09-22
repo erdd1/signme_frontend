@@ -37,12 +37,19 @@ class CacheFirstListNotifier<T> extends StateNotifier<AsyncValue<List<T>>> {
   /// Rafraîchit depuis le réseau (si en ligne) et persiste en cache local.
   /// Appelé à chaque ouverture d'écran / pull-to-refresh — ne marque jamais
   /// un état "loading" si des données sont déjà affichées.
+  ///
+  /// Affiche ensuite le cache local COMPLET (pas seulement le lot renvoyé
+  /// par [_fetchAndCache]) : [_fetchAndCache] ne fait qu'upserter, il ne
+  /// représente jamais la totalité des données déjà en cache si la table a
+  /// grossi au-delà d'une page.
   Future<void> refresh() async {
     if (!await _isOnline()) return;
 
     try {
       final items = await _fetchAndCache();
-      if (mounted) state = AsyncData(items);
+      if (!mounted) return;
+      final freshCache = await _readCache();
+      state = AsyncData((freshCache != null && freshCache.isNotEmpty) ? freshCache : items);
     } catch (e, st) {
       if (mounted && !state.hasValue) {
         final cached = await _readCache();

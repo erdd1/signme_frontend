@@ -1,10 +1,13 @@
-/// Statistiques "Mes dépenses" — total à vie, ce mois, cette année, et total
-/// sur la période (mois/année) actuellement sélectionnée par le filtre.
+/// Statistiques "Mes dépenses" — total à vie, ce mois, cette année, total sur
+/// la période (mois/année) actuellement sélectionnée par le filtre, et
+/// répartition à vie entre offrandes signatures et offrandes événements.
 class MesDepensesStatsEntity {
   const MesDepensesStatsEntity({
     this.totalDonne = 0,
     this.ceMois = 0,
     this.cetteAnnee = 0,
+    this.totalEvenements = 0,
+    this.totalSignatures = 0,
     this.anneeSelectionnee,
     this.moisSelectionne,
     this.totalPeriodeSelectionnee = 0,
@@ -13,6 +16,14 @@ class MesDepensesStatsEntity {
   final int totalDonne;
   final int ceMois;
   final int cetteAnnee;
+
+  /// Total à vie des offrandes liées aux événements (frais inclus).
+  final int totalEvenements;
+
+  /// Total à vie des offrandes liées aux signatures, présentiel et à
+  /// distance confondues (frais inclus).
+  final int totalSignatures;
+
   final int? anneeSelectionnee;
   final int? moisSelectionne;
   final int totalPeriodeSelectionnee;
@@ -25,6 +36,8 @@ class MesDepensesStatsEntity {
       totalDonne: asInt(json['totalDonne']),
       ceMois: asInt(json['ceMois']),
       cetteAnnee: asInt(json['cetteAnnee']),
+      totalEvenements: asInt(json['totalEvenements']),
+      totalSignatures: asInt(json['totalSignatures']),
       anneeSelectionnee: asIntOrNull(periode?['annee']),
       moisSelectionne: asIntOrNull(periode?['mois']),
       totalPeriodeSelectionnee: asInt(periode?['total']),
@@ -35,6 +48,8 @@ class MesDepensesStatsEntity {
         'totalDonne': totalDonne,
         'ceMois': ceMois,
         'cetteAnnee': cetteAnnee,
+        'totalEvenements': totalEvenements,
+        'totalSignatures': totalSignatures,
         'periodeSelectionnee': {
           'annee': anneeSelectionnee,
           'mois': moisSelectionne,

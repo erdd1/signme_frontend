@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -11,43 +15,87 @@ import 'core/deep_link/deep_link_listener.dart';
 import 'core/local/isar_service.dart';
 import 'core/notifications/push_notification_listener.dart';
 import 'core/notifications/push_notification_service.dart';
+import 'core/utils/app_logger.dart';
+import 'core/widgets/app_error_fallback.dart';
 import 'features/auth/presentation/widgets/session_expired_listener.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_strings.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  // ── Filet de sécurité global ─────────────────────────────────────────────
+  // runZonedGuarded capte toute exception ASYNCHRONE non interceptée
+  // ailleurs (Future/Timer/Stream sans try/catch) — sans lui, une telle
+  // erreur remonte à la zone racine et peut faire planter l'app en release.
+  // FlutterError.onError capte les erreurs du FRAMEWORK (build/layout/paint)
+  // — Flutter les affiche déjà sans planter l'app entière, on ajoute juste
+  // la journalisation. PlatformDispatcher.onError capte le reste (callbacks
+  // de plateforme hors zone Flutter). Dans les trois cas : on journalise et
+  // l'app continue, elle ne s'arrête jamais sur une erreur imprévue.
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Garde-fou publication (voir AppEnvironment.assertValidForRelease) ────
-  AppEnvironment.assertValidForRelease();
+    // Écran de secours si un widget précis échoue à se construire — jamais
+    // l'écran technique gris/rouge par défaut de Flutter devant un vrai
+    // utilisateur, surtout en release.
+    ErrorWidget.builder = (FlutterErrorDetails details) => AppErrorFallback(details: details);
 
-  // ── Notifications push (Firebase Cloud Messaging) ────────────────────────
-  await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    // ── Garde-fou publication (voir AppEnvironment.assertValidForRelease) ──
+    AppEnvironment.assertValidForRelease();
 
-  // ── Base de données locale (Offline-First) ───────────────────────────────
-  await IsarService.init();
+    // ── Notifications push (Firebase Cloud Messaging) ──────────────────────
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-  // ── Locale française ────────────────────────────────────────────────────
-  await initializeDateFormatting('fr_FR', null);
-  timeago.setLocaleMessages('fr', timeago.FrMessages());
+    // Remontée automatique des crashs — désactivée en debug (sessions de
+    // développement/hot-reload) pour ne pas polluer le tableau de bord avec
+    // du bruit ; active en profile/release, là où de vrais utilisateurs
+    // sont exposés à un éventuel bug.
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
 
-  // ── Orientation portrait uniquement ─────────────────────────────────────
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      AppLogger.error('Erreur Flutter non interceptée', details.exception);
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    };
 
-  // ── Barre de statut transparente ─────────────────────────────────────────
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor:           Colors.transparent,
-    statusBarIconBrightness:  Brightness.dark,
-    systemNavigationBarColor: Colors.white,
-    systemNavigationBarIconBrightness: Brightness.dark,
-  ));
+    PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+      AppLogger.error('Erreur plateforme non interceptée', error);
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true; // gérée : n'interrompt pas l'app
+    };
 
-  runApp(const ProviderScope(child: SignMeApp()));
+    // ── Base de données locale (Offline-First) ─────────────────────────────
+    await IsarService.init();
+
+    // ── Locale française ────────────────────────────────────────────────────
+    await initializeDateFormatting('fr_FR', null);
+    timeago.setLocaleMessages('fr', timeago.FrMessages());
+
+    // ── Orientation portrait uniquement ───────────────────────────────────
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
+    // ── Barre de statut transparente ───────────────────────────────────────
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor:           Colors.transparent,
+      statusBarIconBrightness:  Brightness.dark,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ));
+
+    runApp(const ProviderScope(child: SignMeApp()));
+  }, (error, stack) {
+    AppLogger.error('Erreur non interceptée (zone racine)', error);
+    // Try/catch défensif : si l'erreur survient avant que Firebase ait fini
+    // de s'initialiser, Crashlytics n'est pas encore utilisable — ne jamais
+    // faire planter le gestionnaire d'erreurs lui-même.
+    try {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    } catch (_) {}
+  });
 }
 
 class SignMeApp extends ConsumerWidget {

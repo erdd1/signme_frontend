@@ -22,6 +22,9 @@ class UserModel extends UserEntity {
     super.dateConfirmation,
     super.lieuConfirmation,
     super.sexe,
+    super.matricule,
+    super.estCommuniant,
+    super.communiantDepuis,
     super.dateNaissance,
     super.quartier,
     super.ville,
@@ -45,7 +48,7 @@ class UserModel extends UserEntity {
     final groupesJson = json['groupes'];
 
     return UserModel(
-      id: (json['id'] as num).toInt(),
+      id: (json['id'] as num?)?.toInt() ?? 0,
       nom: json['nom']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       role: json['role']?.toString() ?? '',
@@ -69,6 +72,9 @@ class UserModel extends UserEntity {
       lieuConfirmation: json['lieu_confirmation']?.toString() ??
           json['lieuConfirmation']?.toString(),
       sexe: json['sexe']?.toString(),
+      matricule: json['matricule']?.toString(),
+      estCommuniant: json['estCommuniant'] as bool? ?? true,
+      communiantDepuis: json['communiantDepuis']?.toString(),
       dateNaissance: json['dateNaissance']?.toString() ??
           json['date_naissance']?.toString(),
       quartier: quartierJson is Map<String, dynamic>
@@ -106,6 +112,9 @@ class UserModel extends UserEntity {
         'date_confirmation': dateConfirmation,
         'lieu_confirmation': lieuConfirmation,
         'sexe': sexe,
+        'matricule': matricule,
+        'estCommuniant': estCommuniant,
+        'communiantDepuis': communiantDepuis,
         'dateNaissance': dateNaissance,
         'quartier': quartier != null
             ? {'id': quartier!.id, 'nom': quartier!.nom}
@@ -141,6 +150,9 @@ class UserModel extends UserEntity {
       dateConfirmation: entity.dateConfirmation,
       lieuConfirmation: entity.lieuConfirmation,
       sexe: entity.sexe,
+      matricule: entity.matricule,
+      estCommuniant: entity.estCommuniant,
+      communiantDepuis: entity.communiantDepuis,
       dateNaissance: entity.dateNaissance,
       quartier: entity.quartier,
       ville: entity.ville,

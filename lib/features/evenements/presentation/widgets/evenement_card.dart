@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/widgets/full_screen_photo_viewer.dart';
 import '../../../../core/widgets/profile_photo_avatar.dart';
 import '../../../home/presentation/widgets/expandable_text_block.dart';
 import '../../domain/entities/evenement_entity.dart';
@@ -204,6 +205,8 @@ class _EvenementImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = evenement.imageUrl;
+    final hasPhoto = url != null && url.isNotEmpty;
+
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         topLeft: Radius.circular(SignmeSpacing.radiusLg),
@@ -212,12 +215,26 @@ class _EvenementImage extends StatelessWidget {
       child: SizedBox(
         height: 140,
         width: double.infinity,
-        child: (url != null && url.isNotEmpty)
-            ? CachedNetworkImage(
-                imageUrl: url,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(color: SignmeColors.accentSky),
-                errorWidget: (_, __, ___) => _defaultImage(),
+        child: hasPhoto
+            ? GestureDetector(
+                // Ouvre la photo en plein écran (zoom, comme sur les
+                // réseaux sociaux) — seulement si l'événement en a une.
+                onTap: () => FullScreenPhotoViewer.show(
+                  context,
+                  images: [url],
+                  initialIndex: 0,
+                ),
+                child: CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.cover,
+                  // Décodage borné à une largeur d'affichage réaliste (carte
+                  // pleine largeur) plutôt que la résolution native de la
+                  // photo — évite un décodage coûteux répété dans un fil qui
+                  // peut afficher des dizaines de cartes.
+                  memCacheWidth: 800,
+                  placeholder: (_, __) => Container(color: SignmeColors.accentSky),
+                  errorWidget: (_, __, ___) => _defaultImage(),
+                ),
               )
             : _defaultImage(),
       ),

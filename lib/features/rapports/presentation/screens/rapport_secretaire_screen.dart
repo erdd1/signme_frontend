@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/config/api_config.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/widgets/app_shimmer.dart';
 import '../../../../core/widgets/onboarding_section.dart';
+import '../../../../core/widgets/pdf_download_button.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/rapport_secretaire_entity.dart';
 import '../../domain/entities/rapport_membre_entity.dart';
 import '../providers/rapports_provider.dart';
@@ -40,6 +44,9 @@ class _RapportSecretaireScreenState extends ConsumerState<RapportSecretaireScree
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(rapportSecretaireProvider);
+    final currentUser = ref.watch(authNotifierProvider).auth?.user;
+    final canDownload = currentUser != null &&
+        AppPermissions.canDownloadRapportSecretairePdf(currentUser);
 
     return SingleChildScrollView(
 
@@ -94,6 +101,18 @@ class _RapportSecretaireScreenState extends ConsumerState<RapportSecretaireScree
                 ),
 
                 _buildMonthSelector(),
+
+                const SizedBox(
+                  height: SignmeSpacing.lg,
+                ),
+
+                if (canDownload)
+                  PdfDownloadButton(
+                    label: 'Télécharger le rapport (PDF)',
+                    path: ApiConfig.rapportSecretairePdf,
+                    filename: 'rapport-secretaire-$_selectedMonth.pdf',
+                    queryParameters: {'month': _selectedMonth},
+                  ),
 
                 const SizedBox(
                   height: SignmeSpacing.xl,

@@ -21,7 +21,7 @@ class DeepLinkListener extends ConsumerStatefulWidget {
 class _DeepLinkListenerState extends ConsumerState<DeepLinkListener> {
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSub;
-  String? _pendingLocation;
+  DeepLinkTarget? _pendingTarget;
 
   @override
   void initState() {
@@ -40,23 +40,31 @@ class _DeepLinkListenerState extends ConsumerState<DeepLinkListener> {
   }
 
   void _queueNavigation(Uri uri) {
-    final location = DeepLinkParser.toGoRouteLocation(uri);
-    if (location == null) return;
-    _pendingLocation = location;
-    ref.read(pendingDeepLinkProvider.notifier).state = location;
+    final target = DeepLinkParser.resolve(uri);
+    if (target == null) return;
+    _pendingTarget = target;
+    ref.read(pendingDeepLinkProvider.notifier).state = target.location;
     _tryNavigate();
   }
 
   void _tryNavigate() {
-    final location = _pendingLocation;
-    if (location == null) return;
+    final target = _pendingTarget;
+    if (target == null) return;
     if (!ref.read(authNotifierProvider).isInitialized) return;
 
-    _pendingLocation = null;
+    // Un lien qui exige d'être connecté (ex: événement partagé) reste en
+    // attente tant que l'utilisateur n'a pas terminé sa connexion — la
+    // redirection post-login (voir app_router.dart) le consomme ensuite.
+    // Un lien de reset password s'ouvre lui immédiatement, connecté ou non.
+    if (target.requiresAuth && !ref.read(authNotifierProvider).isAuthenticated) {
+      return;
+    }
+
+    _pendingTarget = null;
     ref.read(pendingDeepLinkProvider.notifier).state = null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(routerProvider).go(location);
+      ref.read(routerProvider).go(target.location);
     });
   }
 

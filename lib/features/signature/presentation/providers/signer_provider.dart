@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../domain/entities/member_signature_status.dart';
 import '../../domain/repositories/signature_repository.dart';
@@ -161,6 +164,16 @@ class SignerNotifier extends StateNotifier<SignerState> {
   
   final SignatureRepository _repository;
   PaymentStatusPoller? _paymentPoller;
+  Timer? _memberSearchDebounce;
+
+  /// Incrémenté à chaque recherche serveur lancée — permet d'ignorer la
+  /// réponse d'une requête devenue obsolète (l'utilisateur a tapé un
+  /// caractère de plus avant qu'elle ne revienne) au lieu de l'appliquer.
+  /// Sans cette garde, une réponse lente pour "Je" arrivant après la réponse
+  /// rapide pour "Jean" écraserait la liste de suggestions avec un membre
+  /// qui ne correspond plus à la recherche en cours — critique ici puisque
+  /// cette liste sert à choisir QUI signe/paie.
+  int _memberSearchRequestId = 0;
 
   static final provider = StateNotifierProvider.autoDispose<SignerNotifier, SignerState>((ref) {
     final notifier = SignerNotifier(ref.watch(signatureRepositoryProvider));
@@ -169,6 +182,12 @@ class SignerNotifier extends StateNotifier<SignerState> {
   });
 
   void disposePoller() => _paymentPoller?.cancel();
+
+  @override
+  void dispose() {
+    _memberSearchDebounce?.cancel();
+    super.dispose();
+  }
 
   void toggleMonth(String month) {
     final list = List<String>.from(state.selectedMonths);
@@ -218,16 +237,32 @@ class SignerNotifier extends StateNotifier<SignerState> {
       return;
     }
     final q = query.toLowerCase();
-    state = state.copyWith(filteredMembers: state.members.where((m) => m.nom.toLowerCase().contains(q)).toList());
+    state = state.copyWith(filteredMembers: state.members.where((m) =>
+        m.nom.toLowerCase().contains(q) ||
+        (m.matricule?.toLowerCase().contains(q) ?? false)).toList());
   }
 
-  Future<void> searchMembers(String query) async {
+  /// Recherche serveur debouncée (350 ms) : évite de spammer l'API à chaque
+  /// frappe et, combiné à [_memberSearchRequestId], ignore toute réponse
+  /// devenue obsolète — voir le commentaire sur ce champ.
+  void searchMembers(String query) {
     if (query.trim().length < 2) return;
+    _memberSearchDebounce?.cancel();
+    _memberSearchDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => _performMemberSearch(query),
+    );
+  }
+
+  Future<void> _performMemberSearch(String query) async {
+    final requestId = ++_memberSearchRequestId;
     state = state.copyWith(isLoadingMembers: true);
     try {
       final results = await _repository.searchMembers(query);
+      if (requestId != _memberSearchRequestId) return;
       state = state.copyWith(filteredMembers: results, isLoadingMembers: false);
     } catch (e) {
+      if (requestId != _memberSearchRequestId) return;
       state = state.copyWith(isLoadingMembers: false);
     }
   }
@@ -255,10 +290,21 @@ class SignerNotifier extends StateNotifier<SignerState> {
           .map((e) => '$year-${(int.tryParse(e.key) ?? 0) + 1}'.padLeft(7, '0'))
           .toList();
       state = state.copyWith(alreadySignedMonths: signed);
-    } catch (_) {}
+    } catch (e) {
+      // Échec non bloquant : le backend refuse de toute façon une signature
+      // en doublon. Journalisé pour ne pas masquer un vrai problème réseau.
+      AppLogger.error('Échec du chargement des mois déjà signés', e);
+    }
   }
 
   Future<bool> initiateDistance() async {
+    // Le bouton se désactive via `isLoading`, mais seulement au prochain
+    // frame — un double-tap très rapide peut encore atteindre ce callback
+    // avant que ce rendu n'ait eu lieu. Garde de ré-entrance ici, à la
+    // source, plutôt que de compter uniquement sur l'UI : un paiement
+    // dupliqué n'est pas une simple gêne visuelle.
+    if (state.isLoading) return false;
+
     final isCard = state.paymentMethod == 'card';
 
     if (!isCard && !SignerState.isValidPhoneNumber(state.phone, state.operator_)) {
@@ -381,6 +427,8 @@ class SignerNotifier extends StateNotifier<SignerState> {
   }
 
   Future<bool> initiatePresentiel() async {
+    // Même garde de ré-entrance qu'initiateDistance() ci-dessus.
+    if (state.isLoading) return false;
     if (state.selectedUserId == null || state.selectedMonths.isEmpty) return false;
     state = state.copyWith(isLoading: true);
     try {

@@ -4,5 +4,14 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Universal Links : partage d'événement (WhatsApp, etc.). Nécessite
+	     que https://signmecy.org/.well-known/apple-app-site-association
+	     soit servi avec le vrai Team ID Apple Developer (voir
+	     config/services.php côté backend) avant que ça fonctionne réellement
+	     — sans ça, le lien s'ouvre simplement dans Safari sans casser l'app. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:signmecy.org</string>
+	</array>
 </dict>
 </plist>

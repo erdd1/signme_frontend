@@ -49,6 +49,7 @@ abstract final class ApiConfig {
   static const String contributionsEvenements = '/contributions-evenements';
   static const String contributionsEvenementsStats = '/contributions-evenements/stats';
   static const String contributionsEvenementsFilterEvents = '/contributions-evenements/filters/events';
+  static const String contributionsEvenementsExportPdf = '/contributions-evenements/export-pdf';
 
 
   // ── Mes contributions (module "Mes dépenses") ──────────────────────────────
@@ -60,12 +61,16 @@ abstract final class ApiConfig {
   static const String rapportMensuel = '/rapports/finances/mois';
   static const String rapportComparaison = '/rapports/comparaison';
   static const String rapportSecretaire = '/rapports/secretaire';
+  static const String rapportSecretairePdf = '/rapports/secretaire/pdf';
+  static const String rapportAnnuelPdf = '/rapports/finances/annuel/pdf';
 
   // ── Users ─────────────────────────────────────────────────────────────────
   static const String users = '/users';
   static String userPhoto(int userId) => '/users/$userId/photo';
   static const String usersPasteur = '/users/paroissiens';
   static const String usersStats = '/users/stats';
+  static const String usersNextMatricule = '/users/next-matricule';
+  static const String usersExportPdf = '/users/export-pdf';
 
   // ── Listes gérées (champs démographiques users) ────────────────────────────
   static const String groupes = '/groupes';
@@ -91,4 +96,9 @@ abstract final class ApiConfig {
 
   // ── Notifications push (FCM) ────────────────────────────────────────────────
   static const String deviceTokens = '/device-tokens';
+
+  // ── Célébrations (anniversaires + occasions calendaires) ───────────────────
+  static const String celebrations = '/celebrations';
+  static String celebrationDetail(String uuid) => '/celebrations/$uuid';
+  static String celebrationMarkRead(String uuid) => '/celebrations/$uuid/read';
 }

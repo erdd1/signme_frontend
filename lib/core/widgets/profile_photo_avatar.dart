@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import '../design_system/index.dart';
 import '../utils/photo_url_utils.dart';
@@ -188,11 +187,20 @@ class _NetworkCircleImageState extends State<_NetworkCircleImage> {
 
   @override
   Widget build(BuildContext context) {
+    // Décoder directement à la taille d'affichage réelle (en pixels physiques)
+    // plutôt que la pleine résolution de la photo (souvent plusieurs Mo) :
+    // évite un décodage coûteux répété à chaque avatar affiché, sur chaque
+    // écran — cause principale du délai perçu sur les icônes/avatars.
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final targetSize = (widget.size * devicePixelRatio).round();
+
     return Image.network(
       _currentUrl,
       fit: BoxFit.cover,
       width: widget.size,
       height: widget.size,
+      cacheWidth: targetSize,
+      cacheHeight: targetSize,
       gaplessPlayback: true,
       filterQuality: FilterQuality.medium,
       loadingBuilder: (context, child, loadingProgress) {

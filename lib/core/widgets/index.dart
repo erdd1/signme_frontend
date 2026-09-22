@@ -22,6 +22,7 @@
 
 // ── Buttons
 export 'app_button.dart';
+export 'pdf_download_button.dart';
 
 // ── Cards
 export 'signme_card.dart';
@@ -34,6 +35,7 @@ export 'signme_loaders.dart';
 export 'signme_async_content.dart';
 export 'profile_photo_avatar.dart';
 export 'profile_photo_viewer.dart';
+export 'full_screen_photo_viewer.dart';
 export 'signme_role_badge.dart';
 export 'signme_year_selector.dart';
 export 'app_shimmer.dart';
@@ -65,3 +67,4 @@ export 'signme_leading_icon_avatar.dart';
 
 // ── Formulaires : garde anti-perte de saisie
 export 'signme_unsaved_changes_guard.dart';
+export 'signme_anchored_action_menu.dart';

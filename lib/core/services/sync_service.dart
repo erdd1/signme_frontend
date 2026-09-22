@@ -17,11 +17,13 @@ import '../../features/rapports/data/datasources/rapport_secretaire_local_dataso
 import '../../features/anciens/data/datasources/anciens_local_datasource.dart';
 import '../../features/evenements/data/datasources/evenements_remote_datasource.dart';
 import '../../features/evenements/data/datasources/evenements_local_datasource.dart';
-import '../../features/evenements/data/datasources/contributions_remote_datasource.dart';
-import '../../features/evenements/data/datasources/contributions_local_datasource.dart';
 import '../../features/evenements/domain/evenement_gestion_statuts.dart';
 import '../../features/mes_depenses/data/datasources/mes_depenses_remote_datasource.dart';
 import '../../features/mes_depenses/data/datasources/mes_depenses_local_datasource.dart';
+import '../../features/about_church/data/datasources/about_church_remote_data_source.dart';
+import '../../features/about_church/data/datasources/about_church_local_datasource.dart';
+import '../../features/celebrations/data/datasources/celebrations_remote_datasource.dart';
+import '../../features/celebrations/data/datasources/celebrations_local_datasource.dart';
 import '../config/api_config.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 
@@ -47,10 +49,12 @@ class SyncService {
     required this.anciensLocal,
     required this.evenementsRemote,
     required this.evenementsLocal,
-    required this.contributionsRemote,
-    required this.contributionsLocal,
     required this.mesDepensesRemote,
     required this.mesDepensesLocal,
+    required this.aboutChurchRemote,
+    required this.aboutChurchLocal,
+    required this.celebrationsRemote,
+    required this.celebrationsLocal,
   });
 
   final Dio dio;
@@ -68,10 +72,12 @@ class SyncService {
   final AnciensLocalDataSource anciensLocal;
   final EvenementsRemoteDataSource evenementsRemote;
   final EvenementsLocalDataSource evenementsLocal;
-  final ContributionsRemoteDataSource contributionsRemote;
-  final ContributionsLocalDataSource contributionsLocal;
   final MesDepensesRemoteDataSource mesDepensesRemote;
   final MesDepensesLocalDataSource mesDepensesLocal;
+  final AboutChurchRemoteDataSource aboutChurchRemote;
+  final AboutChurchLocalDataSource aboutChurchLocal;
+  final CelebrationsRemoteDataSource celebrationsRemote;
+  final CelebrationsLocalDataSource celebrationsLocal;
 
   bool _syncInProgress = false;
   DateTime? _lastSyncCompletedAt;
@@ -103,8 +109,9 @@ class SyncService {
         _syncAnciens(),
         _syncEvenements(),
         _syncEvenementsGestion(),
-        _syncContributions(),
         _syncMesDepenses(),
+        _syncAboutChurch(),
+        _syncCelebrations(),
       ], eagerError: false);
 
       AppLogger.debug('[Sync] Termine (${results.length} taches executees).');
@@ -287,7 +294,7 @@ class SyncService {
   Future<void> _syncEvenementsGestion() async {
     try {
       final statuts = '$kEvenementsGestionActifs,$kEvenementsGestionArchives';
-      final models = await evenementsRemote.listGestion(statut: statuts);
+      final models = await evenementsRemote.listGestionAllPages(statut: statuts);
       await evenementsLocal.saveAll(models.map((m) => m.toEntity()).toList());
       AppLogger.debug('[Sync] Evenements gestion: ${models.length} entree(s) mises en cache.');
     } catch (e) {
@@ -295,15 +302,6 @@ class SyncService {
     }
   }
 
-  Future<void> _syncContributions() async {
-    try {
-      final raw = await contributionsRemote.listAllForTreasury();
-      await contributionsLocal.saveTreasury(raw);
-      AppLogger.debug('[Sync] Contributions evenement: ${raw.length} entree(s) mises en cache.');
-    } catch (e) {
-      AppLogger.debug('[Sync] Contributions evenement: echec - $e');
-    }
-  }
 
   Future<void> _syncMesDepenses() async {
     try {
@@ -316,6 +314,26 @@ class SyncService {
       AppLogger.debug('[Sync] Mes depenses ${now.year} mises en cache.');
     } catch (e) {
       AppLogger.debug('[Sync] Mes depenses: echec - $e');
+    }
+  }
+
+  Future<void> _syncAboutChurch() async {
+    try {
+      final raw = await aboutChurchRemote.fetchRaw();
+      await aboutChurchLocal.savePayload(raw);
+      AppLogger.debug('[Sync] A propos de mon Eglise mis en cache.');
+    } catch (e) {
+      AppLogger.debug('[Sync] A propos de mon Eglise: echec - $e');
+    }
+  }
+
+  Future<void> _syncCelebrations() async {
+    try {
+      final raw = await celebrationsRemote.fetchListRaw();
+      await celebrationsLocal.saveList(raw);
+      AppLogger.debug('[Sync] Celebrations: ${raw.length} entree(s) mises en cache.');
+    } catch (e) {
+      AppLogger.debug('[Sync] Celebrations: echec - $e');
     }
   }
 }
@@ -337,10 +355,12 @@ final syncServiceProvider = Provider<SyncService>((ref) {
     anciensLocal: AnciensLocalDataSource(),
     evenementsRemote: EvenementsRemoteDataSource(ref.watch(dioProvider)),
     evenementsLocal: EvenementsLocalDataSource(),
-    contributionsRemote: ContributionsRemoteDataSource(ref.watch(dioProvider)),
-    contributionsLocal: ContributionsLocalDataSource(),
     mesDepensesRemote: MesDepensesRemoteDataSource(ref.watch(dioProvider)),
     mesDepensesLocal: MesDepensesLocalDataSource(),
+    aboutChurchRemote: AboutChurchRemoteDataSource(ref.watch(dioProvider)),
+    aboutChurchLocal: AboutChurchLocalDataSource(),
+    celebrationsRemote: CelebrationsRemoteDataSource(ref.watch(dioProvider)),
+    celebrationsLocal: CelebrationsLocalDataSource(),
   );
 });
 

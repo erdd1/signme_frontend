@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/about_church/presentation/screens/about_church_screen.dart';
+import '../../features/about_church/presentation/screens/create_edit_article_screen.dart';
+import '../../features/about_church/presentation/screens/edit_church_info_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/otp_verification_screen.dart';
@@ -29,11 +32,16 @@ import '../../features/publications/presentation/screens/create_edit_publication
 import '../../features/parametres/presentation/screens/parametres_screen.dart';
 import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/evenements/presentation/screens/create_edit_evenement_screen.dart';
+import '../../features/evenements/presentation/screens/evenement_detail_screen.dart';
 import '../../features/evenements/presentation/screens/contribution_form_screen.dart';
 import '../../features/evenements/presentation/screens/contributions_evenement_screen.dart';
 import '../../features/evenements/presentation/screens/gestion_evenements_screen.dart';
+import '../../features/sorties_financieres/presentation/screens/sorties_financieres_screen.dart';
+import '../../features/retraits/presentation/screens/retrait_screen.dart';
 import '../../features/evenements/domain/entities/evenement_entity.dart';
 import '../../features/mes_depenses/presentation/screens/mes_depenses_screen.dart';
+import '../../features/celebrations/presentation/screens/celebrations_screen.dart';
+import '../../features/celebrations/presentation/screens/celebration_detail_screen.dart';
 import '../deep_link/deep_link_state.dart';
 
 // ── Route names ────────────────────────────────────────────────────────────
@@ -54,6 +62,7 @@ abstract final class AppRoutes {
   static const users           = '/users';
   static const userCreate      = '/users/create';
   static const userStats       = '/users/stats';
+  static const aboutChurch = '/about-church';
 
   static String userDetailPath(int userId) => '/users/$userId';
   static String userEditPath(int userId) => '/users/$userId/edit';
@@ -72,11 +81,21 @@ abstract final class AppRoutes {
   static const evenementCreate = '/evenements/create';
   static const gestionEvenements = '/evenements/gestion';
   static const contributionsEvenement = '/contributions-evenement';
+  static const sortiesFinancieres = '/sorties-financieres';
+  static const retraits = '/retraits';
   static String contributionFormPath(String evenementUuid) =>
       '/evenements/$evenementUuid/contribuer';
+  // Détail d'un événement (partage WhatsApp/App Links/notification push) —
+  // déclarée APRÈS evenementCreate/gestionEvenements dans la liste de routes
+  // pour éviter que ':uuid' ne capture "create"/"gestion".
+  static String evenementDetailPath(String uuid) => '/evenements/$uuid';
 
   // ── Mes dépenses ──────────────────────────────────────────────────────────
   static const mesDepenses = '/mes-depenses';
+
+  // ── Célébrations ──────────────────────────────────────────────────────────
+  static const celebrations = '/celebrations';
+  static String celebrationDetailPath(String uuid) => '/celebrations/$uuid';
 }
 
 // ── Router Provider ────────────────────────────────────────────────────────
@@ -190,40 +209,100 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (ctx, state, child) => MainShell(child: child),
         routes: [
-          GoRoute(
-            path: AppRoutes.home,
-            name: 'home',
-            builder: (ctx, state) => const HomeScreen(),
+          // Les 5 onglets de la navbar (selon rôle, cf. AppPermissions.getNavTabs)
+          // vivent dans un StatefulShellRoute.indexedStack : chaque branche garde
+          // son propre Navigator ET son état (scroll, formulaires, TabController)
+          // vivants en permanence dans un IndexedStack — changer d'onglet ne fait
+          // plus jamais détruire/reconstruire l'écran quitté, contrairement à des
+          // GoRoute frères classiques (coût principal de la lenteur perçue en
+          // navigation). Zéro changement necessaire ailleurs : MainShell continue
+          // de recevoir un simple `child` (ici le navigationShell), et tous les
+          // appels `ctx.go(path)` existants (navbar, FAB) continuent de fonctionner
+          // à l'identique — c'est la structure de l'arbre de routes, pas le point
+          // d'appel, qui déclenche la préservation d'état.
+          StatefulShellRoute.indexedStack(
+            // pageBuilder (pas builder) : sans ça, go_router enveloppe cette
+            // route dans la transition MaterialPage par défaut de la
+            // plateforme (zoom Android ~300ms), différente de _fadePage
+            // (fondu croisé 220ms) utilisée par tous les écrans du drawer —
+            // le dépareillement des deux transitions est ce qui produisait
+            // l'effet de "fantôme" en passant d'un module du drawer à un
+            // onglet de la navbar. Même transition des deux côtés = symétrie
+            // parfaite, plus aucun résidu visible.
+            pageBuilder: (ctx, state, navigationShell) => _fadePage(navigationShell, state),
+            branches: [
+              StatefulShellBranch(routes: [
+                GoRoute(
+                  path: AppRoutes.home,
+                  name: 'home',
+                  builder: (ctx, state) => const HomeScreen(),
+                ),
+              ]),
+              StatefulShellBranch(routes: [
+                GoRoute(
+                  path: AppRoutes.finances,
+                  name: 'finances',
+                  builder: (ctx, state) => const FinancesScreen(),
+                ),
+              ]),
+              StatefulShellBranch(routes: [
+                GoRoute(
+                  path: AppRoutes.historique,
+                  name: 'historique',
+                  builder: (ctx, state) => const HistoriquePersonnelScreen(),
+                ),
+              ]),
+              StatefulShellBranch(routes: [
+                GoRoute(
+                  path: AppRoutes.maCarte,
+                  name: 'ma-carte',
+                  builder: (ctx, state) => const MaCarteScreen(),
+                ),
+              ]),
+              StatefulShellBranch(routes: [
+                GoRoute(
+                  path: AppRoutes.profile,
+                  name: 'profile',
+                  builder: (ctx, state) => const ProfileScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'change-password',
+                      name: 'change-password',
+                      pageBuilder: (ctx, state) =>
+                          _authFlowPage(const ChangePasswordScreen(), state),
+                    ),
+                  ],
+                ),
+              ]),
+            ],
           ),
 
+          // ── À propos de l'Église (module indépendant de Profil, atteint
+          // depuis un lien sur Profil mais pas une sous-page de celui-ci —
+          // route top-level pour que le titre dynamique du shell fonctionne,
+          // comme pour sorties-financieres/publications/etc.) ─────────────
           GoRoute(
-            path: AppRoutes.finances,
-            name: 'finances',
-            builder: (ctx, state) => const FinancesScreen(),
-          ),
-
-          GoRoute(
-            path: AppRoutes.historique,
-            name: 'historique',
-            builder: (ctx, state) => const HistoriquePersonnelScreen(),
-          ),
-
-          GoRoute(
-            path: AppRoutes.maCarte,
-            name: 'ma-carte',
-            builder: (ctx, state) => const MaCarteScreen(),
-          ),
-
-          GoRoute(
-            path: AppRoutes.profile,
-            name: 'profile',
-            builder: (ctx, state) => const ProfileScreen(),
+            path: AppRoutes.aboutChurch,
+            name: 'about-church',
+            pageBuilder: (ctx, state) => _fadePage(const AboutChurchScreen(), state),
             routes: [
               GoRoute(
-                path: 'change-password',
-                name: 'change-password',
-                pageBuilder: (ctx, state) =>
-                    _authFlowPage(const ChangePasswordScreen(), state),
+                path: 'create',
+                name: 'about-church-create',
+                pageBuilder: (ctx, state) => _fadePage(const CreateEditArticleScreen(), state),
+              ),
+              GoRoute(
+                path: 'edit/:uuid',
+                name: 'about-church-edit',
+                pageBuilder: (ctx, state) {
+                  final uuid = state.pathParameters['uuid'] ?? '';
+                  return _fadePage(CreateEditArticleScreen(articleUuid: uuid), state);
+                },
+              ),
+              GoRoute(
+                path: 'edit-info',
+                name: 'about-church-edit-info',
+                pageBuilder: (ctx, state) => _fadePage(const EditChurchInfoScreen(), state),
               ),
             ],
           ),
@@ -357,6 +436,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'gestion-evenements',
             pageBuilder: (ctx, state) => _fadePage(const GestionEvenementsScreen(), state),
           ),
+          // Détail d'un événement — APRÈS evenementCreate/gestionEvenements
+          // pour éviter que ':uuid' ne capture "create"/"gestion".
+          GoRoute(
+            path: AppRoutes.evenementDetailPath(':uuid'),
+            name: 'evenement-detail',
+            pageBuilder: (ctx, state) {
+              final uuid = state.pathParameters['uuid'] ?? '';
+              return _fadePage(EvenementDetailScreen(uuid: uuid), state);
+            },
+          ),
           GoRoute(
             path: '/evenements/:uuid/contribuer',
             name: 'evenement-contribuer',
@@ -371,6 +460,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (ctx, state) =>
                 _fadePage(const ContributionsEvenementScreen(), state),
           ),
+          GoRoute(
+            path: AppRoutes.sortiesFinancieres,
+            name: 'sorties-financieres',
+            pageBuilder: (ctx, state) =>
+                _fadePage(const SortiesFinancieresScreen(), state),
+          ),
+          GoRoute(
+            path: AppRoutes.retraits,
+            name: 'retraits',
+            pageBuilder: (ctx, state) =>
+                _fadePage(const RetraitScreen(), state),
+          ),
 
           // ── Mes dépenses ─────────────────────────────────────────────────
           GoRoute(
@@ -378,7 +479,28 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'mes-depenses',
             pageBuilder: (ctx, state) => _fadePage(const MesDepensesScreen(), state),
           ),
+
+          // ── Célébrations (liste — reste dans le shell, cf. appbar/navbar) ──
+          GoRoute(
+            path: AppRoutes.celebrations,
+            name: 'celebrations',
+            pageBuilder: (ctx, state) => _fadePage(const CelebrationsScreen(), state),
+          ),
         ],
+      ),
+
+      // ── Détail d'une célébration — boîte plein écran (confettis), hors
+      // shell volontairement : ni appbar ni navbar ne doivent apparaître
+      // par-dessus. Reste atteignable connecté (redirect ci-dessus laisse
+      // passer toute route hors auth quand isLoggedIn) et par le deep-link
+      // d'une notification push, même app fermée.
+      GoRoute(
+        path: AppRoutes.celebrationDetailPath(':uuid'),
+        name: 'celebration-detail',
+        pageBuilder: (ctx, state) {
+          final uuid = state.pathParameters['uuid'] ?? '';
+          return _fadePage(CelebrationDetailScreen(uuid: uuid), state);
+        },
       ),
     ],
 
@@ -422,13 +544,24 @@ class _AuthListenable extends ChangeNotifier {
 }
 
 // ── Transitions ────────────────────────────────────────────────────────────
+/// Fondu croisé symétrique : l'écran quitté disparaît (`secondaryAnimation`)
+/// EN MÊME TEMPS que le nouveau apparaît (`animation`). Sans le fondu de
+/// sortie, l'ancien écran reste pleinement opaque sous le nouveau pendant
+/// toute la transition — on voit alors ses éléments "flotter" par-dessus
+/// avant de disparaître d'un coup à la fin (symptôme observé en revenant
+/// d'un module du drawer vers un onglet de la navbar).
 CustomTransitionPage<void> _fadePage(Widget child, GoRouterState state) {
   return CustomTransitionPage(
     key:                state.pageKey,
     child:              child,
     transitionDuration: const Duration(milliseconds: 220),
-    transitionsBuilder: (_, animation, __, child) =>
-        FadeTransition(opacity: animation, child: child),
+    transitionsBuilder: (_, animation, secondaryAnimation, child) => FadeTransition(
+      opacity: animation,
+      child: FadeTransition(
+        opacity: Tween<double>(begin: 1, end: 0).animate(secondaryAnimation),
+        child: child,
+      ),
+    ),
   );
 }
 
@@ -459,20 +592,3 @@ CustomTransitionPage<void> _authFlowPage(Widget child, GoRouterState state) {
   );
 }
 
-CustomTransitionPage<void> _slidePage(Widget child, GoRouterState state) {
-  return CustomTransitionPage(
-    key:                state.pageKey,
-    child:              child,
-    transitionDuration: const Duration(milliseconds: 300),
-    transitionsBuilder: (_, animation, __, child) {
-      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-      return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0, 1),
-          end:   Offset.zero,
-        ).animate(curved),
-        child: child,
-      );
-    },
-  );
-}

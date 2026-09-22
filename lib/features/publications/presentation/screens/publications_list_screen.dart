@@ -30,7 +30,7 @@ class PublicationsListScreen extends ConsumerWidget {
       onRefresh: () async {
         await ref.read(publicationsListProvider(filters).notifier).refresh();
         await ref
-            .read(publicationsListProvider(const {'per_page': 5}).notifier)
+            .read(publicationsListProvider(const {'limit': 5}).notifier)
             .refresh();
       },
       child: CustomScrollView(
@@ -85,14 +85,16 @@ class PublicationsListScreen extends ConsumerWidget {
                               .read(publicationTypeFilterProvider.notifier)
                               .state = 'annonce',
                         ),
-                        const SizedBox(width: SignmeSpacing.md),
-                        _TypeChip(
-                          label: 'Méditations',
-                          selected: selectedType == 'meditation',
-                          onTap: () => ref
-                              .read(publicationTypeFilterProvider.notifier)
-                              .state = 'meditation',
-                        ),
+                        if (user == null || AppPermissions.canViewMeditations(user)) ...[
+                          const SizedBox(width: SignmeSpacing.md),
+                          _TypeChip(
+                            label: 'Méditations',
+                            selected: selectedType == 'meditation',
+                            onTap: () => ref
+                                .read(publicationTypeFilterProvider.notifier)
+                                .state = 'meditation',
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -106,7 +108,7 @@ class PublicationsListScreen extends ConsumerWidget {
             onRetry: () {
               ref.read(publicationsListProvider(filters).notifier).refresh();
               ref
-                  .read(publicationsListProvider(const {'per_page': 5}).notifier)
+                  .read(publicationsListProvider(const {'limit': 5}).notifier)
                   .refresh();
             },
             emptyTitle: 'Aucune publication',

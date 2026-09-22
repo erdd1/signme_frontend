@@ -22,10 +22,10 @@ abstract final class WelcomeData {
     ),
     OnboardingEntity(
       id: 2,
-      title: 'Gestion Financière',
-      subtitle: 'Transparence',
+      title: 'Contribution Évènement',
+      subtitle: 'Vie communautaire',
       description:
-          'Gérez et suivez les finances de votre communauté de manière transparente et sécurisée.',
+          'Contribuez activement aux évènement de votre communauté en toute sécurité.',
       imagePath: 'assets/images/unboarding_finance.svg',
     ),
   ];

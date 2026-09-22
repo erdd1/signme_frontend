@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../../../../core/config/app_environment.dart';
 
 class EvenementAuteur {
   const EvenementAuteur({required this.id, required this.nom, this.photoUrl});
@@ -108,4 +109,12 @@ class EvenementEntity {
     if (jours <= 0) return 'Archivage imminent';
     return 'Archivage dans $jours jour${jours > 1 ? 's' : ''}';
   }
+
+  /// Lien public (Android App Links / iOS Universal Links) — voir
+  /// routes/web.php côté backend, même chemin qu'AppRoutes.evenementDetailPath.
+  String get shareUrl => '${AppEnvironment.webBaseUrl}/evenements/$uuid';
+
+  /// Texte prérempli pour le partage (WhatsApp, SMS, email...).
+  String get shareText =>
+      'Découvrez cet événement de ${church.nom ?? "notre église"} : $titre\n$shareUrl';
 }

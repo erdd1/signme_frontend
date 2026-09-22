@@ -75,6 +75,17 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
     final user = ref.watch(authNotifierProvider).auth?.user;
     final canPres = user != null && AppPermissions.canSignPresentiel(user);
 
+    // Paroissien non communiant : ni signature à distance (pour lui-même)
+    // ni présentiel (n'a jamais ce droit) — écran entièrement bloqué, même
+    // en accès direct (le FAB qui y mène est déjà masqué côté MainShell).
+    if (user != null && !canPres && !AppPermissions.canSignDistance(user)) {
+      return const SignmeNoPermissionState(
+        title: 'Fonctionnalité bloquée',
+        message: AppPermissions.notCommuniantMessage,
+        icon: Icons.block_rounded,
+      );
+    }
+
     // Point d'écriture unique de l'affichage des erreurs de signature —
     // couvre les deux formulaires (distance et présentiel) qui partagent
     // le même signerProvider, qu'il s'agisse d'une erreur de validation
@@ -386,7 +397,10 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                         title: Text(member.nom,
                             style: SignmeTypography.labelMedium
                                 .copyWith(fontWeight: FontWeight.bold)),
-                        subtitle: Text(member.roleLabel,
+                        subtitle: Text(
+                            member.matricule != null
+                                ? '${member.roleLabel} · ${member.matricule}'
+                                : member.roleLabel,
                             style: SignmeTypography.bodySmall),
                         onTap: () {
                           FocusScope.of(context).unfocus();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -54,7 +55,8 @@ class UsersListState {
           (u) =>
               u.nom.toLowerCase().contains(q) ||
               u.email.toLowerCase().contains(q) ||
-              (u.telephone?.toLowerCase().contains(q) ?? false),
+              (u.telephone?.toLowerCase().contains(q) ?? false) ||
+              (u.matricule?.toLowerCase().contains(q) ?? false),
         )
         .toList();
   }
@@ -67,6 +69,24 @@ class UsersListNotifier extends StateNotifier<UsersListState> {
 
   final UsersRemoteDataSource _remote;
 
+  /// Incrémenté à chaque appel de [load]/[loadMore] — permet d'ignorer la
+  /// réponse d'une requête devenue obsolète (ex. l'utilisateur a tapé un
+  /// caractère de plus dans la recherche avant qu'elle ne revienne) au lieu
+  /// de l'appliquer et d'écraser des résultats plus récents et pertinents.
+  /// Sans cette garde, une réponse lente pour "J" arrivant après la réponse
+  /// rapide pour "Jean" affichait une liste qui ne correspondait plus à ce
+  /// que l'utilisateur venait de taper — plus probable à mesure que le
+  /// nombre de membres grandit (requêtes plus lentes, plus de chances
+  /// d'arriver dans le désordre).
+  int _requestId = 0;
+  Timer? _searchDebounce;
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    super.dispose();
+  }
+
   Map<String, dynamic>? get _searchFilter {
     final q = state.searchQuery.trim();
     if (q.isEmpty) return null;
@@ -74,9 +94,11 @@ class UsersListNotifier extends StateNotifier<UsersListState> {
   }
 
   Future<void> load() async {
+    final requestId = ++_requestId;
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final items = await _remote.list(page: 1, filters: _searchFilter);
+      if (requestId != _requestId) return;
       state = state.copyWith(
         users: items,
         isLoading: false,
@@ -84,16 +106,19 @@ class UsersListNotifier extends StateNotifier<UsersListState> {
         hasMore: items.length >= 50,
       );
     } catch (e) {
+      if (requestId != _requestId) return;
       state = state.copyWith(isLoading: false, error: messageFromError(e));
     }
   }
 
   Future<void> loadMore() async {
     if (state.isLoading || !state.hasMore) return;
+    final requestId = ++_requestId;
     state = state.copyWith(isLoading: true);
     try {
       final items =
           await _remote.list(page: state.page + 1, filters: _searchFilter);
+      if (requestId != _requestId) return;
       state = state.copyWith(
         users: [...state.users, ...items],
         isLoading: false,
@@ -101,13 +126,19 @@ class UsersListNotifier extends StateNotifier<UsersListState> {
         hasMore: items.length >= 50,
       );
     } catch (e) {
+      if (requestId != _requestId) return;
       state = state.copyWith(isLoading: false, error: messageFromError(e));
     }
   }
 
+  /// Recherche debouncée (350 ms) : évite de spammer l'API à chaque frappe.
+  /// [state.filtered] applique déjà un filtrage client immédiat pendant
+  /// l'attente, donc l'utilisateur voit un retour visuel instantané malgré
+  /// le délai avant la requête serveur.
   void search(String query) {
     state = state.copyWith(searchQuery: query);
-    load();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), load);
   }
 
   Future<void> refresh() => load();
@@ -149,7 +180,7 @@ final userStatsProvider = FutureProvider.autoDispose<UserStatsEntity>((ref) {
 /// qui alimente l'écran "Membres" avec sa propre pagination/recherche.
 final userFilteredListProvider = FutureProvider.autoDispose
     .family<List<UserEntity>, Map<String, dynamic>>((ref, filters) async {
-  return ref.watch(usersRemoteDataSourceProvider).list(filters: filters);
+  return ref.watch(usersRemoteDataSourceProvider).listAllPages(filters: filters);
 });
 
 // ── Actions (création / mise à jour / statut) ─────────────────────────────
@@ -254,6 +285,9 @@ class UsersActionsNotifier extends StateNotifier<AsyncValue<void>> {
       dateConfirmation: base.dateConfirmation,
       lieuConfirmation: base.lieuConfirmation,
       sexe: base.sexe,
+      matricule: base.matricule,
+      estCommuniant: base.estCommuniant,
+      communiantDepuis: base.communiantDepuis,
       dateNaissance: base.dateNaissance,
       quartier: base.quartier,
       ville: base.ville,

@@ -13,132 +13,151 @@ Future<T?> showAddLookupBottomSheet<T>({
   required String hint,
   bool showDiasporaToggle = false,
   required Future<T> Function(String nom, bool estDiaspora) onSubmit,
-}) {
+}) async {
   final controller = TextEditingController();
   bool estDiaspora = false;
   bool isSubmitting = false;
   String? error;
 
-  return showModalBottomSheet<T>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (sheetContext) {
-      return StatefulBuilder(
-        builder: (sheetContext, setState) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-            ),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(
-                SignmeSpacing.lg,
-                SignmeSpacing.lg,
-                SignmeSpacing.lg,
-                // La navbar flottante de MainShell se superpose aux bottom
-                // sheets modaux (Stack au-dessus du contenu de route) — ce
-                // padding évite que le bouton "Ajouter" soit masqué.
-                SignmeSpacing.navbarClearance,
+  try {
+    return await showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
               ),
-              decoration: const BoxDecoration(
-                color: SignmeColors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(SignmeSpacing.radiusXl),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(
+                  SignmeSpacing.lg,
+                  SignmeSpacing.lg,
+                  SignmeSpacing.lg,
+                  // La navbar flottante de MainShell se superpose aux bottom
+                  // sheets modaux (Stack au-dessus du contenu de route) — ce
+                  // padding évite que le bouton "Ajouter" soit masqué.
+                  SignmeSpacing.navbarClearance,
                 ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: SignmeSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: SignmeColors.lightGrayBorder,
-                        borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+                decoration: const BoxDecoration(
+                  color: SignmeColors.white,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(SignmeSpacing.radiusXl),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: SignmeSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: SignmeColors.lightGrayBorder,
+                          borderRadius:
+                              BorderRadius.circular(SignmeSpacing.radiusFull),
+                        ),
                       ),
                     ),
-                  ),
-                  Text(
-                    title,
-                    style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: SignmeSpacing.lg),
-                  SignmeTextInput(
-                    label: 'Nom',
-                    hint: hint,
-                    controller: controller,
-                    enabled: !isSubmitting,
-                    errorText: error,
-                  ),
-                  if (showDiasporaToggle) ...[
-                    const SizedBox(height: SignmeSpacing.lg),
                     Text(
-                      'Caractéristique',
-                      style: SignmeTypography.inputLabel.copyWith(fontWeight: FontWeight.bold),
+                      title,
+                      style: SignmeTypography.headlineSmall
+                          .copyWith(fontWeight: FontWeight.w700),
                     ),
-                    const SizedBox(height: SignmeSpacing.sm),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _ChoiceChip(
-                            label: 'Au Cameroun',
-                            selected: !estDiaspora,
-                            onTap: isSubmitting ? null : () => setState(() => estDiaspora = false),
+                    const SizedBox(height: SignmeSpacing.lg),
+                    SignmeTextInput(
+                      label: 'Nom',
+                      hint: hint,
+                      controller: controller,
+                      enabled: !isSubmitting,
+                      errorText: error,
+                    ),
+                    if (showDiasporaToggle) ...[
+                      const SizedBox(height: SignmeSpacing.lg),
+                      Text(
+                        'Caractéristique',
+                        style: SignmeTypography.inputLabel
+                            .copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: SignmeSpacing.sm),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _ChoiceChip(
+                              label: 'Au Cameroun',
+                              selected: !estDiaspora,
+                              onTap: isSubmitting
+                                  ? null
+                                  : () => setState(() => estDiaspora = false),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: SignmeSpacing.sm),
-                        Expanded(
-                          child: _ChoiceChip(
-                            label: 'Hors Cameroun (Diaspora)',
-                            selected: estDiaspora,
-                            onTap: isSubmitting ? null : () => setState(() => estDiaspora = true),
+                          const SizedBox(width: SignmeSpacing.sm),
+                          Expanded(
+                            child: _ChoiceChip(
+                              label: 'Hors Cameroun (Diaspora)',
+                              selected: estDiaspora,
+                              onTap: isSubmitting
+                                  ? null
+                                  : () => setState(() => estDiaspora = true),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: SignmeSpacing.xl),
+                    SignmePrimaryButton(
+                      label: 'Ajouter',
+                      isLoading: isSubmitting,
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              final nom = controller.text.trim();
+                              if (nom.isEmpty) {
+                                setState(() => error = 'Ce champ est requis');
+                                return;
+                              }
+                              setState(() {
+                                isSubmitting = true;
+                                error = null;
+                              });
+                              try {
+                                final created =
+                                    await onSubmit(nom, estDiaspora);
+                                if (sheetContext.mounted)
+                                  Navigator.pop(sheetContext, created);
+                              } catch (e) {
+                                setState(() {
+                                  isSubmitting = false;
+                                  error = 'Impossible d\'ajouter : $e';
+                                });
+                              }
+                            },
                     ),
                   ],
-                  const SizedBox(height: SignmeSpacing.xl),
-                  SignmePrimaryButton(
-                    label: 'Ajouter',
-                    isLoading: isSubmitting,
-                    onPressed: isSubmitting
-                        ? null
-                        : () async {
-                            final nom = controller.text.trim();
-                            if (nom.isEmpty) {
-                              setState(() => error = 'Ce champ est requis');
-                              return;
-                            }
-                            setState(() {
-                              isSubmitting = true;
-                              error = null;
-                            });
-                            try {
-                              final created = await onSubmit(nom, estDiaspora);
-                              if (sheetContext.mounted) Navigator.pop(sheetContext, created);
-                            } catch (e) {
-                              setState(() {
-                                isSubmitting = false;
-                                error = 'Impossible d\'ajouter : $e';
-                              });
-                            }
-                          },
-                  ),
-                ],
+                ),
               ),
-            ),
-          );
-        },
-      );
-    },
-  );
+            );
+          },
+        );
+      },
+    );
+  } finally {
+    // `showModalBottomSheet` n'a pas de widget State propre ici (le contenu
+    // vit dans un StatefulBuilder) : sans ce `finally`, ce contrôleur reste
+    // alloué indéfiniment après chaque fermeture (validation, annulation,
+    // balayage vers le bas) — une fuite mémoire à chaque ouverture de cette
+    // bottom sheet (ajout de groupe/quartier/ville, action fréquente).
+    controller.dispose();
+  }
 }
 
 class _ChoiceChip extends StatelessWidget {
-  const _ChoiceChip({required this.label, required this.selected, required this.onTap});
+  const _ChoiceChip(
+      {required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
@@ -156,7 +175,9 @@ class _ChoiceChip extends StatelessWidget {
           color: selected ? SignmeColors.primaryLight : SignmeColors.white,
           borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
           border: Border.all(
-            color: selected ? SignmeColors.primaryLight : SignmeColors.lightGrayBorder,
+            color: selected
+                ? SignmeColors.primaryLight
+                : SignmeColors.lightGrayBorder,
           ),
         ),
         child: Text(

@@ -29,6 +29,10 @@ class EvenementsListNotifier extends StateNotifier<AsyncValue<List<EvenementEnti
     await refresh();
   }
 
+  /// Rafraîchit via synchronisation delta (mêmes requêtes bornées que
+  /// SyncService), puis affiche le cache Isar COMPLET — jamais seulement le
+  /// lot réseau reçu, pour ne pas faire disparaître les événements plus
+  /// anciens déjà en cache dès que leur nombre dépasse `per_page`.
   Future<void> refresh() async {
     final connectivity = _ref.read(connectivityServiceProvider);
     final isOnline = await connectivity.isOnline;
@@ -38,10 +42,13 @@ class EvenementsListNotifier extends StateNotifier<AsyncValue<List<EvenementEnti
     final local = _ref.read(evenementsLocalDataSourceProvider);
 
     try {
-      final items = await remote.list(const {'per_page': 20});
+      final latest = await local.latestUpdatedAt;
+      final items = latest != null
+          ? await remote.deltaSince(latest, const {'per_page': 50})
+          : await remote.list(const {'per_page': 50});
       final entities = items.map((m) => m.toEntity()).toList();
-      await local.saveAll(entities);
-      if (mounted) state = AsyncData(entities);
+      if (entities.isNotEmpty) await local.saveAll(entities);
+      if (mounted) state = AsyncData(await local.getAll());
     } catch (e, st) {
       if (mounted && !state.hasValue) {
         final cached = await local.getAll();
@@ -99,7 +106,9 @@ final evenementsGestionProvider = StateNotifierProvider.family<
   return CacheFirstListNotifier<EvenementEntity>(
     readCache: () => local.getByStatuts(statuts),
     fetchAndCache: () async {
-      final models = await remote.listGestion(statut: statut);
+      // listGestionAllPages() parcourt toutes les pages (requêtes bornées à
+      // 100 lignes chacune) — jamais une seule requête "tout d'un coup".
+      final models = await remote.listGestionAllPages(statut: statut);
       final entities = models.map((m) => m.toEntity()).toList();
       await local.saveAll(entities);
       return entities;

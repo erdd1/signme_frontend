@@ -20,7 +20,7 @@ class SignatureModel extends SignatureEntity {
   });
 
   factory SignatureModel.fromJson(Map<String, dynamic> j) => SignatureModel(
-    id:             (j['id'] as num).toInt(),
+    id:             (j['id'] as num?)?.toInt() ?? 0,
     userId:         (j['userId'] as num?)?.toInt() ?? 0,
     nomParoissien:  j['nomParoissien']?.toString() ?? '',
     month:          j['month']?.toString() ?? '',

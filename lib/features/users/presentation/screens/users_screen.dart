@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/config/api_config.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/permissions/app_permissions.dart';
@@ -90,6 +91,17 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                       label: 'Statistiques fidèles',
                       icon: Icons.bar_chart_rounded,
                       onPressed: () => context.push(AppRoutes.userStats),
+                    ),
+                  ),
+                  const SizedBox(height: SignmeSpacing.md),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: SignmeSpacing.lg,
+                    ),
+                    child: PdfDownloadButton(
+                      label: 'Télécharger la liste (PDF)',
+                      path: ApiConfig.usersExportPdf,
+                      filename: 'membres.pdf',
                     ),
                   ),
                 ],

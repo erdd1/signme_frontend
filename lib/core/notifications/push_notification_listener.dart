@@ -61,8 +61,10 @@ class _PushNotificationListenerState extends ConsumerState<PushNotificationListe
         return publicationId != null
             ? AppRoutes.publicationDetailPath(publicationId)
             : AppRoutes.publications;
+      case 'celebration':
+        return id != null ? AppRoutes.celebrationDetailPath(id) : AppRoutes.celebrations;
       case 'evenement':
-      case 'anniversaire':
+        return id != null ? AppRoutes.evenementDetailPath(id) : AppRoutes.home;
       default:
         return AppRoutes.home;
     }

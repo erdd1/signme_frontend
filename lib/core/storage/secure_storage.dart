@@ -10,6 +10,7 @@ abstract final class _Keys {
   static const rememberMe      = 'remember_me';
   static const rememberedEmail = 'remembered_email';
   static const deviceId        = 'device_id';
+  static const lastCachedUserId = 'last_cached_user_id';
 }
 
 /// Service de stockage sécurisé — Keychain (iOS) / Keystore (Android)
@@ -71,6 +72,21 @@ class SecureStorage {
     await _storage.write(key: _Keys.deviceId, value: id);
     return id;
   }
+
+  // ── Dernier utilisateur mis en cache (Isar) ─────────────────────────────────
+  // Survit à clearSession()/logout — c'est justement en comparant cette
+  // valeur au PROCHAIN utilisateur qui s'authentifie (login, Google, reprise
+  // de session) qu'on détecte un changement de compte sur le même appareil
+  // et qu'on vide le cache local AVANT d'afficher quoi que ce soit. Filet
+  // de sécurité qui fonctionne même si un logout précédent a été sauté
+  // (app tuée/crashée sans déconnexion explicite).
+  Future<int?> getLastCachedUserId() async {
+    final v = await _storage.read(key: _Keys.lastCachedUserId);
+    return v == null ? null : int.tryParse(v);
+  }
+
+  Future<void> setLastCachedUserId(int userId) =>
+      _storage.write(key: _Keys.lastCachedUserId, value: userId.toString());
 
   // ── Clear ─────────────────────────────────────────────────────────────────
   Future<void> clearAll() => _storage.deleteAll();

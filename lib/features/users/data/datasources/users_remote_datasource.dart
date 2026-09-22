@@ -40,6 +40,40 @@ class UsersRemoteDataSource {
     }
   }
 
+  /// Récupère TOUTES les pages correspondant aux [filters] — réservé aux
+  /// listes déjà bornées par nature (filtre catégoriel du tableau de bord :
+  /// mois de naissance, quartier, groupe, région...), jamais à la liste
+  /// générale des membres (qui reste à défilement infini, voir
+  /// UsersListNotifier). Chaque requête HTTP reste bornée à 100 lignes, quel
+  /// que soit le volume total correspondant au filtre.
+  Future<List<UserModel>> listAllPages({Map<String, dynamic>? filters}) async {
+    try {
+      final all = <UserModel>[];
+      var page = 1;
+      while (true) {
+        final resp = await _dio.get(ApiConfig.users, queryParameters: {
+          'page': page,
+          'per_page': 100,
+          ...?filters,
+        });
+        if (resp.statusCode != 200 || !ApiResponseParser.isSuccess(resp.data)) {
+          throw ServerException(message: ApiResponseParser.message(resp.data));
+        }
+        final body = resp.data as Map<String, dynamic>;
+        all.addAll(ApiResponseParser.extractList(body).map(UserModel.fromJson));
+
+        final pagination = body['pagination'] as Map<String, dynamic>?;
+        final currentPage = (pagination?['current_page'] as num?)?.toInt() ?? page;
+        final lastPage = (pagination?['last_page'] as num?)?.toInt() ?? page;
+        if (currentPage >= lastPage) break;
+        page++;
+      }
+      return all;
+    } on DioException catch (e) {
+      throwFromDio(e);
+    }
+  }
+
   Future<UserModel> getById(int id) async {
     try {
       final resp = await _dio.get('${ApiConfig.users}/$id');
@@ -137,6 +171,26 @@ class UsersRemoteDataSource {
           throw ServerException(message: 'Réponse statut invalide.');
         }
         return UserModel.fromJson(data);
+      }
+      throw ServerException(message: ApiResponseParser.message(resp.data));
+    } on DioException catch (e) {
+      throwFromDio(e);
+    }
+  }
+
+  Future<String> nextMatricule(String sexe) async {
+    try {
+      final resp = await _dio.get(
+        ApiConfig.usersNextMatricule,
+        queryParameters: {'sexe': sexe},
+      );
+      if (resp.statusCode == 200 && ApiResponseParser.isSuccess(resp.data)) {
+        final data = ApiResponseParser.dataMap(resp.data);
+        final matricule = data?['matricule']?.toString();
+        if (matricule == null || matricule.isEmpty) {
+          throw ServerException(message: 'Identifiant indisponible.');
+        }
+        return matricule;
       }
       throw ServerException(message: ApiResponseParser.message(resp.data));
     } on DioException catch (e) {

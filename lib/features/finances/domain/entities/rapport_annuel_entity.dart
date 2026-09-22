@@ -9,6 +9,8 @@ class RapportAnnuelEntity extends Equatable {
     required this.totalFees,
     required this.totalEncaisse,
     required this.totalSignatures,
+    required this.totalPresentiel,
+    required this.totalDistance,
     this.churchId,
   });
 
@@ -19,6 +21,8 @@ class RapportAnnuelEntity extends Equatable {
   final double totalEncaisse;
   final int totalSignatures;
   final int? churchId;
+  final double totalPresentiel;
+  final double totalDistance;
 
   factory RapportAnnuelEntity.empty([int? year]) => RapportAnnuelEntity(
         year: year ?? DateTime.now().year,
@@ -30,6 +34,8 @@ class RapportAnnuelEntity extends Equatable {
         totalFees: 0,
         totalEncaisse: 0,
         totalSignatures: 0,
+        totalPresentiel: 0,
+        totalDistance: 0,
       );
 
   factory RapportAnnuelEntity.fromJson(Map<String, dynamic> json) {
@@ -53,6 +59,8 @@ class RapportAnnuelEntity extends Equatable {
       totalAmount + totalFees,
     );
     final totalSignatures = parseInt(totaux?['nb_signatures']);
+    final totalPresentiel = parseDouble(totaux?['total_presentiel']);
+    final totalDistance = parseDouble(totaux?['total_distance']);
 
     return RapportAnnuelEntity(
       year: year,
@@ -70,6 +78,12 @@ class RapportAnnuelEntity extends Equatable {
       totalSignatures: totalSignatures > 0
           ? totalSignatures
           : monthly.fold<int>(0, (s, m) => s + m.count),
+      totalPresentiel: totalPresentiel > 0
+          ? totalPresentiel
+          : monthly.fold<double>(0, (s, m) => s + m.amountPresentiel),
+      totalDistance: totalDistance > 0
+          ? totalDistance
+          : monthly.fold<double>(0, (s, m) => s + m.amountDistance),
     );
   }
 

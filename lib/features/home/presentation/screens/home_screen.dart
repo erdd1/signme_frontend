@@ -27,38 +27,50 @@ class HomeScreen extends ConsumerWidget {
       color: SignmeColors.primaryLight,
       onRefresh: () async {
         await Future.wait([
-          ref.read(publicationsListProvider(const {'per_page': 5}).notifier).refresh(),
+          ref.read(publicationsListProvider(const {'limit': 5}).notifier).refresh(),
           ref.read(evenementsListProvider.notifier).refresh(),
         ]);
       },
-      child: SingleChildScrollView(
+      // CustomScrollView + SliverList (au lieu d'un Column qui construirait
+      // TOUTES les cartes du fil d'actualité d'un coup) : le fil affiche
+      // désormais tout l'historique local (publications + événements,
+      // synchronisés en delta — voir evenements_provider.dart/
+      // publications_provider.dart), potentiellement des centaines d'entrées
+      // à terme. Seules les cartes visibles à l'écran sont construites.
+      child: CustomScrollView(
         controller: scrollController,
         physics: const AlwaysScrollableScrollPhysics(
           parent: BouncingScrollPhysics(),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _UserHeader(user: user, ref: ref),
-            const SizedBox(height: SignmeSpacing.lg),
-            _ChurchCard(churchName: user?.churchNom),
-            const SizedBox(height: SignmeSpacing.lg),
-            const OnboardingSection(
-              svgPath: SignmeAssets.onboardingHome,
-              title: 'Ravis de vous revoir',
-              description: "Que voulez-vous faire aujourd'hui Mme/Mr ?",
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _UserHeader(user: user, ref: ref),
+                const SizedBox(height: SignmeSpacing.lg),
+                _ChurchCard(churchName: user?.churchNom),
+                const SizedBox(height: SignmeSpacing.lg),
+                const OnboardingSection(
+                  svgPath: SignmeAssets.onboardingHome,
+                  title: 'Ravis de vous revoir',
+                  description: "Que voulez-vous faire aujourd'hui Mme/Mr ?",
+                ),
+                const SizedBox(height: SignmeSpacing.xxxl),
+                const _ActualitesHeader(),
+                const SizedBox(height: SignmeSpacing.md),
+              ],
             ),
-            const SizedBox(height: SignmeSpacing.xxxl),
-            _ActualitesSection(
-              feedAsync: feedAsync,
-              onRetry: () {
-                ref.read(publicationsListProvider(const {'per_page': 5}).notifier).refresh();
-                ref.read(evenementsListProvider.notifier).refresh();
-              },
-            ),
-            const SizedBox(height: 120),
-          ],
-        ),
+          ),
+          ..._buildActualitesSlivers(
+            feedAsync: feedAsync,
+            onRetry: () {
+              ref.read(publicationsListProvider(const {'limit': 5}).notifier).refresh();
+              ref.read(evenementsListProvider.notifier).refresh();
+            },
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+        ],
       ),
     );
   }
@@ -186,80 +198,84 @@ class _ChurchCard extends StatelessWidget {
 
 
 
-class _ActualitesSection extends ConsumerWidget {
-  const _ActualitesSection({
-    required this.feedAsync,
-    required this.onRetry,
-  });
-
-  final AsyncValue<List<HomeFeedItem>> feedAsync;
-  final VoidCallback onRetry;
+class _ActualitesHeader extends StatelessWidget {
+  const _ActualitesHeader();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Actualités',
-                style: SignmeTypography.headlineSmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: SignmeSpacing.sm,
-                  vertical: SignmeSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: SignmeColors.accentSky,
-                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
-                ),
-                child: Text(
-                  'À la une',
-                  style: SignmeTypography.labelSmall.copyWith(
-                    color: SignmeColors.primaryLight,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          Text(
+            'Actualités',
+            style: SignmeTypography.headlineSmall.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          const SizedBox(height: SignmeSpacing.md),
-          SignmeAsyncValue<List<HomeFeedItem>>(
-            value: feedAsync,
-            onRetry: onRetry,
-            emptyTitle: 'Pas encore d\'actualités',
-            emptyMessage:
-                'Les annonces, méditations et événements de votre église apparaîtront ici.',
-            isEmpty: (list) => list.isEmpty,
-            data: (items) => Column(
-              children: items
-                  .map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: SignmeSpacing.md),
-                      child: switch (item) {
-                        HomeFeedPublication(:final publication) => NewsCard(publication: publication),
-                        HomeFeedEvenement(:final evenement) => EvenementCard(
-                            evenement: evenement,
-                            onContribuer: () => context.push(
-                              AppRoutes.contributionFormPath(evenement.uuid),
-                              extra: evenement,
-                            ),
-                          ),
-                      },
-                    ),
-                  )
-                  .toList(),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: SignmeSpacing.sm,
+              vertical: SignmeSpacing.xs,
+            ),
+            decoration: BoxDecoration(
+              color: SignmeColors.accentSky,
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+            ),
+            child: Text(
+              'À la une',
+              style: SignmeTypography.labelSmall.copyWith(
+                color: SignmeColors.primaryLight,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
+
+/// Slivers du fil d'actualité — [SliverList] + [SliverChildBuilderDelegate] :
+/// seules les cartes visibles à l'écran sont construites, quelle que soit la
+/// taille du fil accumulé localement (voir commentaire dans [HomeScreen]).
+List<Widget> _buildActualitesSlivers({
+  required AsyncValue<List<HomeFeedItem>> feedAsync,
+  required VoidCallback onRetry,
+}) {
+  return SignmeAsyncValue.buildSlivers<List<HomeFeedItem>>(
+    value: feedAsync,
+    onRetry: onRetry,
+    emptyTitle: 'Pas encore d\'actualités',
+    emptyMessage:
+        'Les annonces, méditations et événements de votre église apparaîtront ici.',
+    isEmpty: (list) => list.isEmpty,
+    data: (items) => [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final item = items[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: SignmeSpacing.md),
+                child: switch (item) {
+                  HomeFeedPublication(:final publication) => NewsCard(publication: publication),
+                  HomeFeedEvenement(:final evenement) => EvenementCard(
+                      evenement: evenement,
+                      onContribuer: () => context.push(
+                        AppRoutes.contributionFormPath(evenement.uuid),
+                        extra: evenement,
+                      ),
+                    ),
+                },
+              );
+            },
+            childCount: items.length,
+          ),
+        ),
+      ),
+    ],
+  );
 }

@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +16,8 @@ import '../../../users/presentation/widgets/groupes_multi_select.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/domain/entities/user_lookup_refs.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../finances/presentation/widgets/finance_formatters.dart';
+import '../../../retraits/presentation/providers/retraits_provider.dart';
 import '../providers/profile_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -28,7 +29,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   File? _pendingPhotoFile;
-  
+
   // Correction : Changement du type bool en int? pour le cache busting
   int? _bustPhotoCache;
 
@@ -61,6 +62,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             // === SECTION MON PROFIL ===
             _buildProfileHeader(context, user),
+            const SizedBox(height: SignmeSpacing.xl),
+
+            // === BOUTON À PROPOS DE MON ÉGLISE ===
+            _buildAboutChurchCard(context),
             const SizedBox(height: SignmeSpacing.xxxl),
 
             // === SECTION INFORMATIONS PERSONNELLES ===
@@ -161,15 +166,81 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
           ),
+
+          // === SOLDE DE RETRAIT (pasteur/trésorier uniquement) ===
+          if (AppPermissions.canViewRetraits(user)) ...[
+            const SizedBox(height: SignmeSpacing.md),
+            _SoldeRetraitChip(onTap: () => context.push(AppRoutes.retraits)),
+          ],
         ],
       ),
     );
   }
 
+  /// Carte d'entrée vers la page "À propos de mon Église" — visible pour
+  /// tous les rôles (page de lecture ; les actions de gestion à l'intérieur
+  /// sont restreintes pasteur/secrétaire via AppPermissions.canManageAboutChurch).
+  Widget _buildAboutChurchCard(BuildContext context) {
+    return InkWell(
+      // go() et non push() : "À propos de mon Église" est un module
+      // top-level indépendant de Profil (voir app_router.dart), pas une
+      // sous-page — go() met à jour la location vue par MainShell pour son
+      // appbar dynamique, contrairement à push() (voir sorties-financieres/
+      // mes-depenses/publications, atteints depuis le drawer avec go()).
+      onTap: () => context.go(AppRoutes.aboutChurch),
+      borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+      child: Container(
+        padding: const EdgeInsets.all(SignmeSpacing.lg),
+        decoration: BoxDecoration(
+          color: SignmeColors.white,
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+          border: Border.all(color: SignmeColors.lightGrayBorder, width: 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: SignmeColors.primaryLight.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+              ),
+              child: const Icon(Icons.church_rounded, color: SignmeColors.primaryLight, size: 22),
+            ),
+            const SizedBox(width: SignmeSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'À propos de mon Église',
+                    style: SignmeTypography.bodyMedium.copyWith(
+                      color: SignmeColors.black,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Infos, pasteurs, groupes, activités',
+                    style: SignmeTypography.bodySmall.copyWith(
+                      color: SignmeColors.mediumGray,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: SignmeColors.mediumGray.withOpacity(0.5), size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickAndUploadProfilePhoto(
-    BuildContext context,
-    UserEntity user,
-  ) async {
+      BuildContext context,
+      UserEntity user,
+      ) async {
     try {
       final file = await ProfileImagePicker.pick(context);
       if (file == null || !mounted) return;
@@ -177,9 +248,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       setState(() => _pendingPhotoFile = file);
 
       await ref.read(usersActionsProvider.notifier).uploadPhoto(
-            userId: user.id,
-            photoFile: file,
-          );
+        userId: user.id,
+        photoFile: file,
+      );
 
       if (mounted) {
         setState(() {
@@ -286,6 +357,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
 
+          // === IDENTIFIANT - NON ÉDITABLE (géré par Gérer utilisateurs) ===
+          _buildInfoField(
+            context: context,
+            icon: Icons.badge_rounded,
+            label: 'Identifiant',
+            value: user.matricule ?? '(Non défini)',
+            editable: false,
+            field: 'matricule',
+            user: user,
+            ref: ref,
+          ),
+          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
+
+          // === COMMUNIANT - NON ÉDITABLE (géré par le pasteur/la secrétaire) ===
+          _buildInfoField(
+            context: context,
+            icon: Icons.church_rounded,
+            label: 'Communiant',
+            value: user.estCommuniant ? 'Communiant' : 'Non communiant',
+            editable: false,
+            field: 'estCommuniant',
+            user: user,
+            ref: ref,
+          ),
+          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
+
           // === TÉLÉPHONE - ÉDITABLE ===
           _buildInfoField(
             context: context,
@@ -349,8 +446,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             value: user.ville == null
                 ? '(Non défini)'
                 : user.ville!.estDiaspora
-                    ? '${user.ville!.nom} (Diaspora)'
-                    : user.ville!.nom,
+                ? '${user.ville!.nom} (Diaspora)'
+                : user.ville!.nom,
             editable: true,
             field: 'villeId',
             user: user,
@@ -503,15 +600,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// Envoie un patch de profil et affiche le résultat (succès/erreur) —
   /// réutilisé par tous les dialogs d'édition (génériques et structurés).
   Future<void> _submitProfileField(
-    BuildContext context,
-    WidgetRef ref,
-    Map<String, dynamic> payload,
-  ) async {
+      BuildContext context,
+      WidgetRef ref,
+      Map<String, dynamic> payload,
+      ) async {
     final result = await ref.read(submitProfileUpdateProvider(payload).future);
     if (!context.mounted) return;
     result.fold(
-      (failure) => AppSnackbar.error(context, failure.message),
-      (_) => ScaffoldMessenger.of(context).showSnackBar(
+          (failure) => AppSnackbar.error(context, failure.message),
+          (_) => ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Profil mis à jour avec succès'),
           backgroundColor: SignmeColors.success,
@@ -582,9 +679,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onPressed: sexe == null
                   ? null
                   : () {
-                      Navigator.pop(dialogContext);
-                      _submitProfileField(context, ref, {'sexe': sexe});
-                    },
+                Navigator.pop(dialogContext);
+                _submitProfileField(context, ref, {'sexe': sexe});
+              },
               style: ElevatedButton.styleFrom(backgroundColor: SignmeColors.primaryLight),
               child: const Text('Enregistrer', style: TextStyle(color: Colors.white)),
             ),
@@ -639,24 +736,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       selected: user.quartier,
       onAddNew: canManage
           ? () => showAddLookupBottomSheet<QuartierRef>(
-                context: context,
-                title: 'Nouveau quartier',
-                hint: 'Ex. Essos',
-                onSubmit: (nom, _) async {
-                  final created = await ref.read(quartiersRemoteDataSourceProvider).create(nom);
-                  ref.read(quartiersListProvider.notifier).addItem(created);
-                  return created;
-                },
-              )
+        context: context,
+        title: 'Nouveau quartier',
+        hint: 'Ex. Essos',
+        onSubmit: (nom, _) async {
+          final created = await ref.read(quartiersRemoteDataSourceProvider).create(nom);
+          ref.read(quartiersListProvider.notifier).addItem(created);
+          return created;
+        },
+      )
           : null,
       onDelete: canManage
           ? (q) async {
-              await ref.read(quartiersRemoteDataSourceProvider).delete(q.id);
-              ref.read(quartiersListProvider.notifier).removeItem(q);
-            }
+        await ref.read(quartiersRemoteDataSourceProvider).delete(q.id);
+        ref.read(quartiersListProvider.notifier).removeItem(q);
+      }
           : null,
       deleteConfirmMessage: (q) =>
-          'Supprimer le quartier "${q.nom}" ? Les membres qui l\'utilisent seront simplement dissociés.',
+      'Supprimer le quartier "${q.nom}" ? Les membres qui l\'utilisent seront simplement dissociés.',
     );
     if (selected == null || !context.mounted) return;
     await _submitProfileField(context, ref, {'quartierId': selected.id});
@@ -673,27 +770,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       selected: user.ville,
       onAddNew: canManage
           ? () => showAddLookupBottomSheet<VilleRef>(
-                context: context,
-                title: 'Nouvelle ville',
-                hint: 'Ex. Douala',
-                showDiasporaToggle: true,
-                onSubmit: (nom, estDiaspora) async {
-                  final created = await ref
-                      .read(villesRemoteDataSourceProvider)
-                      .create(nom, estDiaspora: estDiaspora);
-                  ref.read(villesListProvider.notifier).addItem(created);
-                  return created;
-                },
-              )
+        context: context,
+        title: 'Nouvelle ville',
+        hint: 'Ex. Douala',
+        showDiasporaToggle: true,
+        onSubmit: (nom, estDiaspora) async {
+          final created = await ref
+              .read(villesRemoteDataSourceProvider)
+              .create(nom, estDiaspora: estDiaspora);
+          ref.read(villesListProvider.notifier).addItem(created);
+          return created;
+        },
+      )
           : null,
       onDelete: canManage
           ? (v) async {
-              await ref.read(villesRemoteDataSourceProvider).delete(v.id);
-              ref.read(villesListProvider.notifier).removeItem(v);
-            }
+        await ref.read(villesRemoteDataSourceProvider).delete(v.id);
+        ref.read(villesListProvider.notifier).removeItem(v);
+      }
           : null,
       deleteConfirmMessage: (v) =>
-          'Supprimer la ville "${v.nom}" ? Les membres qui l\'utilisent seront simplement dissociés.',
+      'Supprimer la ville "${v.nom}" ? Les membres qui l\'utilisent seront simplement dissociés.',
     );
     if (selected == null || !context.mounted) return;
     await _submitProfileField(context, ref, {'villeId': selected.id});
@@ -753,35 +850,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           principalId: principalId,
                           onAddPressed: canManage
                               ? () async {
-                                  final created = await showAddLookupBottomSheet<GroupeRef>(
-                                    context: sheetContext,
-                                    title: 'Nouveau groupe',
-                                    hint: 'Ex. Chorale',
-                                    onSubmit: (nom, _) async {
-                                      final created = await sheetRef.read(groupesRemoteDataSourceProvider).create(nom);
-                                      sheetRef.read(groupesListProvider.notifier).addItem(created);
-                                      return created;
-                                    },
-                                  );
-                                  if (created != null) {
-                                    setState(() {
-                                      selectedIds = {...selectedIds, created.id};
-                                      principalId ??= created.id;
-                                    });
-                                  }
-                                }
+                            final created = await showAddLookupBottomSheet<GroupeRef>(
+                              context: sheetContext,
+                              title: 'Nouveau groupe',
+                              hint: 'Ex. Chorale',
+                              onSubmit: (nom, _) async {
+                                final created = await sheetRef.read(groupesRemoteDataSourceProvider).create(nom);
+                                sheetRef.read(groupesListProvider.notifier).addItem(created);
+                                return created;
+                              },
+                            );
+                            if (created != null) {
+                              setState(() {
+                                selectedIds = {...selectedIds, created.id};
+                                principalId ??= created.id;
+                              });
+                            }
+                          }
                               : null,
                           onDelete: canManage
                               ? (g) async {
-                                  await sheetRef.read(groupesRemoteDataSourceProvider).delete(g.id);
-                                  sheetRef.read(groupesListProvider.notifier).removeItem(g);
-                                  setState(() {
-                                    selectedIds = {...selectedIds}..remove(g.id);
-                                    if (principalId == g.id) {
-                                      principalId = selectedIds.isNotEmpty ? selectedIds.first : null;
-                                    }
-                                  });
-                                }
+                            await sheetRef.read(groupesRemoteDataSourceProvider).delete(g.id);
+                            sheetRef.read(groupesListProvider.notifier).removeItem(g);
+                            setState(() {
+                              selectedIds = {...selectedIds}..remove(g.id);
+                              if (principalId == g.id) {
+                                principalId = selectedIds.isNotEmpty ? selectedIds.first : null;
+                              }
+                            });
+                          }
                               : null,
                           onChanged: (ids, principal) => setState(() {
                             selectedIds = ids;
@@ -812,13 +909,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _showEditDialog(
-    BuildContext context,
-    String label,
-    String currentValue,
-    String field,
-    UserEntity user,
-    WidgetRef ref,
-  ) {
+      BuildContext context,
+      String label,
+      String currentValue,
+      String field,
+      UserEntity user,
+      WidgetRef ref,
+      ) {
     final controller = TextEditingController(
       text: currentValue == '(Non défini)' ? '' : currentValue,
     );
@@ -907,7 +1004,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               try {
                 Navigator.pop(dialogContext);
               } catch (_) {}
-              
+
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Row(
@@ -929,15 +1026,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               final result = await ref.read(
                 submitProfileUpdateProvider({field: newValue}).future,
               );
-              
+
               if (context.mounted) {
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 result.fold(
-                  (failure) {
+                      (failure) {
                     // Erreur
                     AppSnackbar.error(context, failure.message);
                   },
-                  (updatedUser) {
+                      (updatedUser) {
                     // Succès - afficher le message avec le champ mis à jour
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -965,7 +1062,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
-
 
   Widget _buildSettingsSection(BuildContext context, WidgetRef ref) {
     return Container(
@@ -1148,7 +1244,57 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
+}
 
+/// Champ "solde" cliquable — pasteur/trésorier uniquement — voir
+/// [AppPermissions.canViewRetraits]. Ouvre l'écran de retrait (solde exact +
+/// bouton Retrait + historique avec statut exact de chaque retrait).
+class _SoldeRetraitChip extends ConsumerWidget {
+  const _SoldeRetraitChip({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final soldeAsync = ref.watch(retraitSoldeProvider);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.md, vertical: SignmeSpacing.sm),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+          border: Border.all(color: Colors.white.withOpacity(0.35)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 16),
+            const SizedBox(width: SignmeSpacing.sm),
+            Text(
+              'Solde : ',
+              style: SignmeTypography.labelSmall.copyWith(color: Colors.white.withOpacity(0.85), fontSize: 12),
+            ),
+            soldeAsync.when(
+              loading: () => const SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              error: (_, __) => const Text('—', style: TextStyle(color: Colors.white)),
+              data: (solde) => Text(
+                FinanceFormatters.fcfa(solde),
+                style: SignmeTypography.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12),
+              ),
+            ),
+            const SizedBox(width: SignmeSpacing.xs),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _DialogChoiceChip extends StatelessWidget {

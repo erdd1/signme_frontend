@@ -1,9 +1,39 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/providers/connectivity_provider.dart';
 import '../../domain/entities/historique_personnel_entity.dart';
 import '../../data/models/historique_personnel_model.dart';
 import '../../data/datasources/historique_perso_local_datasource.dart';
+
+/// Récupère TOUTES les pages d'un endpoint d'historique — chaque requête
+/// HTTP reste bornée à 100 lignes, quel que soit le volume total accumulé
+/// par l'utilisateur au fil des années (jamais "tout d'un coup").
+Future<List<Map<String, dynamic>>> _fetchAllPages(
+  Dio dio,
+  String path,
+  Map<String, String> baseParams,
+) async {
+  final all = <Map<String, dynamic>>[];
+  var page = 1;
+  while (true) {
+    final resp = await dio.get(path, queryParameters: {
+      ...baseParams,
+      'page': '$page',
+      'per_page': '100',
+    });
+    if (resp.statusCode != 200) break;
+    final data = (resp.data['data'] as List?) ?? [];
+    all.addAll(data.cast<Map<String, dynamic>>());
+
+    final pagination = resp.data['pagination'] as Map<String, dynamic>?;
+    final currentPage = (pagination?['current_page'] as num?)?.toInt() ?? page;
+    final lastPage = (pagination?['last_page'] as num?)?.toInt() ?? page;
+    if (currentPage >= lastPage) break;
+    page++;
+  }
+  return all;
+}
 
 // ─── Provider datasource locale ───────────────────────────────────────────────
 final historiquePersoLocalDataSourceProvider =
@@ -86,30 +116,19 @@ class HistoriquePersonnelCombinedNotifier
     try {
       final dio = _ref.read(dioProvider);
       final queryParams = <String, String>{
-        'per_page': '20',
         'status': 'completed',
         'year': _year,
       };
 
       final results = await Future.wait([
-        dio.get('/signatures/historique-personnel', queryParameters: queryParams),
-        dio.get('/signatures/historique-personnel-presentiel', queryParameters: queryParams),
+        _fetchAllPages(dio, '/signatures/historique-personnel', queryParams),
+        _fetchAllPages(dio, '/signatures/historique-personnel-presentiel', queryParams),
       ]);
 
-      final rawForCache = <Map<String, dynamic>>[];
-
-      if (results[0].statusCode == 200) {
-        final data = (results[0].data['data'] as List?) ?? [];
-        rawForCache.addAll(data.cast<Map<String, dynamic>>());
-      }
-      if (results[1].statusCode == 200) {
-        final data = (results[1].data['data'] as List?) ?? [];
-        for (final dynamic s in data) {
-          if (s is Map<String, dynamic>) {
-            rawForCache.add({...s, 'signatureType': 'presentiel'});
-          }
-        }
-      }
+      final rawForCache = <Map<String, dynamic>>[
+        ...results[0],
+        ...results[1].map((s) => {...s, 'signatureType': 'presentiel'}),
+      ];
 
       final local = _ref.read(historiquePersoLocalDataSourceProvider);
       await local.save(_cacheFilters, rawForCache);

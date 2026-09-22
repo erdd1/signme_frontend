@@ -114,19 +114,29 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } catch (_) {
       // Silencieux — on nettoie le stockage local quoi qu'il arrive
     } finally {
-      await storage.clearAll();
+      // Ne jamais laisser un échec d'écriture locale empêcher la
+      // déconnexion de se terminer.
+      try {
+        await storage.clearAll();
+      } catch (_) {}
     }
   }
 
   @override
   Future<UserModel> getMe() async {
-    final response = await dio.get(ApiConfig.me);
-    if (response.statusCode == 200 && response.data['success'] == true) {
-      return UserModel.fromJson(
-        response.data['data'] as Map<String, dynamic>,
-      );
+    try {
+      final response = await dio.get(ApiConfig.me);
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        final data = response.data['data'];
+        if (data is! Map<String, dynamic>) {
+          throw ServerException(message: 'Réponse profil invalide.');
+        }
+        return UserModel.fromJson(data);
+      }
+      throw ServerException(message: 'Impossible de récupérer le profil.');
+    } on DioException catch (e) {
+      throwFromDio(e);
     }
-    throw ServerException(message: 'Impossible de récupérer le profil.');
   }
 
   @override

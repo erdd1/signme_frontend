@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../design_system/index.dart';
 
 /// SIGNME TEXT INPUT - Standard Production Component
@@ -26,6 +27,7 @@ class SignmeTextInput extends StatefulWidget {
     this.errorText,
     this.helperText,
     this.isLoading = false,
+    this.inputFormatters,
   });
 
   final String label;
@@ -48,6 +50,7 @@ class SignmeTextInput extends StatefulWidget {
   final String? errorText;
   final String? helperText;
   final bool isLoading;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<SignmeTextInput> createState() => _SignmeTextInputState();
@@ -82,6 +85,7 @@ class _SignmeTextInputState extends State<SignmeTextInput> {
           keyboardType: widget.keyboardType,
           textInputAction: widget.textInputAction,
           onFieldSubmitted: widget.onSubmitted,
+          validator: widget.validator,
           onChanged: (value) {
             if (_validationError != null) {
               setState(() => _validationError = null);
@@ -91,6 +95,7 @@ class _SignmeTextInputState extends State<SignmeTextInput> {
           enabled: widget.enabled && !widget.isLoading,
           maxLines: widget.isPassword ? 1 : widget.maxLines,
           maxLength: widget.maxLength,
+          inputFormatters: widget.inputFormatters,
           autofillHints: widget.autofillHints,
           style: SignmeTypography.bodyMedium,
           decoration: InputDecoration(
@@ -103,20 +108,20 @@ class _SignmeTextInputState extends State<SignmeTextInput> {
                 : null,
             suffixIcon: widget.isLoading
                 ? const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
-                  )
+              padding: EdgeInsets.all(12),
+              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            )
                 : (widget.isPassword
-                    ? IconButton(
-                        icon: Icon(_obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: SignmeColors.mediumGray, size: 20),
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                      )
-                    : (widget.trailingIcon != null
-                        ? IconButton(
-                            icon: Icon(widget.trailingIcon, color: SignmeColors.mediumGray, size: 20),
-                            onPressed: widget.onTrailingTap,
-                          )
-                        : null)),
+                ? IconButton(
+              icon: Icon(_obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: SignmeColors.mediumGray, size: 20),
+              onPressed: () => setState(() => _obscure = !_obscure),
+            )
+                : (widget.trailingIcon != null
+                ? IconButton(
+              icon: Icon(widget.trailingIcon, color: SignmeColors.mediumGray, size: 20),
+              onPressed: widget.onTrailingTap,
+            )
+                : null)),
             filled: true,
             fillColor: SignmeColors.accentSky.withOpacity(0.2),
             contentPadding: SignmeSpacing.inputPadding,

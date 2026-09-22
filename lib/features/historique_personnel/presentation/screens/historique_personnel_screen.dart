@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/widgets/index.dart';
 import '../../../../core/widgets/app_shimmer.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/historique_personnel_entity.dart';
 import '../providers/historique_personnel_combined_provider.dart';
 import '../../../badge/presentation/providers/badge_provider.dart';
@@ -32,6 +34,15 @@ class _HistoriquePersonnelScreenState
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authNotifierProvider).auth?.user;
+    if (user != null && !AppPermissions.canViewHistoriquePersonnel(user)) {
+      return const SignmeNoPermissionState(
+        title: 'Fonctionnalité bloquée',
+        message: AppPermissions.notCommuniantMessage,
+        icon: Icons.history_toggle_off_rounded,
+      );
+    }
+
     final historiqueAsync =
         ref.watch(historiquePersonnelCombinedProvider(_selectedYear));
 

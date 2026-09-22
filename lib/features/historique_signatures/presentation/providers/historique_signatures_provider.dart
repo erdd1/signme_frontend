@@ -45,7 +45,10 @@ class HistoriqueSignaturesNotifier
         .toList();
   }
 
-  /// Rafraîchit depuis l'API et persiste en cache Isar.
+  /// Rafraîchit depuis l'API et persiste en cache Isar. Parcourt TOUTES les
+  /// pages (chaque requête bornée à 100 lignes) : un ancien actif peut avoir
+  /// signé bien plus de 20 cartes sur une année, il ne faut jamais en perdre
+  /// silencieusement au-delà de la première page.
   Future<void> refresh() async {
     final isOnline = await _ref.read(connectivityServiceProvider).isOnline;
     if (!isOnline) return;
@@ -53,22 +56,30 @@ class HistoriqueSignaturesNotifier
     try {
       final dio = _ref.read(dioProvider);
       final queryParams = <String, String>{
-        'per_page': '20',
         'status': 'completed',
         'year': _year,
       };
 
-      final response = await dio.get(
-        '/signatures/historique-signatures',
-        queryParameters: queryParams,
-      );
+      final raw = <Map<String, dynamic>>[];
+      var page = 1;
+      while (true) {
+        final response = await dio.get(
+          '/signatures/historique-signatures',
+          queryParameters: {...queryParams, 'page': '$page', 'per_page': '100'},
+        );
 
-      if (response.statusCode != 200) {
-        throw DioException(requestOptions: response.requestOptions);
+        if (response.statusCode != 200) {
+          throw DioException(requestOptions: response.requestOptions);
+        }
+
+        raw.addAll(((response.data['data'] as List?) ?? []).cast<Map<String, dynamic>>());
+
+        final pagination = response.data['pagination'] as Map<String, dynamic>?;
+        final currentPage = (pagination?['current_page'] as num?)?.toInt() ?? page;
+        final lastPage = (pagination?['last_page'] as num?)?.toInt() ?? page;
+        if (currentPage >= lastPage) break;
+        page++;
       }
-
-      final raw = ((response.data['data'] as List?) ?? [])
-          .cast<Map<String, dynamic>>();
 
       final local = _ref.read(signatureLocalDataSourceProvider);
       await local.saveHistoriqueSignatures(_cacheFilters, raw);

@@ -36,6 +36,22 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="signme" android:host="reset-password"/>
             </intent-filter>
+            <!-- App Links : partage d'événement (WhatsApp, etc.). autoVerify
+                 déclenche la vérification Android du domaine via
+                 https://signmecy.org/.well-known/assetlinks.json — tant que
+                 le backend n'est pas déployé sur ce domaine (HTTPS valide),
+                 la vérification échoue silencieusement et Android retombe
+                 sur le comportement "lien web normal" (ouvre le navigateur),
+                 sans casser l'app. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="signmecy.org"
+                    android:pathPattern="/evenements/.*"/>
+            </intent-filter>
         </activity>
         <!-- Icône par défaut des notifications push (FCM) -->
         <meta-data

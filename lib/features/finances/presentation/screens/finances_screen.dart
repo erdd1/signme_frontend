@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/config/api_config.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_assets.dart';
@@ -200,6 +201,13 @@ class _RapportAnnuelTab extends ConsumerWidget {
                   ref.read(financesProvider.notifier).previousYear(),
               onNext: () => ref.read(financesProvider.notifier).nextYear(),
             ),
+            const SizedBox(height: SignmeSpacing.md),
+            PdfDownloadButton(
+              label: 'Télécharger le rapport (PDF)',
+              path: ApiConfig.rapportAnnuelPdf,
+              filename: 'rapport-financier-$year.pdf',
+              queryParameters: {'year': year},
+            ),
             if (state.annualError != null && !state.hasAnnualFor(year)) ...[
               const SizedBox(height: SignmeSpacing.md),
               SignmeErrorState(
@@ -264,6 +272,28 @@ class _AnnualSummaryGrid extends StatelessWidget {
       children: [
         _SummaryHeroCard(annual: annual, isLoading: isLoading),
         const SizedBox(height: SignmeSpacing.md),
+        Row(
+          children: [
+            Expanded(
+              child: _MiniStatCard(
+                label: 'Offrandes présentiel',
+                value: FinanceFormatters.fcfaShort(annual.totalPresentiel),
+                icon: Icons.person_pin_circle_rounded,
+                isLoading: isLoading,
+              ),
+            ),
+            const SizedBox(width: SignmeSpacing.sm),
+            Expanded(
+              child: _MiniStatCard(
+                label: 'Offrandes distance',
+                value: FinanceFormatters.fcfaShort(annual.totalDistance),
+                icon: Icons.phone_android_rounded,
+                isLoading: isLoading,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: SignmeSpacing.sm),
         Row(
           children: [
             Expanded(
@@ -622,28 +652,13 @@ class _MonthDetailPanel extends StatelessWidget {
                 color: SignmeColors.mediumGray,
               ),
             )
-          else ...[
+          else
             Text(
               '${detail!.nbTotal} signature(s) · ${FinanceFormatters.fcfa(detail!.montantTotal)}',
               style: SignmeTypography.bodySmall.copyWith(
                 color: SignmeColors.textSecondary,
               ),
             ),
-            const SizedBox(height: SignmeSpacing.md),
-            ...detail!.signatures.take(20).map(
-                  (s) => _SignatureLine(signature: s),
-                ),
-            if (detail!.signatures.length > 20)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  '+ ${detail!.signatures.length - 20} autres…',
-                  style: SignmeTypography.labelSmall.copyWith(
-                    color: SignmeColors.mediumGray,
-                  ),
-                ),
-              ),
-          ],
         ],
       ),
     );
@@ -676,44 +691,6 @@ class _DetailChip extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SignatureLine extends StatelessWidget {
-  const _SignatureLine({required this.signature});
-  final SignatureMensuelleEntity signature;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: SignmeSpacing.sm),
-      child: Row(
-        children: [
-          Icon(
-            signature.isPresentiel
-                ? Icons.person_pin_circle_rounded
-                : Icons.phone_android_rounded,
-            size: 18,
-            color: SignmeColors.primaryLight,
-          ),
-          const SizedBox(width: SignmeSpacing.sm),
-          Expanded(
-            child: Text(
-              signature.nomParoissien,
-              style: SignmeTypography.bodyMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Text(
-            FinanceFormatters.fcfaShort(signature.amount),
-            style: SignmeTypography.labelMedium.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }

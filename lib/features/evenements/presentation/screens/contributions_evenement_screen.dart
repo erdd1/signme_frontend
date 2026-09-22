@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/config/api_config.dart';
 import '../../../../core/design_system/index.dart';
+import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/widgets/index.dart';
 import '../../../auth/domain/entities/user_lookup_refs.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/entities/contribution_entity.dart';
 import '../../domain/entities/contribution_filter_event_entity.dart';
@@ -73,6 +76,9 @@ class _ContributionsEvenementScreenState
   @override
   Widget build(BuildContext context) {
     final listState = ref.watch(contributionsTreasuryListProvider);
+    final currentUser = ref.watch(authNotifierProvider).auth?.user;
+    final canDownload =
+        currentUser != null && AppPermissions.canDownloadContributionsPdf(currentUser);
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
@@ -119,6 +125,25 @@ class _ContributionsEvenementScreenState
               ),
             ),
 
+            // ── Téléchargement PDF (pasteur/trésorier uniquement) ──────────────
+            if (canDownload)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    SignmeSpacing.lg, 0,
+                    SignmeSpacing.lg, SignmeSpacing.md,
+                  ),
+                  child: PdfDownloadButton(
+                    label: _filters.eventId != null
+                        ? 'Télécharger cet événement (PDF)'
+                        : 'Télécharger toutes les contributions (PDF)',
+                    path: ApiConfig.contributionsEvenementsExportPdf,
+                    filename: 'contributions-evenement.pdf',
+                    queryParameters: _filters.toQueryParams(),
+                  ),
+                ),
+              ),
+
             // ── En-tête liste ─────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
@@ -149,25 +174,29 @@ class _ContributionsEvenementScreenState
             // ── Liste de contributions ────────────────────────────────────────
             if (listState.error != null && listState.items.isEmpty)
               SliverFillRemaining(
+                hasScrollBody: false,
                 child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.wifi_off_rounded,
-                          size: 48, color: SignmeColors.mediumGray),
-                      const SizedBox(height: SignmeSpacing.md),
-                      Text('Impossible de charger les contributions.',
-                          style: SignmeTypography.bodyMedium
-                              .copyWith(color: SignmeColors.mediumGray)),
-                      const SizedBox(height: SignmeSpacing.md),
-                      TextButton.icon(
-                        onPressed: () => ref
-                            .read(contributionsTreasuryListProvider.notifier)
-                            .refresh(_filters),
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Réessayer'),
-                      ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: SignmeSpacing.xl),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.wifi_off_rounded,
+                            size: 48, color: SignmeColors.mediumGray),
+                        const SizedBox(height: SignmeSpacing.md),
+                        Text('Impossible de charger les contributions.',
+                            style: SignmeTypography.bodyMedium
+                                .copyWith(color: SignmeColors.mediumGray)),
+                        const SizedBox(height: SignmeSpacing.md),
+                        TextButton.icon(
+                          onPressed: () => ref
+                              .read(contributionsTreasuryListProvider.notifier)
+                              .refresh(_filters),
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Réessayer'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               )
@@ -177,20 +206,24 @@ class _ContributionsEvenementScreenState
               )
             else if (listState.items.isEmpty)
               SliverFillRemaining(
+                hasScrollBody: false,
                 child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.receipt_long_rounded,
-                          size: 48, color: SignmeColors.mediumGray),
-                      const SizedBox(height: SignmeSpacing.md),
-                      Text(
-                        'Aucune contribution pour cette sélection.',
-                        style: SignmeTypography.bodyMedium
-                            .copyWith(color: SignmeColors.mediumGray),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: SignmeSpacing.xl),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.receipt_long_rounded,
+                            size: 48, color: SignmeColors.mediumGray),
+                        const SizedBox(height: SignmeSpacing.md),
+                        Text(
+                          'Aucune contribution pour cette sélection.',
+                          style: SignmeTypography.bodyMedium
+                              .copyWith(color: SignmeColors.mediumGray),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               )
@@ -226,7 +259,6 @@ class _ContributionsEvenementScreenState
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // _SynthesisCard — grand card bleu de synthèse globale
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -239,7 +271,8 @@ class _SynthesisCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(contributionsTreasuryStatsProvider(globalFilter));
+    final statsAsync =
+        ref.watch(contributionsTreasuryStatsProvider(globalFilter));
 
     return Container(
       decoration: BoxDecoration(
@@ -251,7 +284,7 @@ class _SynthesisCard extends ConsumerWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: SignmeColors.primaryLight.withOpacity(0.30),
+            color: SignmeColors.primaryLight.withValues(alpha: 0.30),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -260,12 +293,13 @@ class _SynthesisCard extends ConsumerWidget {
       padding: const EdgeInsets.all(SignmeSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // En-tête
           Row(
             children: [
               const Icon(Icons.account_balance_wallet_rounded,
-                  color: Colors.white70, size: 20),
+                  color: Colors.white70, size: 18),
               const SizedBox(width: SignmeSpacing.sm),
               Text(
                 'Aperçu global',
@@ -275,89 +309,130 @@ class _SynthesisCard extends ConsumerWidget {
                 ),
               ),
               const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: SignmeSpacing.sm, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
-                ),
-                child: Text(
-                  'Données jusqu\'à présent',
-                  style: SignmeTypography.labelSmall
-                      .copyWith(color: Colors.white70),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 130),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: SignmeSpacing.sm, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius:
+                        BorderRadius.circular(SignmeSpacing.radiusFull),
+                  ),
+                  child: Text(
+                    'Données actuelles',
+                    style: SignmeTypography.labelSmall
+                        .copyWith(color: Colors.white70, fontSize: 10),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: SignmeSpacing.xl),
+          const SizedBox(height: SignmeSpacing.lg),
 
-          // 3 métriques
+          // Métriques
           statsAsync.when(
-            loading: () => Row(
-              children: List.generate(
-                3,
-                (_) => Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                          height: 12,
-                          width: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(4),
-                          )),
-                      const SizedBox(height: 6),
-                      Container(
-                          height: 20,
-                          width: 100,
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(4),
-                          )),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            loading: _buildSkeleton,
             error: (_, __) => Text(
               'Stats indisponibles',
-              style: SignmeTypography.bodySmall.copyWith(color: Colors.white70),
+              style:
+                  SignmeTypography.bodySmall.copyWith(color: Colors.white70),
             ),
-            data: (stats) => Row(
+            data: (stats) => Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                _StatColumn(
-                  icon: Icons.wallet_rounded,
-                  label: 'Total contributions',
-                  value: FinanceFormatters.fcfa(stats.netRecu),
-                  sublabel: 'Montant donné',
+                // Ligne 1 : Total contributions + Total frais perçus
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _StatTile(
+                        icon: Icons.wallet_rounded,
+                        label: 'Total contributions',
+                        value: FinanceFormatters.fcfa(stats.netRecu),
+                        sublabel: 'Montant net reversé',
+                      ),
+                    ),
+                    const SizedBox(width: SignmeSpacing.md),
+                    Expanded(
+                      child: _StatTile(
+                        icon: Icons.receipt_rounded,
+                        label: 'Total frais',
+                        value: FinanceFormatters.fcfa(stats.totalFrais),
+                        sublabel: 'Frais de transaction',
+                      ),
+                    ),
+                  ],
                 ),
-                _StatColumn(
-                  icon: Icons.receipt_rounded,
-                  label: 'Total frais perçus',
-                  value: FinanceFormatters.fcfa(stats.totalFrais),
-                  sublabel: 'Frais de transaction',
-                ),
-                _StatColumn(
-                  icon: Icons.church_rounded,
-                  label: 'Reçu par l\'église',
-                  value: FinanceFormatters.fcfa(stats.netRecu),
-                  sublabel: 'Montant net',
-                  highlighted: true,
+                const SizedBox(height: SignmeSpacing.md),
+
+                // Ligne 2 : Reçu par l'église — pleine largeur
+                Container(
+                  padding: const EdgeInsets.all(SignmeSpacing.md),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius:
+                        BorderRadius.circular(SignmeSpacing.radiusMd),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius:
+                              BorderRadius.circular(SignmeSpacing.radiusSm),
+                        ),
+                        child: const Icon(Icons.church_rounded,
+                            color: SignmeColors.primaryCyan, size: 20),
+                      ),
+                      const SizedBox(width: SignmeSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Reçu par l\'église',
+                              style: SignmeTypography.labelSmall
+                                  .copyWith(color: Colors.white70),
+                            ),
+                            Text(
+                              FinanceFormatters.fcfa(stats.netRecu),
+                              style: SignmeTypography.labelLarge.copyWith(
+                                color: SignmeColors.primaryCyan,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 17,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Montant net',
+                        style: SignmeTypography.labelSmall
+                            .copyWith(color: Colors.white54),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: SignmeSpacing.lg),
+          const SizedBox(height: SignmeSpacing.md),
 
-          // Ligne info : total payé
+          // Total payé
           statsAsync.maybeWhen(
             data: (stats) => Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: SignmeSpacing.md, vertical: SignmeSpacing.sm),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.10),
+                color: Colors.white.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
               ),
               child: Row(
@@ -368,12 +443,15 @@ class _SynthesisCard extends ConsumerWidget {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'Total payé par les contributeurs : ${FinanceFormatters.fcfa(stats.totalPaye)}',
+                          'Total Encaissé : ${FinanceFormatters.fcfa(stats.totalPaye)}',
                           style: SignmeTypography.labelMedium.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           'Contributions + Frais',
@@ -392,63 +470,126 @@ class _SynthesisCard extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildSkeleton() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: List.generate(
+            2,
+            (_) => Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: SignmeSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      height: 10,
+                      width: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 18,
+                      width: 90,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: SignmeSpacing.md),
+        Container(
+          height: 60,
+          decoration: BoxDecoration(
+            color: Colors.white12,
+            borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-class _StatColumn extends StatelessWidget {
-  const _StatColumn({
+// ─────────────────────────────────────────────────────────────────────────────
+// _StatTile — tuile compacte pour la ligne 2 colonnes
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StatTile extends StatelessWidget {
+  const _StatTile({
     required this.icon,
     required this.label,
     required this.value,
     required this.sublabel,
-    this.highlighted = false,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final String sublabel;
-  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(SignmeSpacing.radiusSm),
+              ),
+              child: Icon(icon, color: Colors.white, size: 16),
             ),
-            child: Icon(icon, color: Colors.white, size: 20),
-          ),
-          const SizedBox(height: SignmeSpacing.sm),
-          Text(label,
-              style: SignmeTypography.labelSmall
-                  .copyWith(color: Colors.white70),
-              maxLines: 2),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: SignmeTypography.labelLarge.copyWith(
-              color: highlighted ? SignmeColors.primaryCyan : Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: highlighted ? 15 : 14,
+            const SizedBox(width: SignmeSpacing.sm),
+            Expanded(
+              child: Text(
+                label,
+                style: SignmeTypography.labelSmall
+                    .copyWith(color: Colors.white70),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          ],
+        ),
+        const SizedBox(height: SignmeSpacing.sm),
+        Text(
+          value,
+          style: SignmeTypography.labelLarge.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
           ),
-          Text(sublabel,
-              style: SignmeTypography.labelSmall
-                  .copyWith(color: Colors.white54),
-              maxLines: 1),
-        ],
-      ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          sublabel,
+          style: SignmeTypography.labelSmall.copyWith(color: Colors.white54),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _FilterSection — 4 dropdowns 2×2 + bouton réinitialiser
@@ -622,7 +763,7 @@ class _SelectionSummaryCard extends ConsumerWidget {
     if (filters.month != null) {
       return '${months[filters.month! - 1]} ${filters.year}';
     }
-    return 'Tous ${filters.year}';
+    return 'An ${filters.year}';
   }
 
   @override
@@ -693,19 +834,22 @@ class _SelectionSummaryCard extends ConsumerWidget {
             data: (stats) => Row(
               children: [
                 _SummaryStatColumn(
-                  label: 'Total contributions',
-                  value: FinanceFormatters.fcfa(stats.netRecu),
+                  label: 'Contributeurs',
+                  value: _formatCount(stats.nombreContributeurs),
                   color: SignmeColors.primaryLight,
+                  icon: Icons.people_alt_rounded,
                 ),
                 _SummaryStatColumn(
                   label: 'Total frais',
                   value: FinanceFormatters.fcfa(stats.totalFrais),
                   color: SignmeColors.warning,
+                  icon: Icons.receipt_rounded,
                 ),
                 _SummaryStatColumn(
-                  label: 'Reçu par l\'église',
+                  label: 'Contributions',
                   value: FinanceFormatters.fcfa(stats.netRecu),
                   color: SignmeColors.success,
+                  icon: Icons.church_rounded,
                 ),
               ],
             ),
@@ -713,6 +857,11 @@ class _SelectionSummaryCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  static String _formatCount(int n) {
+    if (n >= 1000) return '${(n ~/ 1000)}.${((n % 1000) ~/ 100)}k';
+    return n.toString();
   }
 }
 
@@ -769,23 +918,37 @@ class _SummaryStatColumn extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.icon,
   });
 
   final String label;
   final String value;
   final Color color;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: SignmeTypography.labelSmall
-                .copyWith(color: SignmeColors.darkGray),
-            maxLines: 1,
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon!, size: 12, color: color),
+                const SizedBox(width: 4),
+              ],
+              Expanded(
+                child: Text(
+                  label,
+                  style: SignmeTypography.labelSmall
+                      .copyWith(color: SignmeColors.darkGray),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 2),
           Text(
@@ -802,7 +965,6 @@ class _SummaryStatColumn extends StatelessWidget {
     );
   }
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // _LoadMoreIndicator — bas de liste
 // ─────────────────────────────────────────────────────────────────────────────
@@ -859,36 +1021,44 @@ class _ContributionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
         boxShadow: [
           BoxShadow(
-              color: SignmeColors.primaryDark.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
+            color: SignmeColors.primaryDark.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        child: Container(
-          decoration: BoxDecoration(
-            color: SignmeColors.white,
-            border: Border.all(color: SignmeColors.lightGrayBorder),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(width: 4, color: _statutColor),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(SignmeSpacing.md),
-                    child: _buildContent(),
+      // clipBehavior au lieu de ClipRRect imbriqué — évite le double-clip
+      // qui coupait les caractères proches des coins arrondis.
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: SignmeColors.white,
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+          border: Border.all(color: SignmeColors.lightGrayBorder),
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(width: 4, color: _statutColor),
+              Expanded(
+                child: Padding(
+                  // padding horizontal = lg (20px) > radiusLg (16px) :
+                  // le texte est toujours hors de la zone coupée par le coin.
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: SignmeSpacing.lg,
+                    vertical: SignmeSpacing.md,
                   ),
+                  child: _buildContent(),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+
 
   Widget _buildContent() {
     return Column(

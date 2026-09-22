@@ -1,7 +1,9 @@
+import 'package:equatable/equatable.dart';
+
 /// Entité domaine — Compteurs de badges de notifications
 ///
 /// Représente les compteurs non lus pour chaque onglet/section de l'application.
-class BadgeCountEntity {
+class BadgeCountEntity extends Equatable {
   const BadgeCountEntity({
     required this.publications,
     required this.evenements,
@@ -53,4 +55,15 @@ class BadgeCountEntity {
       'evenements: $evenements, '
       'historique: $historique, '
       'historiqueSignatures: $historiqueSignatures)';
+
+  // Sans égalité par valeur, chaque refresh() (polling 60s, toute la
+  // session) produisait une NOUVELLE instance considérée "différente" par
+  // défaut (égalité par identité) même à compteurs inchangés — Riverpod
+  // notifiait alors ses écouteurs à chaque cycle, forçant un rebuild complet
+  // de MainShell (AppBar + Drawer + navbar avec flou BackdropFilter, l'un
+  // des rendus les plus coûteux de Flutter) toutes les 60 secondes, sans
+  // interruption, pour chaque utilisateur connecté.
+  @override
+  List<Object?> get props =>
+      [publications, evenements, historique, historiqueSignatures];
 }

@@ -6,6 +6,7 @@ import '../../data/datasources/badge_local_datasource.dart';
 import '../../domain/entities/badge_count_entity.dart';
 import '../../../../core/websocket/ws_provider.dart';
 import '../../../../core/websocket/ws_client.dart';
+import '../../../../core/utils/app_logger.dart';
 
 // ─── Durée du polling périodique ─────────────────────────────────────────────
 const Duration _kPollingInterval = Duration(seconds: 60);
@@ -102,7 +103,11 @@ class BadgeNotifier extends StateNotifier<AsyncValue<BadgeCountEntity>> {
       );
       if (mounted) state = AsyncData(entity);
       _ref.read(badgeLocalDataSourceProvider).save(entity);
-    } catch (_) {}
+    } catch (e) {
+      // Sans conséquence pour l'utilisateur : refresh() corrige au prochain
+      // sondage. Journalisé pour repérer un format d'event WS cassé.
+      AppLogger.error('Événement WS badge invalide', e);
+    }
   }
 
   // ── Actions publiques ─────────────────────────────────────────────────────

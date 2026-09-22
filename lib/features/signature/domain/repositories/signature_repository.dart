@@ -4,6 +4,7 @@ import '../../../../core/config/api_config.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/api_response_parser.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -172,7 +173,13 @@ class SignatureRepositoryImpl implements SignatureRepository {
         final data = ApiResponseParser.dataMap(resp.data);
         if (data != null) return MemberSignatureStatus.fromJson(data);
       }
-    } catch (_) {}
+    } catch (e) {
+      // `null` reste volontairement le signal "statut indisponible" pour
+      // l'appelant (réseau en échec ET absence de statut sont traités de
+      // la même façon côté UI) — journalisé pour distinguer les deux cas
+      // en cas de besoin de diagnostic.
+      AppLogger.error('Échec de récupération du statut du membre', e);
+    }
     return null;
   }
 
@@ -183,7 +190,9 @@ class SignatureRepositoryImpl implements SignatureRepository {
       if (resp.statusCode == 200 && ApiResponseParser.isSuccess(resp.data)) {
         return ApiResponseParser.dataMap(resp.data);
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.error('Échec de la vérification "peut signer en présentiel"', e);
+    }
     return null;
   }
 }

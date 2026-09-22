@@ -9,20 +9,37 @@ class MesDepensesRemoteDataSource {
 
   final Dio _dio;
 
-  Future<List<Map<String, dynamic>>> list({int? annee, int? mois, int perPage = 20}) async {
+  /// Parcourt TOUTES les pages (chaque requête HTTP bornée à [perPage]
+  /// lignes) : une contribution personnelle cumulée sur plusieurs années peut
+  /// largement dépasser une seule page, il ne faut jamais en perdre
+  /// silencieusement au-delà de la première.
+  Future<List<Map<String, dynamic>>> list({int? annee, int? mois, int perPage = 100}) async {
     try {
-      final resp = await _dio.get(
-        ApiConfig.mesContributions,
-        queryParameters: {
-          'per_page': perPage,
-          if (annee != null) 'annee': annee,
-          if (mois != null) 'mois': mois,
-        },
-      );
-      if (resp.statusCode == 200 && ApiResponseParser.isSuccess(resp.data)) {
-        return ApiResponseParser.extractList(resp.data);
+      final all = <Map<String, dynamic>>[];
+      var page = 1;
+      while (true) {
+        final resp = await _dio.get(
+          ApiConfig.mesContributions,
+          queryParameters: {
+            'per_page': perPage,
+            'page': page,
+            if (annee != null) 'annee': annee,
+            if (mois != null) 'mois': mois,
+          },
+        );
+        if (resp.statusCode != 200 || !ApiResponseParser.isSuccess(resp.data)) {
+          throw ServerException(message: ApiResponseParser.message(resp.data));
+        }
+        final body = resp.data as Map<String, dynamic>;
+        all.addAll(ApiResponseParser.extractList(body));
+
+        final pagination = body['pagination'] as Map<String, dynamic>?;
+        final currentPage = (pagination?['current_page'] as num?)?.toInt() ?? page;
+        final lastPage = (pagination?['last_page'] as num?)?.toInt() ?? page;
+        if (currentPage >= lastPage) break;
+        page++;
       }
-      throw ServerException(message: ApiResponseParser.message(resp.data));
+      return all;
     } on DioException catch (e) {
       throwFromDio(e);
     }

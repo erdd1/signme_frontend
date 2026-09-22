@@ -20,6 +20,9 @@ class UserEntity extends Equatable {
     this.dateConfirmation,
     this.lieuConfirmation,
     this.sexe,
+    this.matricule,
+    this.estCommuniant = true,
+    this.communiantDepuis,
     this.dateNaissance,
     this.quartier,
     this.ville,
@@ -44,6 +47,18 @@ class UserEntity extends Equatable {
 
   /// 'homme' | 'femme'
   final String? sexe;
+
+  /// Identifiant propre à l'église (H001-H999 / F001-F999), distinct de [id].
+  final String? matricule;
+
+  /// false uniquement possible pour le rôle paroissien — les autres rôles
+  /// sont et seront toujours communiants.
+  final bool estCommuniant;
+
+  /// Posée par le pasteur/la secrétaire au passage non-communiant → communiant
+  /// (format ISO YYYY-MM-DD) — plancher pour signer, jamais de rattrapage
+  /// sur les mois précédents.
+  final String? communiantDepuis;
 
   /// Date de naissance au format ISO (YYYY-MM-DD)
   final String? dateNaissance;
@@ -93,6 +108,9 @@ class UserEntity extends Equatable {
     dateConfirmation,
     lieuConfirmation,
     sexe,
+    matricule,
+    estCommuniant,
+    communiantDepuis,
     dateNaissance,
     quartier,
     ville,

@@ -48,12 +48,26 @@ class UserCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      user.roleLabel,
-                      style: SignmeTypography.bodySmall.copyWith(
-                        color: SignmeColors.primaryLight,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          user.roleLabel,
+                          style: SignmeTypography.bodySmall.copyWith(
+                            color: SignmeColors.primaryLight,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (user.matricule != null) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '· ${user.matricule}',
+                            style: SignmeTypography.bodySmall.copyWith(
+                              color: SignmeColors.mediumGray,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     if (user.email.isNotEmpty)
                       Text(

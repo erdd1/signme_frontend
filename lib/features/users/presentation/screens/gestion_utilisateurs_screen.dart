@@ -485,64 +485,82 @@ class _FilteredMembersResultScreenState extends ConsumerState<FilteredMembersRes
               ? users
               : users.where((u) => u.nom.toLowerCase().contains(_query.toLowerCase())).toList();
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(
-              SignmeSpacing.lg,
-              SignmeSpacing.md,
-              SignmeSpacing.lg,
-              120,
-            ),
-            children: [
-              _GroupHeaderCard(label: headerLabel, name: headerName, memberCount: users.length),
-              const SizedBox(height: SignmeSpacing.xxl),
-              Text(
-                'Membres du groupe',
-                style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, fontSize: 16),
-              ),
-              const SizedBox(height: SignmeSpacing.md),
-              TextField(
-                controller: _searchController,
-                onChanged: (v) => setState(() => _query = v),
-                style: SignmeTypography.bodyMedium,
-                decoration: InputDecoration(
-                  hintText: 'Rechercher...',
-                  hintStyle: SignmeTypography.placeholder,
-                  prefixIcon: const Icon(Icons.search_rounded, color: SignmeColors.mediumGray),
-                  filled: true,
-                  fillColor: SignmeColors.white,
-                  contentPadding: const EdgeInsets.symmetric(vertical: SignmeSpacing.md),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
-                    borderSide: const BorderSide(color: SignmeColors.lightGrayBorder),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
-                    borderSide: const BorderSide(color: SignmeColors.lightGrayBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
-                    borderSide: const BorderSide(color: SignmeColors.primaryLight),
+          // CustomScrollView + SliverList : en-tête (carte + recherche) fixe
+          // au-dessus, cartes membres construites paresseusement — un filtre
+          // large (ex. tout un mois de naissance) peut retourner des
+          // centaines de membres.
+          return CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.md, SignmeSpacing.lg, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _GroupHeaderCard(label: headerLabel, name: headerName, memberCount: users.length),
+                      const SizedBox(height: SignmeSpacing.xxl),
+                      Text(
+                        'Membres du groupe',
+                        style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700, fontSize: 16),
+                      ),
+                      const SizedBox(height: SignmeSpacing.md),
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (v) => setState(() => _query = v),
+                        style: SignmeTypography.bodyMedium,
+                        decoration: InputDecoration(
+                          hintText: 'Rechercher...',
+                          hintStyle: SignmeTypography.placeholder,
+                          prefixIcon: const Icon(Icons.search_rounded, color: SignmeColors.mediumGray),
+                          filled: true,
+                          fillColor: SignmeColors.white,
+                          contentPadding: const EdgeInsets.symmetric(vertical: SignmeSpacing.md),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                            borderSide: const BorderSide(color: SignmeColors.lightGrayBorder),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                            borderSide: const BorderSide(color: SignmeColors.lightGrayBorder),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                            borderSide: const BorderSide(color: SignmeColors.primaryLight),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: SignmeSpacing.lg),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: SignmeSpacing.lg),
               if (filtered.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: SignmeSpacing.xxl),
-                  child: Text(
-                    'Aucun membre ne correspond à la recherche.',
-                    textAlign: TextAlign.center,
-                    style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: SignmeSpacing.xxl),
+                    child: Text(
+                      'Aucun membre ne correspond à la recherche.',
+                      textAlign: TextAlign.center,
+                      style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray),
+                    ),
                   ),
                 )
               else
-                for (final user in filtered) ...[
-                  UserCard(
-                    user: user,
-                    onTap: () => context.push(AppRoutes.userDetailPath(user.id)),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, 0, SignmeSpacing.lg, 120),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: SignmeSpacing.md),
+                        child: UserCard(
+                          user: filtered[index],
+                          onTap: () => context.push(AppRoutes.userDetailPath(filtered[index].id)),
+                        ),
+                      ),
+                      childCount: filtered.length,
+                    ),
                   ),
-                  const SizedBox(height: SignmeSpacing.md),
-                ],
+                ),
             ],
           );
         },

@@ -55,12 +55,13 @@ class EvenementsRemoteDataSource {
   /// Vue "Gérer les événements" (pasteur/secrétaire/trésorier) : tous les
   /// événements de l'église quel que soit le statut (Actif ET Archivé),
   /// avec montant collecté et nombre de contributeurs distincts.
-  Future<List<EvenementModel>> listGestion({String? statut, int perPage = 20}) async {
+  Future<List<EvenementModel>> listGestion({String? statut, int page = 1, int perPage = 20}) async {
     try {
       final resp = await _dio.get(
         ApiConfig.evenementsGestion,
         queryParameters: {
           'per_page': perPage,
+          'page': page,
           if (statut != null) 'statut': statut,
         },
       );
@@ -68,6 +69,42 @@ class EvenementsRemoteDataSource {
         return ApiResponseParser.extractList(resp.data).map(EvenementModel.fromJson).toList();
       }
       throw ServerException(message: ApiResponseParser.message(resp.data));
+    } on DioException catch (e) {
+      throwFromDio(e);
+    }
+  }
+
+  /// Récupère TOUTES les pages de "Gérer les événements" — réservé à la
+  /// synchronisation du cache local (jamais à un écran lisant le réseau
+  /// directement) : chaque requête HTTP reste bornée à [perPage] lignes,
+  /// quel que soit le volume total de la table, en avançant page par page
+  /// jusqu'à épuisement (`pagination.current_page == last_page`).
+  Future<List<EvenementModel>> listGestionAllPages({String? statut, int perPage = 100}) async {
+    try {
+      final all = <EvenementModel>[];
+      var page = 1;
+      while (true) {
+        final resp = await _dio.get(
+          ApiConfig.evenementsGestion,
+          queryParameters: {
+            'per_page': perPage,
+            'page': page,
+            if (statut != null) 'statut': statut,
+          },
+        );
+        if (resp.statusCode != 200 || !ApiResponseParser.isSuccess(resp.data)) {
+          throw ServerException(message: ApiResponseParser.message(resp.data));
+        }
+        final body = resp.data as Map<String, dynamic>;
+        all.addAll(ApiResponseParser.extractList(body).map(EvenementModel.fromJson));
+
+        final pagination = body['pagination'] as Map<String, dynamic>?;
+        final currentPage = (pagination?['current_page'] as num?)?.toInt() ?? page;
+        final lastPage = (pagination?['last_page'] as num?)?.toInt() ?? page;
+        if (currentPage >= lastPage) break;
+        page++;
+      }
+      return all;
     } on DioException catch (e) {
       throwFromDio(e);
     }

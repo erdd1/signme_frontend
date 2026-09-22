@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/publication_entity.dart';
+import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/providers/connectivity_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../badge/presentation/providers/badge_provider.dart';
 import 'publications_data_providers.dart';
 
@@ -20,17 +22,38 @@ class PublicationsListNotifier
   final Ref _ref;
   final Map<String, dynamic> _filters;
 
+  /// Filet de sécurité côté client : exclut les méditations pour un
+  /// paroissien non communiant même si le cache Isar local contient encore
+  /// des éléments chargés avant son passage à non-communiant.
+  List<PublicationEntity> _filterVisible(List<PublicationEntity> items) {
+    final user = _ref.read(authNotifierProvider).auth?.user;
+    if (user == null || user.estCommuniant) return items;
+    return items.where((p) => !p.isMeditation).toList();
+  }
+
+  /// Limite d'affichage optionnelle (ex. `{'limit': 5}` pour l'aperçu Home)
+  /// — distincte de `per_page`, qui ne contrôle que la taille des requêtes
+  /// réseau de synchronisation, jamais ce qui est affiché.
+  List<PublicationEntity> _applyLimit(List<PublicationEntity> items) {
+    final limit = _filters['limit'] as int?;
+    return limit != null ? items.take(limit).toList() : items;
+  }
+
   Future<void> _loadFromCacheThenRefresh() async {
     final local = _ref.read(publicationsLocalDataSourceProvider);
     final typeFilter = _filters['type']?.toString();
-    final cached = await local.getAll(type: typeFilter);
+    final cached = _applyLimit(_filterVisible(await local.getAll(type: typeFilter)));
     if (cached.isNotEmpty && mounted) {
       state = AsyncData(cached);
     }
     await refresh();
   }
 
-  /// Rafraîchit depuis l'API et persiste en cache Isar.
+  /// Rafraîchit via synchronisation delta (mêmes requêtes que SyncService,
+  /// petites et bornées quel que soit le volume total de la table), puis
+  /// affiche le cache Isar COMPLET — jamais seulement le lot réseau reçu,
+  /// pour ne pas faire disparaître les publications plus anciennes déjà en
+  /// cache dès que le nombre de publications dépasse `per_page`.
   Future<void> refresh() async {
     final connectivity = _ref.read(connectivityServiceProvider);
     final isOnline = await connectivity.isOnline;
@@ -41,15 +64,25 @@ class PublicationsListNotifier
     final typeFilter = _filters['type']?.toString();
 
     try {
-      final items = await remote.list(_filters);
-      final entities = items.map((m) => m.toEntity()).toList();
-      await local.saveAll(entities);
-      if (mounted) state = AsyncData(entities);
+      final latest = await local.latestUpdatedAt;
+      if (latest == null) {
+        final items = await remote.list(_filters);
+        await local.saveAll(items.map((m) => m.toEntity()).toList());
+      } else {
+        final delta = await remote.deltaSince(latest, _filters);
+        await local.applyRemoteChanges(
+          delta.items.map((m) => m.toEntity()).toList(),
+          delta.deletedIds,
+        );
+      }
+      if (mounted) {
+        state = AsyncData(_applyLimit(_filterVisible(await local.getAll(type: typeFilter))));
+      }
     } catch (e, st) {
       // Réseau en échec : on garde les données déjà affichées. On ne
       // propage l'erreur que si on n'a vraiment rien à montrer.
       if (mounted && !state.hasValue) {
-        final cached = await local.getAll(type: typeFilter);
+        final cached = _applyLimit(_filterVisible(await local.getAll(type: typeFilter)));
         state = cached.isNotEmpty ? AsyncData(cached) : AsyncError(e, st);
       }
     }
@@ -67,7 +100,7 @@ final publicationsListProvider = StateNotifierProvider.family<
 
 final homePublicationsProvider =
     Provider<AsyncValue<List<PublicationEntity>>>((ref) {
-  return ref.watch(publicationsListProvider(const {'per_page': 5}));
+  return ref.watch(publicationsListProvider(const {'limit': 5}));
 });
 
 // ── Détail d'une publication ────────────────────────────────────────────────
@@ -77,6 +110,7 @@ final publicationDetailProvider =
   final remote       = ref.read(publicationsRemoteDataSourceProvider);
   final local        = ref.read(publicationsLocalDataSourceProvider);
   final connectivity = ref.read(connectivityServiceProvider);
+  final user         = ref.read(authNotifierProvider).auth?.user;
 
   final isOnline = await connectivity.isOnline;
 
@@ -91,6 +125,12 @@ final publicationDetailProvider =
   }
 
   final cached = await local.getById(id);
+  // Filet de sécurité : une méditation en cache (chargée avant un passage à
+  // non-communiant, ou servie après un 403 traité comme un échec réseau
+  // ci-dessus) ne doit jamais être rendue depuis le cache local.
+  if (cached != null && cached.isMeditation && user != null && !user.estCommuniant) {
+    throw Exception(AppPermissions.notCommuniantMessage);
+  }
   if (cached != null) return cached;
   throw Exception('Publication non disponible hors ligne.');
 });
@@ -100,7 +140,7 @@ final publicationDetailProvider =
 void invalidatePublicationsList(Ref ref) {
   final filters = ref.read(publicationFiltersProvider);
   ref.read(publicationsListProvider(filters).notifier).refresh();
-  ref.read(publicationsListProvider(const {'per_page': 5}).notifier).refresh();
+  ref.read(publicationsListProvider(const {'limit': 5}).notifier).refresh();
 }
 
 class PublicationFormNotifier extends StateNotifier<AsyncValue<void>> {
