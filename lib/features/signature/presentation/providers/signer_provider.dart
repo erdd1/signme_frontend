@@ -13,13 +13,11 @@ class SignerState {
   const SignerState({
     this.selectedMonths = const [],
     this.selectedYear = 2026,
-    this.paymentMethod  = 'mobile_money',
     this.operator_       = 'ORANGE MONEY',
     this.phone           = '',
     this.isLoading       = false,
     this.success         = false,
     this.paymentRef,
-    this.authorizationUrl,
     this.transactionId,
     this.paymentMessage,
     this.error,
@@ -40,17 +38,17 @@ class SignerState {
     this.successType = '',
     this.canSignPresentielNow = true,
     this.isCheckingPresentielAvailability = false,
+    this.memberSignedMonths = const [],
+    this.isLoadingMemberSignedMonths = false,
   });
 
   final List<String> selectedMonths;
   final int     selectedYear;
-  final String  paymentMethod; // mobile_money | card
   final String  operator_;
   final String  phone;
   final bool    isLoading;
   final bool    success;
   final String? paymentRef;
-  final String? authorizationUrl;
   final int? transactionId;
   final String? paymentMessage;
   final String? error;
@@ -71,6 +69,12 @@ class SignerState {
   final String  successType;
   final bool    canSignPresentielNow;
   final bool    isCheckingPresentielAvailability;
+
+  /// Mois déjà signés par le membre SÉLECTIONNÉ pour [selectedYear], en
+  /// présentiel — distinct de [alreadySignedMonths] qui reflète les mois
+  /// déjà signés par l'utilisateur connecté lui-même (formulaire à distance).
+  final List<String> memberSignedMonths;
+  final bool isLoadingMemberSignedMonths;
 
   static const List<int> ALLOWED_AMOUNTS = [15, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 10000];
 
@@ -98,10 +102,8 @@ class SignerState {
   SignerState copyWith({
     List<String>? selectedMonths,
     int? selectedYear,
-    String? paymentMethod,
     String? operator_, String? phone, bool? isLoading, bool? success,
     String? paymentRef,
-    String? authorizationUrl,
     int? transactionId,
     String? paymentMessage,
     String? error,
@@ -120,19 +122,18 @@ class SignerState {
     String? successType,
     bool? canSignPresentielNow,
     bool? isCheckingPresentielAvailability,
+    List<String>? memberSignedMonths,
+    bool? isLoadingMemberSignedMonths,
     bool clearError = false,
     bool clearUser = false,
-    bool clearAuthorizationUrl = false,
   }) => SignerState(
     selectedMonths:       selectedMonths       ?? this.selectedMonths,
     selectedYear:         selectedYear         ?? this.selectedYear,
-    paymentMethod:        paymentMethod        ?? this.paymentMethod,
     operator_:            operator_            ?? this.operator_,
     phone:                phone                ?? this.phone,
     isLoading:            isLoading            ?? this.isLoading,
     success:              success              ?? this.success,
     paymentRef:           paymentRef           ?? this.paymentRef,
-    authorizationUrl:     clearAuthorizationUrl ? null : authorizationUrl ?? this.authorizationUrl,
     transactionId:        transactionId        ?? this.transactionId,
     paymentMessage:       paymentMessage       ?? this.paymentMessage,
     error:                clearError ? null : error ?? this.error,
@@ -153,6 +154,8 @@ class SignerState {
     successType:          successType          ?? this.successType,
     canSignPresentielNow: canSignPresentielNow ?? this.canSignPresentielNow,
     isCheckingPresentielAvailability: isCheckingPresentielAvailability ?? this.isCheckingPresentielAvailability,
+    memberSignedMonths:   memberSignedMonths   ?? this.memberSignedMonths,
+    isLoadingMemberSignedMonths: isLoadingMemberSignedMonths ?? this.isLoadingMemberSignedMonths,
   );
 }
 
@@ -196,6 +199,16 @@ class SignerNotifier extends StateNotifier<SignerState> {
     state = state.copyWith(selectedMonths: list);
   }
 
+  /// Même logique que [toggleMonth], mais contre [SignerState.memberSignedMonths]
+  /// (le membre sélectionné en présentiel) plutôt que [SignerState.alreadySignedMonths]
+  /// (l'utilisateur connecté lui-même, formulaire à distance).
+  void togglePresentielMonth(String month) {
+    final list = List<String>.from(state.selectedMonths);
+    if (state.memberSignedMonths.contains(month)) return;
+    list.contains(month) ? list.remove(month) : list.add(month);
+    state = state.copyWith(selectedMonths: list);
+  }
+
   void setYear(int year) => state = state.copyWith(selectedYear: year, selectedMonths: []);
 
   void setAmount(int amount) {
@@ -205,21 +218,50 @@ class SignerNotifier extends StateNotifier<SignerState> {
 
   void setOperator(String op) => state = state.copyWith(operator_: op, clearError: true);
   void setPhone(String v) => state = state.copyWith(phone: v, clearError: true);
-  void setPaymentMethod(String method) => state = state.copyWith(paymentMethod: method, clearError: true);
-  
+
   void selectUser(int? id, String nom) {
     if (id == null || id == 0) {
-      state = state.copyWith(clearUser: true, memberSearchQuery: '', filteredMembers: state.members);
+      state = state.copyWith(
+        clearUser: true,
+        memberSearchQuery: '',
+        filteredMembers: state.members,
+        memberSignedMonths: const [],
+      );
       return;
     }
     state = state.copyWith(
-      selectedUserId: id, 
-      selectedUserNom: nom, 
-      memberSearchQuery: '', 
+      selectedUserId: id,
+      selectedUserNom: nom,
+      memberSearchQuery: '',
       clearError: true,
-      filteredMembers: [] 
+      filteredMembers: [],
+      // Un membre différent : le statut de signature affiché ne doit jamais
+      // rester celui du précédent le temps du rechargement.
+      memberSignedMonths: const [],
     );
     _fetchMemberStatus(id);
+  }
+
+  /// Statut de signature du membre sélectionné pour chaque mois de [year] —
+  /// alimente le repère "Signé"/"Non signé" de la grille de mois en
+  /// présentiel (étape 2). Un appel par mois (l'API existante n'expose que
+  /// le statut d'UN mois à la fois), lancés en parallèle.
+  Future<void> loadMemberSignedMonths(int userId, int year) async {
+    state = state.copyWith(isLoadingMemberSignedMonths: true, memberSignedMonths: const []);
+    try {
+      final entries = await Future.wait(List.generate(12, (i) async {
+        final month = '$year-${(i + 1).toString().padLeft(2, '0')}';
+        final status = await _repository.getMemberStatus(userId, month);
+        return MapEntry(month, status?.isSigned ?? false);
+      }));
+      final signed = entries.where((e) => e.value).map((e) => e.key).toList();
+      state = state.copyWith(memberSignedMonths: signed, isLoadingMemberSignedMonths: false);
+    } catch (e) {
+      // Non bloquant : la grille retombe simplement sur "aucun mois signé
+      // connu" — le backend refuse de toute façon une signature en doublon.
+      AppLogger.error('Échec du chargement des mois déjà signés du membre', e);
+      state = state.copyWith(isLoadingMemberSignedMonths: false);
+    }
   }
 
   Future<void> _fetchMemberStatus(int userId) async {
@@ -305,9 +347,7 @@ class SignerNotifier extends StateNotifier<SignerState> {
     // dupliqué n'est pas une simple gêne visuelle.
     if (state.isLoading) return false;
 
-    final isCard = state.paymentMethod == 'card';
-
-    if (!isCard && !SignerState.isValidPhoneNumber(state.phone, state.operator_)) {
+    if (!SignerState.isValidPhoneNumber(state.phone, state.operator_)) {
       state = state.copyWith(error: 'Numéro invalide');
       return false;
     }
@@ -322,34 +362,25 @@ class SignerNotifier extends StateNotifier<SignerState> {
       success: true,
       successType: 'distance',
       clearError: true,
-      clearAuthorizationUrl: true,
     );
 
     try {
       final init = await _repository.initiateDistancePayment(
         months: state.selectedMonths,
         amount: state.amountPerMonth,
-        paymentMethod: state.paymentMethod,
-        paymentOperator: isCard ? null : state.operator_,
-        phoneNumber: isCard ? null : state.phone,
+        paymentMethod: 'mobile_money',
+        paymentOperator: state.operator_,
+        phoneNumber: state.phone,
       );
 
       state = state.copyWith(
         isLoading: false,
         paymentRef: init.paymentReference,
-        authorizationUrl: init.authorizationUrl,
         transactionId: init.transactionId,
-        paymentMessage: init.message ??
-            (isCard
-                ? 'Complétez votre paiement par carte.'
-                : 'Validez le paiement sur votre téléphone (${state.operator_}).'),
+        paymentMessage: init.message ?? 'Validez le paiement sur votre téléphone (${state.operator_}).',
         paymentProgress: 0.3,
         paymentStatus: 'processing',
       );
-
-      // Paiement carte : la WebView doit s'ouvrir avant de démarrer le
-      // polling (l'écran appelle pollAfterCardCheckout() une fois fermée).
-      if (init.isCardPayment) return true;
 
       return await _pollUntilTerminal();
     } catch (e) {
@@ -362,13 +393,6 @@ class SignerNotifier extends StateNotifier<SignerState> {
       );
       return false;
     }
-  }
-
-  /// À appeler après la fermeture de la WebView de paiement carte, pour
-  /// démarrer le polling de confirmation (même mécanique que mobile money).
-  Future<bool> pollAfterCardCheckout() async {
-    if (state.transactionId == null) return false;
-    return _pollUntilTerminal();
   }
 
   Future<bool> _pollUntilTerminal() async {

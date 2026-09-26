@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/widgets/index.dart';
-import '../../../../core/payments/card_checkout_webview_screen.dart';
 import '../../../auth/domain/entities/user_lookup_refs.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
@@ -25,6 +24,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
   final _montantCtrl = TextEditingController(text: '500');
   final _noteCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  int _step = 0;
 
   @override
   void initState() {
@@ -46,8 +46,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
   }
 
   /// Point d'écriture unique du drapeau global — appelé par tout champ
-  /// modifié par l'utilisateur (montant, note, téléphone, groupe, opérateur,
-  /// méthode de paiement).
+  /// modifié par l'utilisateur (montant, note, téléphone, groupe, opérateur).
   void _markDirty() {
     if (!ref.read(formDirtyProvider)) {
       ref.read(formDirtyProvider.notifier).state = true;
@@ -77,23 +76,13 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
   }
 
   Future<void> _submitPaiement(bool requiresGroupeSelection) async {
-    final notifier = ref.read(contributionFormProvider.notifier);
-    await notifier.effectuerPaiement(
-      widget.evenement.uuid,
-      requiresGroupeSelection: requiresGroupeSelection,
-    );
-
-    final authorizationUrl = ref.read(contributionFormProvider).authorizationUrl;
-    if (authorizationUrl != null && authorizationUrl.isNotEmpty && mounted) {
-      await CardCheckoutWebViewScreen.open(context, authorizationUrl);
-      if (!mounted) return;
-      await notifier.pollAfterCardCheckout();
-    }
+    await ref.read(contributionFormProvider.notifier).effectuerPaiement(
+          widget.evenement.uuid,
+          requiresGroupeSelection: requiresGroupeSelection,
+        );
   }
 
   Widget _buildForm(ContributionFormState state, List<GroupeRef> groupes) {
-    final frais = state.frais;
-    final total = state.total;
     final requiresGroupeSelection = groupes.length > 1;
 
     return SingleChildScrollView(
@@ -120,96 +109,120 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
           ],
           const SizedBox(height: SignmeSpacing.xl),
 
-          if (groupes.length > 1) ...[
-            SignmeCompactDropdown<GroupeRef>(
-              label: 'Votre groupe',
-              hint: 'Sélectionner votre groupe',
-              value: groupes.any((g) => g.id == state.selectedGroupeId)
-                  ? groupes.firstWhere((g) => g.id == state.selectedGroupeId)
-                  : null,
-              items: groupes,
-              itemLabel: (g) => g.nom,
-              onChanged: (g) {
-                _markDirty();
-                ref.read(contributionFormProvider.notifier).setGroupe(g?.id);
-              },
-            ),
-            const SizedBox(height: SignmeSpacing.xl),
-          ] else if (groupes.length == 1) ...[
-            _sectionTitle('Votre groupe'),
-            const SizedBox(height: SignmeSpacing.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg, vertical: SignmeSpacing.md),
-              decoration: BoxDecoration(
-                color: SignmeColors.accentSky.withOpacity(0.25),
-                borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.groups_rounded, size: 18, color: SignmeColors.primaryLight),
-                  const SizedBox(width: SignmeSpacing.sm),
-                  Text(groupes.first.nom, style: SignmeTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-            const SizedBox(height: SignmeSpacing.xl),
-          ],
-
-          _sectionTitle('Montant de la contribution (FCFA)'),
-          _montantField(),
-          const SizedBox(height: SignmeSpacing.md),
-          _feeDisplay(frais, total),
-
-          const SizedBox(height: SignmeSpacing.xl),
-          _sectionTitle('Note (optionnelle)'),
-          _noteField(state),
-
-          const SizedBox(height: SignmeSpacing.xl),
-          _sectionTitle('Méthode de paiement'),
-          const SizedBox(height: SignmeSpacing.sm),
-          PaymentMethodSelector(
-            selected: state.paymentMethod,
-            onChanged: (m) {
-              _markDirty();
-              ref.read(contributionFormProvider.notifier).setPaymentMethod(m);
-            },
+          SignmeStepHeader(
+            currentStep: _step,
+            stepLabels: const ['Détails', 'Paiement'],
           ),
-
-          if (state.paymentMethod == 'mobile_money') ...[
-            const SizedBox(height: SignmeSpacing.xl),
-            _sectionTitle('Opérateur'),
-            const SizedBox(height: SignmeSpacing.sm),
-            _operatorRow(state),
-
-            const SizedBox(height: SignmeSpacing.xl),
-            _sectionTitle('Numéro de paiement'),
-            const SizedBox(height: SignmeSpacing.sm),
-            _phoneField(state),
-          ],
-
           const SizedBox(height: SignmeSpacing.xl),
-          if (total != null) _summary(total),
-          const SizedBox(height: SignmeSpacing.lg),
 
-          SignmePrimaryButton(
-            label: 'Effectuer le paiement',
-            enabled: frais != null &&
-                (state.paymentMethod == 'card' || state.phone.length == 9) &&
-                (!requiresGroupeSelection || state.selectedGroupeId != null),
-            isLoading: state.isLoading,
-            icon: Icons.volunteer_activism_rounded,
-            onPressed: () => _submitPaiement(requiresGroupeSelection),
-          ),
-          if (state.error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text(
-                state.error!,
-                style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.error),
-              ),
-            ),
+          _step == 0
+              ? _stepDetails(state, groupes, requiresGroupeSelection)
+              : _stepPaiement(state, requiresGroupeSelection),
         ],
       ),
+    );
+  }
+
+  Widget _stepDetails(
+      ContributionFormState state, List<GroupeRef> groupes, bool requiresGroupeSelection) {
+    final frais = state.frais;
+    final total = state.total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (groupes.length > 1) ...[
+          SignmeCompactDropdown<GroupeRef>(
+            label: 'Votre groupe',
+            hint: 'Sélectionner votre groupe',
+            value: groupes.any((g) => g.id == state.selectedGroupeId)
+                ? groupes.firstWhere((g) => g.id == state.selectedGroupeId)
+                : null,
+            items: groupes,
+            itemLabel: (g) => g.nom,
+            onChanged: (g) {
+              _markDirty();
+              ref.read(contributionFormProvider.notifier).setGroupe(g?.id);
+            },
+          ),
+          const SizedBox(height: SignmeSpacing.xl),
+        ] else if (groupes.length == 1) ...[
+          _sectionTitle('Votre groupe'),
+          const SizedBox(height: SignmeSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg, vertical: SignmeSpacing.md),
+            decoration: BoxDecoration(
+              color: SignmeColors.accentSky.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.groups_rounded, size: 18, color: SignmeColors.primaryLight),
+                const SizedBox(width: SignmeSpacing.sm),
+                Text(groupes.first.nom, style: SignmeTypography.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+          const SizedBox(height: SignmeSpacing.xl),
+        ],
+
+        _sectionTitle('Montant de la contribution (FCFA)'),
+        _montantField(),
+        const SizedBox(height: SignmeSpacing.md),
+        _feeDisplay(frais, total),
+
+        const SizedBox(height: SignmeSpacing.xl),
+        _sectionTitle('Note (optionnelle)'),
+        _noteField(state),
+
+        const SizedBox(height: SignmeSpacing.xl),
+        SignmePrimaryButton(
+          label: 'Valider',
+          enabled: frais != null && (!requiresGroupeSelection || state.selectedGroupeId != null),
+          onPressed: () => setState(() => _step = 1),
+        ),
+      ],
+    );
+  }
+
+  Widget _stepPaiement(ContributionFormState state, bool requiresGroupeSelection) {
+    final total = state.total;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SignmeStepBackButton(onPressed: () => setState(() => _step = 0)),
+        const SizedBox(height: SignmeSpacing.md),
+
+        _sectionTitle('Opérateur'),
+        const SizedBox(height: SignmeSpacing.sm),
+        _operatorRow(state),
+
+        const SizedBox(height: SignmeSpacing.xl),
+        _sectionTitle('Numéro de paiement'),
+        const SizedBox(height: SignmeSpacing.sm),
+        _phoneField(state),
+
+        const SizedBox(height: SignmeSpacing.xl),
+        if (total != null) _summary(total),
+        const SizedBox(height: SignmeSpacing.lg),
+
+        SignmePrimaryButton(
+          label: 'Effectuer le paiement',
+          enabled: state.phone.length == 9,
+          isLoading: state.isLoading,
+          icon: Icons.volunteer_activism_rounded,
+          onPressed: () => _submitPaiement(requiresGroupeSelection),
+        ),
+        if (state.error != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(
+              state.error!,
+              style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.error),
+            ),
+          ),
+      ],
     );
   }
 
@@ -348,6 +361,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
           child: _OperatorChoice(
             label: 'Orange Money',
             color: const Color(0xFFFF6600),
+            logoAsset: 'assets/icones/orange_money.jpg',
             isSelected: state.operator_ == 'ORANGE MONEY',
             onTap: () {
               _markDirty();
@@ -360,6 +374,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
           child: _OperatorChoice(
             label: 'MTN Money',
             color: const Color(0xFFFFCC00),
+            logoAsset: 'assets/icones/mtn_money.jpg',
             isSelected: state.operator_ == 'MTN MOBILE MONEY',
             onTap: () {
               _markDirty();
@@ -473,9 +488,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
                   ? Icons.check_circle_rounded
                   : isFailed
                       ? Icons.error_outline_rounded
-                      : state.paymentMethod == 'card'
-                          ? Icons.credit_card_rounded
-                          : Icons.phone_android_rounded,
+                      : Icons.phone_android_rounded,
               color: isCompleted
                   ? SignmeColors.success
                   : isFailed
@@ -489,9 +502,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
                   ? 'Contribution réussie'
                   : isFailed
                       ? 'Paiement non confirmé'
-                      : state.paymentMethod == 'card'
-                          ? 'Paiement par carte'
-                          : 'Confirmez sur votre téléphone',
+                      : 'Confirmez sur votre téléphone',
               style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
@@ -512,9 +523,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
               Text(
                 state.paymentMessage ??
                     (isProcessing
-                        ? (state.paymentMethod == 'card'
-                            ? 'Complétez votre paiement par carte.'
-                            : 'Validez le PUSH ${state.operator_} sur votre mobile.')
+                        ? 'Validez le PUSH ${state.operator_} sur votre mobile.'
                         : 'Merci pour votre contribution.'),
                 textAlign: TextAlign.center,
                 style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray, height: 1.4),
@@ -533,6 +542,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
                 label: isFailed ? 'Réessayer' : 'Fermer',
                 onPressed: () {
                   ref.read(contributionFormProvider.notifier).reset();
+                  setState(() => _step = 0);
                   if (!isFailed) {
                     ref.read(formDirtyProvider.notifier).state = false;
                     if (context.canPop()) context.pop();
@@ -550,48 +560,67 @@ class _OperatorChoice extends StatelessWidget {
   const _OperatorChoice({
     required this.label,
     required this.color,
+    required this.logoAsset,
     required this.isSelected,
     required this.onTap,
   });
 
   final String label;
   final Color color;
+  final String logoAsset;
   final bool isSelected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: SignmeSpacing.animationFast,
-        padding: const EdgeInsets.symmetric(vertical: SignmeSpacing.md, horizontal: SignmeSpacing.sm),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.08) : SignmeColors.white,
-          borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
-          border: Border.all(color: isSelected ? color : SignmeColors.lightGrayBorder, width: isSelected ? 2 : 1),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(width: 28, height: 28, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-            const SizedBox(width: SignmeSpacing.sm),
-            Flexible(
-              child: Text(
-                label,
-                style: SignmeTypography.labelSmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? color : SignmeColors.darkGray,
-                  fontSize: 12,
-                ),
-                overflow: TextOverflow.ellipsis,
+    return Semantics(
+      label: label,
+      button: true,
+      selected: isSelected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: SignmeSpacing.animationFast,
+          padding: const EdgeInsets.all(SignmeSpacing.xs),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.08) : SignmeColors.white,
+            borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+            border: Border.all(color: isSelected ? color : SignmeColors.lightGrayBorder, width: isSelected ? 2 : 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
-            if (isSelected) ...[
-              const SizedBox(width: 4),
-              Icon(Icons.check_circle_rounded, color: color, size: 16),
             ],
-          ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(SignmeSpacing.radiusSm),
+                child: SizedBox(
+                  width: 72,
+                  height: 40,
+                  child: Image.asset(logoAsset, fit: BoxFit.cover),
+                ),
+              ),
+              if (isSelected)
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(1),
+                    decoration: const BoxDecoration(
+                      color: SignmeColors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.check_circle_rounded, color: color, size: 18),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

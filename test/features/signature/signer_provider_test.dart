@@ -14,9 +14,9 @@ class _PendingSearch {
   final Completer<List<UserEntity>> completer;
 }
 
-/// Fake ciblé : seule [searchMembers] est exercée par ce test, les autres
-/// méthodes de l'interface ne sont jamais appelées par [SignerNotifier] dans
-/// ces scénarios (recherche de membre uniquement).
+/// Fake ciblé : seules [searchMembers], [initiateDistancePayment] et
+/// [getTransactionStatus] sont exercées par les scénarios de ce fichier — les
+/// autres méthodes de l'interface ne sont jamais appelées ici.
 class _FakeSignatureRepository implements SignatureRepository {
   final List<_PendingSearch> pending = [];
   final List<Completer<DistancePaymentInitResult>> pendingPayments = [];
@@ -45,8 +45,8 @@ class _FakeSignatureRepository implements SignatureRepository {
   }
 
   @override
-  Future<PaymentTransactionStatus> getTransactionStatus(int transactionId) =>
-      throw UnimplementedError();
+  Future<PaymentTransactionStatus> getTransactionStatus(int transactionId) async =>
+      const PaymentTransactionStatus(status: 'completed', progress: 1.0, isTerminal: true);
 
   @override
   Future<bool> initiatePresentielSignature({
@@ -139,7 +139,10 @@ void main() {
       final notifier = SignerNotifier(repo);
       addTearDown(notifier.dispose);
 
-      notifier.setPaymentMethod('card'); // évite la validation du numéro
+      // Opérateur + numéro valides : requis depuis la suppression du
+      // paiement par carte (mobile money uniquement désormais).
+      notifier.setOperator('ORANGE MONEY');
+      notifier.setPhone('699112233');
 
       final first = notifier.initiateDistance();
       final second = notifier.initiateDistance();
@@ -152,7 +155,6 @@ void main() {
           transactionId: 1,
           paymentReference: 'REF1',
           totalAmount: 1000,
-          authorizationUrl: 'https://pay.example/checkout',
         ),
       );
       expect(await first, isTrue);

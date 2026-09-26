@@ -66,7 +66,10 @@ class HistoriquePersonnelModel {
       fees: fees,
       signatureType: (json['signatureType'] ?? '').toString(),
       paymentMethod: json['paymentMethod']?.toString(),
-      paymentPhoneNumber: json['paymentPhoneNumber']?.toString(),
+      // Colonne backend réelle : `phoneNumber` (voir Signature.php) — pas
+      // `paymentPhoneNumber`, qui n'existe pas et laissait ce champ toujours
+      // vide malgré la donnée bien présente côté API.
+      paymentPhoneNumber: json['phoneNumber']?.toString(),
       // tryParse (jamais parse) : un champ manquant/malformé ne doit jamais
       // faire planter le parsing de toute la liste.
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),

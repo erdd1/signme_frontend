@@ -24,8 +24,15 @@ class _FakeContributionRepository implements ContributionRepository {
   }
 
   @override
-  Future<ContributionEntity> getStatus(String contributionUuid) =>
-      throw UnimplementedError();
+  Future<ContributionEntity> getStatus(String contributionUuid) async =>
+      ContributionEntity(
+        uuid: contributionUuid,
+        montant: 500,
+        frais: 25,
+        montantTotal: 525,
+        statut: 'completed',
+        createdAt: DateTime.now(),
+      );
 }
 
 void main() {
@@ -38,7 +45,10 @@ void main() {
       final notifier = ContributionFormNotifier(repo);
       addTearDown(notifier.disposePoller);
 
-      notifier.setPaymentMethod('card'); // évite la validation du numéro
+      // Opérateur + numéro valides : requis depuis la suppression du
+      // paiement par carte (mobile money uniquement désormais).
+      notifier.setOperator('ORANGE MONEY');
+      notifier.setPhone('699112233');
 
       final first = notifier.effectuerPaiement('evenement-uuid');
       final second = notifier.effectuerPaiement('evenement-uuid');
@@ -53,7 +63,6 @@ void main() {
           frais: 25,
           montantTotal: 525,
           statut: 'pending',
-          authorizationUrl: 'https://pay.example/checkout',
           createdAt: DateTime.now(),
         ),
       );

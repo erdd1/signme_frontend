@@ -41,69 +41,71 @@ class _HistoriqueSignaturesScreenState extends ConsumerState<HistoriqueSignature
             .read(badgeNotifierProvider.notifier)
             .markRead('historique_signatures');
       },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          children: [
-            const OnboardingSection(
-              svgPath: 'assets/images/unboarding_historique_signature.svg',
-              title: 'Historique des Signatures',
-              description:
-              'Consultez ici toutes les signatures que vous avez effectuées en présentiel.',
-            ),
-            const SizedBox(height: SignmeSpacing.lg),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
-              child: Column(
-                children: [
-                  TextField(
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    style: SignmeTypography.bodyMedium,
-                    decoration: InputDecoration(
-                      hintText: 'Rechercher un paroissien...',
-                      prefixIcon: const Icon(Icons.search_rounded,
-                          color: SignmeColors.mediumGray),
-                      filled: true,
-                      fillColor: SignmeColors.accentSky.withOpacity(0.3),
-                      border: OutlineInputBorder(
-                        borderRadius:
-                        BorderRadius.circular(SignmeSpacing.radiusMd),
-                        borderSide: BorderSide.none,
+      // CustomScrollView unique (au lieu d'un SingleChildScrollView contenant
+      // une ListView bornée en hauteur) : un seul scroll pour tout l'écran,
+      // comme le module Mes dépenses — plus de double défilement imbriqué.
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const OnboardingSection(
+                  svgPath: 'assets/images/unboarding_historique_signature.svg',
+                  title: 'Historique des Signatures',
+                  description:
+                  'Consultez ici toutes les signatures que vous avez effectuées en présentiel.',
+                ),
+                const SizedBox(height: SignmeSpacing.lg),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+                  child: Column(
+                    children: [
+                      TextField(
+                        onChanged: (v) => setState(() => _searchQuery = v),
+                        style: SignmeTypography.bodyMedium,
+                        decoration: InputDecoration(
+                          hintText: 'Rechercher un paroissien...',
+                          prefixIcon: const Icon(Icons.search_rounded,
+                              color: SignmeColors.mediumGray),
+                          filled: true,
+                          fillColor: SignmeColors.accentSky.withOpacity(0.3),
+                          border: OutlineInputBorder(
+                            borderRadius:
+                            BorderRadius.circular(SignmeSpacing.radiusMd),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: SignmeSpacing.md),
+                      _buildYearFilter(),
+                    ],
                   ),
-                  const SizedBox(height: SignmeSpacing.md),
-                  _buildYearFilter(),
-                ],
-              ),
+                ),
+                const SizedBox(height: SignmeSpacing.md),
+              ],
             ),
-            const SizedBox(height: SignmeSpacing.md),
-            SizedBox(
-              // Bornée pour rester utilisable sur les écrans courts/paysage
-              // (jamais en dessous de 320) sans devenir démesurée sur tablette.
-              height: (MediaQuery.of(context).size.height * 0.65).clamp(320.0, 900.0),
-              child: SignmeAsyncValue<List<HistoriqueSignaturesEntity>>(
-                value: historiqueAsync,
-                onRetry: () => ref.read(historiqueSignaturesProvider(_selectedYear).notifier).refresh(),
-                emptyIcon: Icons.history_rounded,
-                emptyTitle: 'Aucune signature trouvée',
-                emptyMessage: 'Vos signatures effectuées en présentiel apparaîtront ici.',
-                isEmpty: (historique) => _filtered(historique).isEmpty,
-                data: (historique) {
-                  final filtered = _filtered(historique);
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                        SignmeSpacing.lg, 0, SignmeSpacing.lg, 120),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) =>
-                        _buildSignatureCard(filtered[index]),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          ),
+          ...SignmeAsyncValue.buildSlivers<List<HistoriqueSignaturesEntity>>(
+            value: historiqueAsync,
+            onRetry: () => ref.read(historiqueSignaturesProvider(_selectedYear).notifier).refresh(),
+            emptyIcon: Icons.history_rounded,
+            emptyTitle: 'Aucune signature trouvée',
+            emptyMessage: 'Vos signatures effectuées en présentiel apparaîtront ici.',
+            isEmpty: (historique) => _filtered(historique).isEmpty,
+            data: (historique) {
+              final filtered = _filtered(historique);
+              final sections = groupTimelineByMonth<HistoriqueSignaturesEntity>(
+                items: filtered,
+                monthKeyOf: (sig) => sig.month,
+                cardBuilder: _buildSignatureCard,
+              );
+              return buildSignmeTimelineSlivers(sections: sections);
+            },
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+        ],
       ),
     );
   }
@@ -132,36 +134,19 @@ class _HistoriqueSignaturesScreenState extends ConsumerState<HistoriqueSignature
   }
 
   Widget _buildSignatureCard(HistoriqueSignaturesEntity sig) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: SignmeSpacing.md),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        side: BorderSide(color: SignmeColors.lightGrayBorder),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(SignmeSpacing.md),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: SignmeColors.success.withOpacity(0.1), shape: BoxShape.circle),
-          child: const Icon(Icons.check_circle_rounded, color: SignmeColors.success, size: 28),
-        ),
-        title: Text(
-          sig.nomParoissien,
-          style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(sig.formattedDate, style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray)),
-            Text(sig.churchName, style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.primaryLight, fontSize: 10)),
-          ],
-        ),
-        trailing: Text('${sig.amount ?? 0} F', style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.w800, color: SignmeColors.primaryDark)),
-      ),
+    final statusColor = sig.isCompleted
+        ? SignmeColors.success
+        : sig.isFailed
+            ? SignmeColors.error
+            : SignmeColors.warning;
+
+    return SignmeTimelineCard(
+      heading: sig.nomParoissien,
+      subtitle: sig.churchName,
+      timestamp: sig.formattedDate,
+      statusLabel: sig.statusFr,
+      statusColor: statusColor,
+      amountLabel: '${sig.amount ?? 0} F',
     );
   }
 }

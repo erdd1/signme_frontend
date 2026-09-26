@@ -43,16 +43,12 @@ class DistancePaymentInitResult {
     required this.paymentReference,
     required this.totalAmount,
     this.message,
-    this.authorizationUrl,
   });
 
   final int transactionId;
   final String paymentReference;
   final num totalAmount;
   final String? message;
-  final String? authorizationUrl;
-
-  bool get isCardPayment => authorizationUrl != null && authorizationUrl!.isNotEmpty;
 
   factory DistancePaymentInitResult.fromJson(Map<String, dynamic> json) {
     return DistancePaymentInitResult(
@@ -61,7 +57,6 @@ class DistancePaymentInitResult {
       paymentReference: json['payment_reference']?.toString() ?? '',
       totalAmount: json['total_amount'] as num? ?? 0,
       message: json['message']?.toString(),
-      authorizationUrl: json['authorization_url']?.toString(),
     );
   }
 }

@@ -28,6 +28,53 @@ class HomeFeedEvenement extends HomeFeedItem {
   DateTime get sortDate => evenement.publishedAt ?? evenement.createdAt;
 }
 
+/// Catégorie d'actualité affichée dans l'onglet actif du fil Home.
+///
+/// Correspond 1:1 aux types de badges backend (voir BadgeService côté API :
+/// annonces | meditations | evenements) — [badgeType] est directement le
+/// `type` attendu par `POST /notifications/badges/mark-read`.
+enum ActualiteCategory {
+  evenements,
+  annonces,
+  meditations;
+
+  String get badgeType => switch (this) {
+        ActualiteCategory.evenements => 'evenements',
+        ActualiteCategory.annonces => 'annonces',
+        ActualiteCategory.meditations => 'meditations',
+      };
+
+  String get label => switch (this) {
+        ActualiteCategory.evenements => 'Événements',
+        ActualiteCategory.annonces => 'Annonces',
+        ActualiteCategory.meditations => 'Méditations',
+      };
+}
+
+/// Onglet Actualités actuellement sélectionné sur le Home — état partagé
+/// entre [HomeScreen] (qui l'affiche/le modifie) et [MainShell] (qui doit
+/// savoir quel badge marquer comme lu au moment où l'onglet Accueil de la
+/// navbar est tapé). Par défaut "Événements", à l'image de la maquette.
+final selectedActualiteCategoryProvider =
+    StateProvider<ActualiteCategory>((ref) => ActualiteCategory.evenements);
+
+/// Filtre le fil fusionné pour ne garder que les items d'une catégorie.
+List<HomeFeedItem> filterHomeFeedByCategory(
+  List<HomeFeedItem> items,
+  ActualiteCategory category,
+) {
+  return items.where((item) {
+    return switch (item) {
+      HomeFeedEvenement() => category == ActualiteCategory.evenements,
+      HomeFeedPublication(:final publication) => switch (category) {
+          ActualiteCategory.annonces => publication.isAnnonce,
+          ActualiteCategory.meditations => publication.isMeditation,
+          ActualiteCategory.evenements => false,
+        },
+    };
+  }).toList();
+}
+
 /// Fusionne les publications et les événements visibles dans un seul fil,
 /// trié par date décroissante (le plus récent en premier).
 final homeFeedProvider = Provider<AsyncValue<List<HomeFeedItem>>>((ref) {

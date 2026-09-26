@@ -8,13 +8,11 @@ class ContributionFormState {
   const ContributionFormState({
     this.montant = 500,
     this.note = '',
-    this.paymentMethod = 'mobile_money',
     this.operator_ = 'ORANGE MONEY',
     this.phone = '',
     this.isLoading = false,
     this.success = false,
     this.contributionUuid,
-    this.authorizationUrl,
     this.paymentMessage,
     this.error,
     this.paymentStatus = 'idle',
@@ -24,13 +22,11 @@ class ContributionFormState {
 
   final int montant;
   final String note;
-  final String paymentMethod; // mobile_money | card
   final String operator_;
   final String phone;
   final bool isLoading;
   final bool success;
   final String? contributionUuid;
-  final String? authorizationUrl;
   final String? paymentMessage;
   final String? error;
   final String paymentStatus; // idle | processing | completed | failed
@@ -56,13 +52,11 @@ class ContributionFormState {
   ContributionFormState copyWith({
     int? montant,
     String? note,
-    String? paymentMethod,
     String? operator_,
     String? phone,
     bool? isLoading,
     bool? success,
     String? contributionUuid,
-    String? authorizationUrl,
     String? paymentMessage,
     String? error,
     String? paymentStatus,
@@ -70,19 +64,15 @@ class ContributionFormState {
     bool clearError = false,
     int? selectedGroupeId,
     bool clearSelectedGroupeId = false,
-    bool clearAuthorizationUrl = false,
   }) =>
       ContributionFormState(
         montant: montant ?? this.montant,
         note: note ?? this.note,
-        paymentMethod: paymentMethod ?? this.paymentMethod,
         operator_: operator_ ?? this.operator_,
         phone: phone ?? this.phone,
         isLoading: isLoading ?? this.isLoading,
         success: success ?? this.success,
         contributionUuid: contributionUuid ?? this.contributionUuid,
-        authorizationUrl:
-            clearAuthorizationUrl ? null : authorizationUrl ?? this.authorizationUrl,
         paymentMessage: paymentMessage ?? this.paymentMessage,
         error: clearError ? null : error ?? this.error,
         paymentStatus: paymentStatus ?? this.paymentStatus,
@@ -105,8 +95,6 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
       state = state.copyWith(note: note.length > 100 ? note.substring(0, 100) : note);
   void setOperator(String op) => state = state.copyWith(operator_: op, clearError: true);
   void setPhone(String phone) => state = state.copyWith(phone: phone, clearError: true);
-  void setPaymentMethod(String method) =>
-      state = state.copyWith(paymentMethod: method, clearError: true);
   void setGroupe(int? groupeId) => state = state.copyWith(
         selectedGroupeId: groupeId,
         clearSelectedGroupeId: groupeId == null,
@@ -127,13 +115,11 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
     // dupliqué n'est pas une simple gêne visuelle.
     if (state.isLoading) return false;
 
-    final isCard = state.paymentMethod == 'card';
-
     if (ContributionFeeCalculator.calculate(state.montant) == null) {
       state = state.copyWith(error: 'Montant invalide.');
       return false;
     }
-    if (!isCard && !ContributionFormState.isValidPhoneNumber(state.phone, state.operator_)) {
+    if (!ContributionFormState.isValidPhoneNumber(state.phone, state.operator_)) {
       state = state.copyWith(error: 'Numéro invalide.');
       return false;
     }
@@ -151,7 +137,6 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
       paymentStatus: 'processing',
       paymentProgress: 0.15,
       clearError: true,
-      clearAuthorizationUrl: true,
     );
 
     try {
@@ -159,28 +144,19 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
         evenementUuid: evenementUuid,
         montant: state.montant,
         note: state.note.isEmpty ? null : state.note,
-        paymentMethod: state.paymentMethod,
-        paymentOperator: isCard ? null : state.operator_,
-        paymentNumber: isCard ? null : state.phone,
+        paymentMethod: 'mobile_money',
+        paymentOperator: state.operator_,
+        paymentNumber: state.phone,
         groupeId: state.selectedGroupeId,
       );
 
       state = state.copyWith(
         isLoading: false,
         contributionUuid: contribution.uuid,
-        authorizationUrl: contribution.authorizationUrl,
-        paymentMessage: isCard
-            ? 'Complétez votre paiement par carte.'
-            : 'Validez le paiement sur votre téléphone (${state.operator_}).',
+        paymentMessage: 'Validez le paiement sur votre téléphone (${state.operator_}).',
         paymentProgress: 0.3,
         paymentStatus: 'processing',
       );
-
-      // Paiement carte : la WebView doit s'ouvrir avant de démarrer le
-      // polling (l'écran appelle pollAfterCardCheckout() une fois fermée).
-      if (contribution.authorizationUrl != null && contribution.authorizationUrl!.isNotEmpty) {
-        return true;
-      }
 
       return await _pollUntilTerminal(contribution.uuid);
     } catch (e) {
@@ -192,13 +168,6 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
       );
       return false;
     }
-  }
-
-  /// À appeler après la fermeture de la WebView de paiement carte, pour
-  /// démarrer le polling de confirmation (même mécanique que mobile money).
-  Future<bool> pollAfterCardCheckout() async {
-    if (state.contributionUuid == null) return false;
-    return _pollUntilTerminal(state.contributionUuid!);
   }
 
   Future<bool> _pollUntilTerminal(String contributionUuid) async {

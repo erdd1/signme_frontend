@@ -11,7 +11,8 @@ class BadgeIsarModel {
   /// Id fixe : on écrase toujours le même enregistrement.
   Id id = 1;
 
-  int publications        = 0;
+  int annonces             = 0;
+  int meditations          = 0;
   int evenements          = 0;
   int historique          = 0;
   int historiqueSignatures = 0;
@@ -19,7 +20,8 @@ class BadgeIsarModel {
   // ── Conversions ─────────────────────────────────────────────────────────
 
   BadgeCountEntity toEntity() => BadgeCountEntity(
-        publications:        publications,
+        annonces:            annonces,
+        meditations:         meditations,
         evenements:          evenements,
         historique:          historique,
         historiqueSignatures: historiqueSignatures,
@@ -28,7 +30,8 @@ class BadgeIsarModel {
   static BadgeIsarModel fromEntity(BadgeCountEntity e) {
     return BadgeIsarModel()
       ..id                  = 1
-      ..publications        = e.publications
+      ..annonces            = e.annonces
+      ..meditations         = e.meditations
       ..evenements          = e.evenements
       ..historique          = e.historique
       ..historiqueSignatures = e.historiqueSignatures;

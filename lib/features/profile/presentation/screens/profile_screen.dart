@@ -68,10 +68,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _buildAboutChurchCard(context),
             const SizedBox(height: SignmeSpacing.xxxl),
 
-            // === SECTION INFORMATIONS PERSONNELLES ===
-            _buildSectionTitle('Informations Personnelles'),
+            // === INFORMATIONS PERSONNELLES — segmentées en groupes de 4 ===
+            // pour éviter le mur de 16 champs empilés dans une seule carte.
+            _buildSectionTitle('Identité'),
             const SizedBox(height: SignmeSpacing.md),
-            _buildPersonalInfoSection(context, user, ref),
+            _buildInfoGroup(context, user, ref, _identiteFields(context, user, ref)),
+            const SizedBox(height: SignmeSpacing.xl),
+
+            _buildSectionTitle('Coordonnées'),
+            const SizedBox(height: SignmeSpacing.md),
+            _buildInfoGroup(context, user, ref, _coordonneesFields(context, user, ref)),
+            const SizedBox(height: SignmeSpacing.xl),
+
+            _buildSectionTitle('Localisation'),
+            const SizedBox(height: SignmeSpacing.md),
+            _buildInfoGroup(context, user, ref, _localisationFields(context, user, ref)),
+            const SizedBox(height: SignmeSpacing.xl),
+
+            _buildSectionTitle("Vie d'église"),
+            const SizedBox(height: SignmeSpacing.md),
+            _buildInfoGroup(context, user, ref, _vieEgliseFields(context, user, ref)),
             const SizedBox(height: SignmeSpacing.xxxl),
 
             // === SECTION PARAMÈTRES & SÉCURITÉ ===
@@ -88,90 +104,101 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  /// Carte d'en-tête compacte — photo + identité en ligne (au lieu d'un
+  /// grand aplat bleu centré) suivie d'une rangée de 3 statistiques rapides.
+  /// La teinte bleue vient désormais d'une bordure/ombre légère plutôt que
+  /// d'un fond plein, pour rester lisible sans dominer l'écran.
   Widget _buildProfileHeader(BuildContext context, UserEntity user) {
     final canChangePhoto = AppPermissions.canChangeOwnProfilePhoto(user);
 
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [SignmeColors.primaryLight, SignmeColors.primaryDark],
-        ),
+        color: SignmeColors.white,
         borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        border: Border.all(color: SignmeColors.primaryLight.withOpacity(0.18)),
+        boxShadow: [
+          BoxShadow(
+            color: SignmeColors.primaryLight.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(SignmeSpacing.lg),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ProfilePhotoAvatar(
-            photoUrl: user.photoUrl,
-            localFile: _pendingPhotoFile,
-            displayName: user.nom,
-            radius: 40,
-            bustNetworkCache: _bustPhotoCache,
-            onChangePhoto: canChangePhoto
-                ? () => _pickAndUploadProfilePhoto(context, user)
-                : null,
-          ),
-          if (canChangePhoto) ...[
-            const SizedBox(height: SignmeSpacing.xs),
-            Text(
-              'Appuyez sur l\'icône pour changer votre photo',
-              style: SignmeTypography.labelSmall.copyWith(
-                color: Colors.white.withOpacity(0.8),
-                fontSize: 10,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ProfilePhotoAvatar(
+                photoUrl: user.photoUrl,
+                localFile: _pendingPhotoFile,
+                displayName: user.nom,
+                radius: 32,
+                bustNetworkCache: _bustPhotoCache,
+                onChangePhoto: canChangePhoto
+                    ? () => _pickAndUploadProfilePhoto(context, user)
+                    : null,
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              const SizedBox(width: SignmeSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.nom,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: SignmeTypography.headlineSmall.copyWith(
+                        color: SignmeColors.black,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 19,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      user.email,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: SignmeTypography.bodySmall.copyWith(
+                        color: SignmeColors.mediumGray,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: SignmeSpacing.xs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: SignmeSpacing.sm,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: SignmeColors.accentSky,
+                        borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+                      ),
+                      child: Text(
+                        user.roleLabel,
+                        style: SignmeTypography.labelSmall.copyWith(
+                          color: SignmeColors.primaryLight,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.verified_rounded,
+                color: SignmeColors.success.withOpacity(0.85),
+                size: 22,
+              ),
+            ],
+          ),
           const SizedBox(height: SignmeSpacing.lg),
-
-          // === NOM ===
-          Text(
-            user.nom,
-            style: SignmeTypography.headlineSmall.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 24,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: SignmeSpacing.sm),
-
-          // === EMAIL ===
-          Text(
-            user.email,
-            style: SignmeTypography.bodySmall.copyWith(
-              color: Colors.white.withOpacity(0.85),
-              fontSize: 13,
-            ),
-            textAlign: TextAlign.center,
-          ),
+          const Divider(height: 1, color: SignmeColors.lightGrayBorder),
           const SizedBox(height: SignmeSpacing.md),
-
-          // === RÔLE BADGE ===
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.md, vertical: SignmeSpacing.sm),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.4)),
-            ),
-            child: Text(
-              user.roleLabel,
-              style: SignmeTypography.labelSmall.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
-            ),
-          ),
-
-          // === SOLDE DE RETRAIT (pasteur/trésorier uniquement) ===
-          if (AppPermissions.canViewRetraits(user)) ...[
-            const SizedBox(height: SignmeSpacing.md),
-            _SoldeRetraitChip(onTap: () => context.push(AppRoutes.retraits)),
-          ],
+          _ProfileStatsRow(user: user),
         ],
       ),
     );
@@ -295,8 +322,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildPersonalInfoSection(BuildContext context, UserEntity user, WidgetRef ref) {
-    // TOUS les champs: éditables ET non-éditables
+  /// Enrobe une liste de champs (déjà construits via [_buildInfoField]) dans
+  /// une carte, avec un séparateur entre chaque — remplace l'ancienne carte
+  /// unique de 16 champs empilés par des groupes de 4 (voir [_identiteFields]
+  /// et les 3 méthodes sœurs), plus lisibles et moins "entassés".
+  Widget _buildInfoGroup(
+    BuildContext context,
+    UserEntity user,
+    WidgetRef ref,
+    List<Widget> fields,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: SignmeColors.white,
@@ -305,228 +340,204 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       child: Column(
         children: [
-          // === NOM - ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.person_rounded,
-            label: 'Nom',
-            value: user.nom,
-            editable: true,
-            field: 'nom',
-            user: user,
-            ref: ref,
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === EMAIL - NON ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.mail_rounded,
-            label: 'Email',
-            value: user.email,
-            editable: false,
-            field: 'email',
-            user: user,
-            ref: ref,
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === ÉGLISE - NON ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.church_rounded,
-            label: 'Église',
-            value: user.churchNom ?? '(Non défini)',
-            editable: false,
-            field: 'churchId',
-            user: user,
-            ref: ref,
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === RÔLE - NON ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.verified_rounded,
-            label: 'Rôle',
-            value: user.roleLabel,
-            editable: false,
-            field: 'role',
-            user: user,
-            ref: ref,
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === IDENTIFIANT - NON ÉDITABLE (géré par Gérer utilisateurs) ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.badge_rounded,
-            label: 'Identifiant',
-            value: user.matricule ?? '(Non défini)',
-            editable: false,
-            field: 'matricule',
-            user: user,
-            ref: ref,
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === COMMUNIANT - NON ÉDITABLE (géré par le pasteur/la secrétaire) ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.church_rounded,
-            label: 'Communiant',
-            value: user.estCommuniant ? 'Communiant' : 'Non communiant',
-            editable: false,
-            field: 'estCommuniant',
-            user: user,
-            ref: ref,
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === TÉLÉPHONE - ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.phone_rounded,
-            label: 'Téléphone',
-            value: user.telephone ?? '(Non défini)',
-            editable: true,
-            field: 'telephone',
-            user: user,
-            ref: ref,
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === SEXE - ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.wc_rounded,
-            label: 'Sexe',
-            value: formatSexeLabel(user.sexe),
-            editable: true,
-            field: 'sexe',
-            user: user,
-            ref: ref,
-            onTap: () => _showSexeDialog(context, user, ref),
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === DATE DE NAISSANCE - ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.cake_rounded,
-            label: 'Date de naissance',
-            value: formatIsoDateLabel(user.dateNaissance),
-            editable: true,
-            field: 'dateNaissance',
-            user: user,
-            ref: ref,
-            onTap: () => _showDateNaissanceDialog(context, user, ref),
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === QUARTIER - ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.home_rounded,
-            label: 'Quartier de résidence',
-            value: user.quartier?.nom ?? '(Non défini)',
-            editable: true,
-            field: 'quartierId',
-            user: user,
-            ref: ref,
-            onTap: () => _showQuartierDialog(context, user, ref),
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === VILLE - ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.location_city_rounded,
-            label: 'Ville de résidence',
-            value: user.ville == null
-                ? '(Non défini)'
-                : user.ville!.estDiaspora
-                ? '${user.ville!.nom} (Diaspora)'
-                : user.ville!.nom,
-            editable: true,
-            field: 'villeId',
-            user: user,
-            ref: ref,
-            onTap: () => _showVilleDialog(context, user, ref),
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === PROFESSION - ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.work_rounded,
-            label: 'Profession',
-            value: user.profession ?? '(Non défini)',
-            editable: true,
-            field: 'profession',
-            user: user,
-            ref: ref,
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === GROUPES - ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.group_rounded,
-            label: 'Groupes',
-            value: user.groupes.isEmpty
-                ? '(Non défini)'
-                : user.groupes.map((g) => g.nom).join(', '),
-            editable: true,
-            field: 'groupeIds',
-            user: user,
-            ref: ref,
-            onTap: () => _showGroupesDialog(context, user, ref),
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === ORIGINAIRE DE - ÉDITABLE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.location_on_rounded,
-            label: 'Originaire de',
-            value: user.originaireDe ?? '(Non défini)',
-            editable: true,
-            field: 'originaireDe',
-            user: user,
-            ref: ref,
-            onTap: () => _showOriginaireDeDialog(context, user, ref),
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === DATE CONFIRMATION - LECTURE SEULE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.event_rounded,
-            label: 'Date de confirmation',
-            value: user.dateConfirmation ?? '(Non défini)',
-            editable: true,
-            field: 'dateConfirmation',
-            user: user,
-            ref: ref,
-          ),
-          const Divider(height: 1, color: SignmeColors.lightGrayBorder, indent: SignmeSpacing.lg, endIndent: SignmeSpacing.lg),
-
-          // === LIEU CONFIRMATION - LECTURE SEULE ===
-          _buildInfoField(
-            context: context,
-            icon: Icons.place_rounded,
-            label: 'Lieu de confirmation',
-            value: user.lieuConfirmation ?? '(Non défini)',
-            editable: true,
-            field: 'lieuConfirmation',
-            user: user,
-            ref: ref,
-          ),
+          for (var i = 0; i < fields.length; i++) ...[
+            if (i > 0)
+              const Divider(
+                height: 1,
+                color: SignmeColors.lightGrayBorder,
+                indent: SignmeSpacing.lg,
+                endIndent: SignmeSpacing.lg,
+              ),
+            fields[i],
+          ],
         ],
       ),
     );
   }
+
+  List<Widget> _identiteFields(BuildContext context, UserEntity user, WidgetRef ref) => [
+        _buildInfoField(
+          context: context,
+          icon: Icons.person_rounded,
+          label: 'Nom',
+          value: user.nom,
+          editable: true,
+          field: 'nom',
+          user: user,
+          ref: ref,
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.mail_rounded,
+          label: 'Email',
+          value: user.email,
+          editable: false,
+          field: 'email',
+          user: user,
+          ref: ref,
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.verified_rounded,
+          label: 'Rôle',
+          value: user.roleLabel,
+          editable: false,
+          field: 'role',
+          user: user,
+          ref: ref,
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.badge_rounded,
+          label: 'Identifiant',
+          value: user.matricule ?? '(Non défini)',
+          editable: false,
+          field: 'matricule',
+          user: user,
+          ref: ref,
+        ),
+      ];
+
+  List<Widget> _coordonneesFields(BuildContext context, UserEntity user, WidgetRef ref) => [
+        _buildInfoField(
+          context: context,
+          icon: Icons.phone_rounded,
+          label: 'Téléphone',
+          value: user.telephone ?? '(Non défini)',
+          editable: true,
+          field: 'telephone',
+          user: user,
+          ref: ref,
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.wc_rounded,
+          label: 'Sexe',
+          value: formatSexeLabel(user.sexe),
+          editable: true,
+          field: 'sexe',
+          user: user,
+          ref: ref,
+          onTap: () => _showSexeDialog(context, user, ref),
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.cake_rounded,
+          label: 'Date de naissance',
+          value: formatIsoDateLabel(user.dateNaissance),
+          editable: true,
+          field: 'dateNaissance',
+          user: user,
+          ref: ref,
+          onTap: () => _showDateNaissanceDialog(context, user, ref),
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.work_rounded,
+          label: 'Profession',
+          value: user.profession ?? '(Non défini)',
+          editable: true,
+          field: 'profession',
+          user: user,
+          ref: ref,
+        ),
+      ];
+
+  List<Widget> _localisationFields(BuildContext context, UserEntity user, WidgetRef ref) => [
+        _buildInfoField(
+          context: context,
+          icon: Icons.church_rounded,
+          label: 'Église',
+          value: user.churchNom ?? '(Non défini)',
+          editable: false,
+          field: 'churchId',
+          user: user,
+          ref: ref,
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.home_rounded,
+          label: 'Quartier de résidence',
+          value: user.quartier?.nom ?? '(Non défini)',
+          editable: true,
+          field: 'quartierId',
+          user: user,
+          ref: ref,
+          onTap: () => _showQuartierDialog(context, user, ref),
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.location_city_rounded,
+          label: 'Ville de résidence',
+          value: user.ville == null
+              ? '(Non défini)'
+              : user.ville!.estDiaspora
+                  ? '${user.ville!.nom} (Diaspora)'
+                  : user.ville!.nom,
+          editable: true,
+          field: 'villeId',
+          user: user,
+          ref: ref,
+          onTap: () => _showVilleDialog(context, user, ref),
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.location_on_rounded,
+          label: 'Originaire de',
+          value: user.originaireDe ?? '(Non défini)',
+          editable: true,
+          field: 'originaireDe',
+          user: user,
+          ref: ref,
+          onTap: () => _showOriginaireDeDialog(context, user, ref),
+        ),
+      ];
+
+  List<Widget> _vieEgliseFields(BuildContext context, UserEntity user, WidgetRef ref) => [
+        _buildInfoField(
+          context: context,
+          icon: Icons.church_rounded,
+          label: 'Communiant',
+          value: user.estCommuniant ? 'Communiant' : 'Non communiant',
+          editable: false,
+          field: 'estCommuniant',
+          user: user,
+          ref: ref,
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.group_rounded,
+          label: 'Groupes',
+          value: user.groupes.isEmpty
+              ? '(Non défini)'
+              : user.groupes.map((g) => g.nom).join(', '),
+          editable: true,
+          field: 'groupeIds',
+          user: user,
+          ref: ref,
+          onTap: () => _showGroupesDialog(context, user, ref),
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.event_rounded,
+          label: 'Date de confirmation',
+          value: user.dateConfirmation ?? '(Non défini)',
+          editable: true,
+          field: 'dateConfirmation',
+          user: user,
+          ref: ref,
+        ),
+        _buildInfoField(
+          context: context,
+          icon: Icons.place_rounded,
+          label: 'Lieu de confirmation',
+          value: user.lieuConfirmation ?? '(Non défini)',
+          editable: true,
+          field: 'lieuConfirmation',
+          user: user,
+          ref: ref,
+        ),
+      ];
 
   Widget _buildInfoField({
     required BuildContext context,
@@ -1246,11 +1257,105 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 }
 
-/// Champ "solde" cliquable — pasteur/trésorier uniquement — voir
-/// [AppPermissions.canViewRetraits]. Ouvre l'écran de retrait (solde exact +
-/// bouton Retrait + historique avec statut exact de chaque retrait).
-class _SoldeRetraitChip extends ConsumerWidget {
-  const _SoldeRetraitChip({required this.onTap});
+/// Rangée de 3 statistiques rapides sous l'identité — Identifiant / Église /
+/// Solde (pasteur/trésorier, cliquable vers l'écran de retrait — voir
+/// [AppPermissions.canViewRetraits]) ou Statut pour les autres rôles.
+class _ProfileStatsRow extends ConsumerWidget {
+  const _ProfileStatsRow({required this.user});
+  final UserEntity user;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canViewSolde = AppPermissions.canViewRetraits(user);
+
+    return IntrinsicHeight(
+      child: Row(
+        children: [
+          Expanded(
+            child: _StatItem(
+              icon: Icons.badge_rounded,
+              label: 'Identifiant',
+              value: user.matricule ?? '—',
+            ),
+          ),
+          const _StatDivider(),
+          Expanded(
+            child: _StatItem(
+              icon: Icons.church_rounded,
+              label: 'Église',
+              value: user.churchNom ?? '—',
+            ),
+          ),
+          const _StatDivider(),
+          Expanded(
+            child: canViewSolde
+                ? _SoldeStatItem(onTap: () => context.push(AppRoutes.retraits))
+                : _StatItem(
+                    icon: Icons.check_circle_rounded,
+                    label: 'Statut',
+                    value: user.actif ? 'Actif' : 'Inactif',
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: SignmeSpacing.sm),
+      child: VerticalDivider(width: 1, color: SignmeColors.lightGrayBorder),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  const _StatItem({required this.icon, required this.label, required this.value});
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: SignmeColors.primaryLight),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: SignmeTypography.labelSmall.copyWith(
+                color: SignmeColors.mediumGray,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: SignmeTypography.bodyMedium.copyWith(
+            color: SignmeColors.black,
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SoldeStatItem extends ConsumerWidget {
+  const _SoldeStatItem({required this.onTap});
   final VoidCallback onTap;
 
   @override
@@ -1259,39 +1364,47 @@ class _SoldeRetraitChip extends ConsumerWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.md, vertical: SignmeSpacing.sm),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
-          border: Border.all(color: Colors.white.withOpacity(0.35)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 16),
-            const SizedBox(width: SignmeSpacing.sm),
-            Text(
-              'Solde : ',
-              style: SignmeTypography.labelSmall.copyWith(color: Colors.white.withOpacity(0.85), fontSize: 12),
-            ),
-            soldeAsync.when(
-              loading: () => const SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+      borderRadius: BorderRadius.circular(SignmeSpacing.radiusSm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_balance_wallet_rounded,
+                  size: 14, color: SignmeColors.primaryLight),
+              const SizedBox(width: 4),
+              Text(
+                'Solde',
+                style: SignmeTypography.labelSmall.copyWith(
+                  color: SignmeColors.mediumGray,
+                  fontSize: 11,
+                ),
               ),
-              error: (_, __) => const Text('—', style: TextStyle(color: Colors.white)),
-              data: (solde) => Text(
-                FinanceFormatters.fcfa(solde),
-                style: SignmeTypography.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12),
+              const SizedBox(width: 2),
+              Icon(Icons.chevron_right_rounded,
+                  size: 14, color: SignmeColors.mediumGray.withOpacity(0.6)),
+            ],
+          ),
+          const SizedBox(height: 3),
+          soldeAsync.when(
+            loading: () => const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2, color: SignmeColors.primaryLight),
+            ),
+            error: (_, __) => Text('—', style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.black)),
+            data: (solde) => Text(
+              FinanceFormatters.fcfa(solde),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: SignmeTypography.bodyMedium.copyWith(
+                color: SignmeColors.black,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
               ),
             ),
-            const SizedBox(width: SignmeSpacing.xs),
-            const Icon(Icons.chevron_right_rounded, color: Colors.white70, size: 16),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

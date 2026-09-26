@@ -62,7 +62,7 @@ class _AuthInterceptor extends Interceptor {
   /// widgets se charger normalement et d'autres afficher une erreur
   /// d'authentification, sans raison apparente et sans être réellement
   /// déconnecté.
-  Completer<bool>? _refreshCompleter;
+  Completer<bool?>? _refreshCompleter;
 
   @override
   Future<void> onRequest(
@@ -96,17 +96,28 @@ class _AuthInterceptor extends Interceptor {
     }
 
     if (err.response?.statusCode == 401) {
-      try {
-        final refreshed = await _sharedRefresh();
-        if (refreshed) {
-          final token = await _storage.getAccessToken();
-          err.requestOptions.headers['Authorization'] = 'Bearer $token';
-          final cloneReq = await _dio.fetch(err.requestOptions);
-          return handler.resolve(cloneReq);
-        }
-      } catch (_) {}
-      await _storage.clearSession();
-      await onSessionExpired?.call();
+      final refreshed = await _sharedRefresh();
+      if (refreshed == true) {
+        final token = await _storage.getAccessToken();
+        err.requestOptions.headers['Authorization'] = 'Bearer $token';
+        final cloneReq = await _dio.fetch(err.requestOptions);
+        return handler.resolve(cloneReq);
+      }
+      // `refreshed == false` : le backend a explicitement rejeté le refresh
+      // token (absent, expiré ou révoqué) — la session est vraiment finie.
+      // `refreshed == null` : la tentative de refresh a échoué pour une
+      // raison transitoire (réseau, timeout, panne serveur ponctuelle) — la
+      // session locale reste potentiellement valide, donc on NE déconnecte
+      // PAS l'utilisateur ; cette requête échoue simplement, la prochaine
+      // retentera le refresh normalement. Avant ce correctif, toute erreur
+      // pendant le refresh — même un simple aléa réseau — déconnectait
+      // l'utilisateur, ce qui causait des déconnexions inopinées puisque
+      // l'access token n'a que 30 min de durée de vie et déclenche donc un
+      // refresh très fréquemment en usage normal.
+      if (refreshed == false) {
+        await _storage.clearSession();
+        await onSessionExpired?.call();
+      }
     }
     handler.next(err);
   }
@@ -114,38 +125,49 @@ class _AuthInterceptor extends Interceptor {
   /// Si un refresh est déjà en cours, attend son résultat au lieu d'en
   /// déclencher un second (aussi bien pour éviter la double révocation que
   /// pour ne pas multiplier les allers-retours réseau à grande échelle).
-  Future<bool> _sharedRefresh() {
+  Future<bool?> _sharedRefresh() {
     final inFlight = _refreshCompleter;
     if (inFlight != null) return inFlight.future;
 
-    final completer = Completer<bool>();
+    final completer = Completer<bool?>();
     _refreshCompleter = completer;
     _tryRefresh()
-        .then(completer.complete, onError: (_) => completer.complete(false))
+        .then(completer.complete, onError: (_) => completer.complete(null))
         .whenComplete(() => _refreshCompleter = null);
     return completer.future;
   }
 
-  Future<bool> _tryRefresh() async {
+  /// Retourne `true` si le refresh a réussi, `false` si le refresh token est
+  /// confirmé invalide (absent localement, ou explicitement rejeté par le
+  /// backend en 401/403 — session réellement expirée), ou `null` si la
+  /// tentative a échoué pour une raison transitoire (réseau, timeout, erreur
+  /// serveur) qui ne dit rien sur la validité réelle de la session.
+  Future<bool?> _tryRefresh() async {
     final refresh = await _storage.getRefreshToken();
     if (refresh == null || refresh.isEmpty) return false;
 
-    final resp = await _dio.post(
-      ApiConfig.refreshToken,
-      data: {'refresh_token': refresh},
-    );
+    try {
+      final resp = await _dio.post(
+        ApiConfig.refreshToken,
+        data: {'refresh_token': refresh},
+      );
 
-    if (resp.statusCode == 200 && resp.data['success'] == true) {
-      final data = resp.data['data'] as Map<String, dynamic>;
-      final access = data['access_token']?.toString() ?? '';
-      if (access.isEmpty) return false;
-      await _storage.saveAccessToken(access);
-      if (data['refresh_token'] != null) {
-        await _storage.saveRefreshToken(data['refresh_token'].toString());
+      if (resp.statusCode == 200 && resp.data['success'] == true) {
+        final data = resp.data['data'] as Map<String, dynamic>;
+        final access = data['access_token']?.toString() ?? '';
+        if (access.isEmpty) return null;
+        await _storage.saveAccessToken(access);
+        if (data['refresh_token'] != null) {
+          await _storage.saveRefreshToken(data['refresh_token'].toString());
+        }
+        return true;
       }
-      return true;
+      return null;
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 401 || code == 403) return false;
+      return null;
     }
-    return false;
   }
 }
 

@@ -5,8 +5,11 @@ import '../../../../core/widgets/index.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/entities/contribution_perso_entity.dart';
 
-/// Carte "Mes dépenses" : nom événement, église, montant, frais, montant
-/// payé, date, statut, référence.
+/// Carte "Mes dépenses" : nom événement, moyen de paiement (si mobile money),
+/// montant total payé, date. La ventilation frais/contribution et la
+/// référence de transaction sont un détail de gestion interne — sans intérêt
+/// pour l'utilisateur, elles ne sont plus affichées ici (voir trésorerie
+/// pour la vue détaillée côté pasteur/secrétaire/trésorier).
 class ContributionPersoCard extends StatelessWidget {
   const ContributionPersoCard({super.key, required this.contribution});
 
@@ -20,109 +23,80 @@ class ContributionPersoCard extends StatelessWidget {
 
   String get _statutLabel => switch (contribution.statut) {
         'completed' => 'Payé',
-        'failed' => 'Échoué',
-        _ => 'En attente',
+        'failed' => 'Paiement échoué',
+        _ => 'En cours de traitement',
       };
 
   @override
   Widget build(BuildContext context) {
+    final paymentColor = paymentOperatorColor(contribution.paymentOperator);
+
     return Container(
       padding: const EdgeInsets.all(SignmeSpacing.md),
       decoration: BoxDecoration(
         color: SignmeColors.white,
         borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        border: Border.all(color: SignmeColors.lightGrayBorder),
-        boxShadow: [
-          BoxShadow(color: SignmeColors.primaryDark.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
-        ],
+        border: Border.all(color: SignmeColors.black.withOpacity(0.4)),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SignmeLeadingIconAvatar(icon: Icons.volunteer_activism_rounded),
-              const SizedBox(width: SignmeSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          const SignmeLeadingIconAvatar(icon: Icons.volunteer_activism_rounded),
+          const SizedBox(width: SignmeSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            contribution.evenementTitre ?? 'Événement',
-                            style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: _statutColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
-                          ),
-                          child: Text(
-                            _statutLabel,
-                            style: SignmeTypography.labelSmall.copyWith(color: _statutColor, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ],
+                    Expanded(
+                      child: Text(
+                        contribution.evenementTitre ?? 'Événement',
+                        style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    if (contribution.eglise != null) ...[
-                      const SizedBox(height: 2),
-                      Text(contribution.eglise!,
-                          style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray)),
-                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _statutColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+                      ),
+                      child: Text(
+                        _statutLabel,
+                        style: SignmeTypography.labelSmall.copyWith(color: _statutColor, fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const Divider(height: SignmeSpacing.lg, color: SignmeColors.lightGrayBorder),
-          Row(
-            children: [
-              Expanded(child: _infoColumn('Contribution', FinanceFormatters.fcfaShort(contribution.montant))),
-              Expanded(child: _infoColumn('Frais', FinanceFormatters.fcfaShort(contribution.frais))),
-              Expanded(
-                child: _infoColumn('Payé', FinanceFormatters.fcfaShort(contribution.montantTotal), highlight: true),
-              ),
-            ],
-          ),
-          const SizedBox(height: SignmeSpacing.sm),
-          Text(
-            DateFormat('dd MMM yyyy à HH:mm', 'fr_FR').format(contribution.createdAt),
-            style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
-          ),
-          if (contribution.paymentReference != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              'Réf. ${contribution.paymentReference}',
-              style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
+                const SizedBox(height: 6),
+                Text(
+                  FinanceFormatters.fcfa(contribution.montantTotal),
+                  style: SignmeTypography.headlineSmall.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: SignmeColors.black,
+                  ),
+                ),
+                if (paymentColor != null) ...[
+                  const SizedBox(height: 6),
+                  SignmePaymentMethodInfo(
+                    color: paymentColor,
+                    label: paymentOperatorLabel(contribution.paymentOperator),
+                    phoneNumber: contribution.paymentNumber,
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Text(
+                  DateFormat('dd MMM yyyy à HH:mm', 'fr_FR').format(contribution.createdAt),
+                  style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _infoColumn(String label, String value, {bool highlight = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.darkGray)),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: SignmeTypography.labelMedium.copyWith(
-            fontWeight: FontWeight.w800,
-            color: highlight ? SignmeColors.primaryLight : SignmeColors.black,
-          ),
-        ),
-      ],
     );
   }
 }

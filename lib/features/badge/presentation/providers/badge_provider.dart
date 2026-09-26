@@ -96,7 +96,8 @@ class BadgeNotifier extends StateNotifier<AsyncValue<BadgeCountEntity>> {
   void _onBadgeWsEvent(Map<String, dynamic> data) {
     try {
       final entity = BadgeCountEntity(
-        publications:         (data['publications'] as num?)?.toInt() ?? 0,
+        annonces:             (data['annonces'] as num?)?.toInt() ?? 0,
+        meditations:          (data['meditations'] as num?)?.toInt() ?? 0,
         evenements:           (data['evenements'] as num?)?.toInt() ?? 0,
         historique:           (data['historique'] as num?)?.toInt() ?? 0,
         historiqueSignatures: (data['historique_signatures'] as num?)?.toInt() ?? 0,
@@ -129,7 +130,7 @@ class BadgeNotifier extends StateNotifier<AsyncValue<BadgeCountEntity>> {
 
   /// Marque un type de badge comme lu (optimistic + sync + cache).
   ///
-  /// [type] : 'publications' | 'evenements' | 'historique' | 'historique_signatures'
+  /// [type] : 'annonces' | 'meditations' | 'evenements' | 'historique' | 'historique_signatures'
   Future<void> markRead(String type) async {
     if (!_ref.read(authNotifierProvider).isAuthenticated) return;
 

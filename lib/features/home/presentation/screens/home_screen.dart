@@ -7,6 +7,8 @@ import '../../../../core/widgets/index.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../badge/domain/entities/badge_count_entity.dart';
+import '../../../badge/presentation/providers/badge_provider.dart';
 import '../../../publications/presentation/providers/publications_provider.dart';
 import '../../../evenements/presentation/providers/evenements_provider.dart';
 import '../../../evenements/presentation/widgets/evenement_card.dart';
@@ -22,6 +24,12 @@ class HomeScreen extends ConsumerWidget {
     final user = auth.auth?.user;
     final feedAsync = ref.watch(homeFeedProvider);
     final scrollController = ref.watch(homeScrollControllerProvider);
+    final selectedCategory = ref.watch(selectedActualiteCategoryProvider);
+    final badges = ref.watch(badgeNotifierProvider).valueOrNull ?? BadgeCountEntity.empty;
+
+    final categoryFeedAsync = feedAsync.whenData(
+      (items) => filterHomeFeedByCategory(items, selectedCategory),
+    );
 
     return RefreshIndicator(
       color: SignmeColors.primaryLight,
@@ -57,13 +65,23 @@ class HomeScreen extends ConsumerWidget {
                   description: "Que voulez-vous faire aujourd'hui Mme/Mr ?",
                 ),
                 const SizedBox(height: SignmeSpacing.xxxl),
-                const _ActualitesHeader(),
+                const _ActualitesTitle(),
+                const SizedBox(height: SignmeSpacing.md),
+                _ActualitesTabs(
+                  selected: selectedCategory,
+                  badges: badges,
+                  onSelect: (category) {
+                    ref.read(selectedActualiteCategoryProvider.notifier).state = category;
+                    ref.read(badgeNotifierProvider.notifier).markRead(category.badgeType);
+                  },
+                ),
                 const SizedBox(height: SignmeSpacing.md),
               ],
             ),
           ),
           ..._buildActualitesSlivers(
-            feedAsync: feedAsync,
+            category: selectedCategory,
+            feedAsync: categoryFeedAsync,
             onRetry: () {
               ref.read(publicationsListProvider(const {'limit': 5}).notifier).refresh();
               ref.read(evenementsListProvider.notifier).refresh();
@@ -198,40 +216,103 @@ class _ChurchCard extends StatelessWidget {
 
 
 
-class _ActualitesHeader extends StatelessWidget {
-  const _ActualitesHeader();
+class _ActualitesTitle extends StatelessWidget {
+  const _ActualitesTitle();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+      child: Text(
+        'Actualités',
+        style: SignmeTypography.headlineSmall.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// Onglets du fil d'actualité — Événements / Annonces / Méditations.
+///
+/// Remplace l'ancien fil unique où les trois types de contenus étaient
+/// mélangés dans un seul long défilement : ils sont désormais rangés par
+/// onglet pour limiter le scroll, avec un badge rouge (nombre non lu) sur
+/// chaque pastille tant que l'utilisateur n'a pas ouvert cet onglet.
+class _ActualitesTabs extends StatelessWidget {
+  const _ActualitesTabs({
+    required this.selected,
+    required this.badges,
+    required this.onSelect,
+  });
+
+  final ActualiteCategory selected;
+  final BadgeCountEntity badges;
+  final ValueChanged<ActualiteCategory> onSelect;
+
+  int _countFor(ActualiteCategory category) => switch (category) {
+        ActualiteCategory.evenements => badges.evenements,
+        ActualiteCategory.annonces => badges.annonces,
+        ActualiteCategory.meditations => badges.meditations,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+      scrollDirection: Axis.horizontal,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Actualités',
-            style: SignmeTypography.headlineSmall.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: SignmeSpacing.sm,
-              vertical: SignmeSpacing.xs,
-            ),
-            decoration: BoxDecoration(
-              color: SignmeColors.accentSky,
-              borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
-            ),
-            child: Text(
-              'À la une',
-              style: SignmeTypography.labelSmall.copyWith(
-                color: SignmeColors.primaryLight,
-                fontWeight: FontWeight.w600,
+          for (final category in ActualiteCategory.values) ...[
+            if (category != ActualiteCategory.values.first)
+              const SizedBox(width: SignmeSpacing.sm),
+            BadgeDot(
+              count: _countFor(category),
+              child: _ActualiteTabPill(
+                label: category.label,
+                selected: category == selected,
+                onTap: () => onSelect(category),
               ),
             ),
-          ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _ActualiteTabPill extends StatelessWidget {
+  const _ActualiteTabPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: SignmeSpacing.animationFast,
+        padding: const EdgeInsets.symmetric(
+          horizontal: SignmeSpacing.md,
+          vertical: SignmeSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? SignmeColors.primaryLight : SignmeColors.accentSky,
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+        ),
+        child: Text(
+          label,
+          style: SignmeTypography.labelSmall.copyWith(
+            color: selected ? SignmeColors.white : SignmeColors.primaryLight,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -241,15 +322,21 @@ class _ActualitesHeader extends StatelessWidget {
 /// seules les cartes visibles à l'écran sont construites, quelle que soit la
 /// taille du fil accumulé localement (voir commentaire dans [HomeScreen]).
 List<Widget> _buildActualitesSlivers({
+  required ActualiteCategory category,
   required AsyncValue<List<HomeFeedItem>> feedAsync,
   required VoidCallback onRetry,
 }) {
+  final emptyMessage = switch (category) {
+    ActualiteCategory.evenements => 'Les événements de votre église apparaîtront ici.',
+    ActualiteCategory.annonces => 'Les annonces de votre église apparaîtront ici.',
+    ActualiteCategory.meditations => 'Les méditations de votre église apparaîtront ici.',
+  };
+
   return SignmeAsyncValue.buildSlivers<List<HomeFeedItem>>(
     value: feedAsync,
     onRetry: onRetry,
-    emptyTitle: 'Pas encore d\'actualités',
-    emptyMessage:
-        'Les annonces, méditations et événements de votre église apparaîtront ici.',
+    emptyTitle: 'Pas encore de contenu',
+    emptyMessage: emptyMessage,
     isEmpty: (list) => list.isEmpty,
     data: (items) => [
       SliverPadding(

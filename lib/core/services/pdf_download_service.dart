@@ -52,9 +52,20 @@ class PdfDownloadService {
 
   /// Dossier de stockage propre à l'application (aucune permission requise,
   /// stable sur toutes les versions d'Android grâce au stockage scopé).
+  ///
+  /// `getExternalStorageDirectory()` n'existe que sur Android — sur iOS
+  /// (sandbox applicative, pas de stockage "externe" exposé), l'appel lève
+  /// un `UnsupportedError` au lieu de retourner `null` comme on pourrait s'y
+  /// attendre. Sans cette garde de plateforme, cette exception n'était
+  /// jamais rattrapée par le `if (external != null)` ci-dessous (il n'est
+  /// jamais atteint) et remontait telle quelle jusqu'à l'UI, qui l'affichait
+  /// comme "Une erreur inattendue s'est produite." — le téléchargement PDF
+  /// échouait donc systématiquement sur iPhone alors qu'Android fonctionnait.
   Future<Directory> _resolveSaveDirectory() async {
-    final external = await getExternalStorageDirectory();
-    if (external != null) return external;
+    if (Platform.isAndroid) {
+      final external = await getExternalStorageDirectory();
+      if (external != null) return external;
+    }
     return getApplicationDocumentsDirectory();
   }
 }

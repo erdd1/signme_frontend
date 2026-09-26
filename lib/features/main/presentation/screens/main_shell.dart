@@ -276,8 +276,14 @@ class MainShell extends ConsumerWidget {
       // utilisateur identique à avant.
       switch (tab) {
         case NavTab.home:
-          ref.read(badgeNotifierProvider.notifier).markRead('publications');
-          ref.read(badgeNotifierProvider.notifier).markRead('evenements');
+          // Ne marque comme lu que l'onglet Actualités actuellement
+          // sélectionné (Événements/Annonces/Méditations) — les deux autres
+          // gardent leur badge tant que l'utilisateur ne les a pas ouverts
+          // (voir _ActualitesTabs dans home_screen.dart pour le même geste
+          // au moment où l'utilisateur bascule d'onglet sans quitter Home).
+          ref.read(badgeNotifierProvider.notifier).markRead(
+                ref.read(selectedActualiteCategoryProvider).badgeType,
+              );
         case NavTab.historique:
           ref.read(badgeNotifierProvider.notifier).markRead('historique');
           // Rafraîchit l'année courante (cas majoritaire) — si l'utilisateur
@@ -354,7 +360,7 @@ class _FloatingNavBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final badges = ref.watch(badgeNotifierProvider).valueOrNull ?? BadgeCountEntity.empty;
     int badgeCountForTab(NavTab tab) => switch (tab) {
-      NavTab.home => badges.publications + badges.evenements,
+      NavTab.home => badges.annonces + badges.meditations + badges.evenements,
       NavTab.historique => badges.historique,
       _ => 0,
     };

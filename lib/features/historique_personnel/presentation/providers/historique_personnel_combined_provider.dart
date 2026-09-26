@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../core/providers/connectivity_provider.dart';
+import '../../../../core/utils/pending_refresh_scheduler.dart';
 import '../../domain/entities/historique_personnel_entity.dart';
 import '../../data/models/historique_personnel_model.dart';
 import '../../data/datasources/historique_perso_local_datasource.dart';
@@ -44,10 +45,18 @@ final historiquePersoLocalDataSourceProvider =
 /// Notifier combiné — Historique Personnel (distance + présentiel), Offline-First.
 ///
 /// Filtré uniquement par [_year] (seule dimension réellement utilisée par
-/// l'écran — le statut est toujours "completed") : une `String` comme clé de
-/// `.family`, contrairement à une `Map`, a une égalité par valeur fiable en
-/// Dart, ce qui permet à [historiquePersonnelBootstrapProvider] de précharger
-/// exactement l'instance que l'écran lira ensuite.
+/// l'écran) : une `String` comme clé de `.family`, contrairement à une
+/// `Map`, a une égalité par valeur fiable en Dart, ce qui permet à
+/// [historiquePersonnelBootstrapProvider] de précharger exactement
+/// l'instance que l'écran lira ensuite.
+///
+/// Tous les statuts sont remontés (pending/completed/failed), pas seulement
+/// "completed" : dès l'envoi d'un paiement à distance, l'utilisateur doit
+/// voir sa signature apparaître "en cours de traitement", puis passer à
+/// "payé" ou "paiement échoué" une fois le webhook de paiement traité côté
+/// backend — [_pendingScheduler] relance un [refresh] léger tant qu'une
+/// entrée reste en attente, pour donner cet effet temps réel sans dépendre
+/// d'un canal WebSocket dédié par paiement (voir sa doc pour le détail).
 ///
 /// 1. Affiche immédiatement le cache Isar (s'il existe).
 /// 2. Rafraîchit depuis l'API (les deux endpoints en parallèle) en arrière-plan.
@@ -56,13 +65,15 @@ class HistoriquePersonnelCombinedNotifier
     extends StateNotifier<AsyncValue<List<HistoriquePersonnelEntity>>> {
   HistoriquePersonnelCombinedNotifier(this._ref, this._year)
       : super(const AsyncLoading()) {
+    _pendingScheduler = PendingRefreshScheduler(refresh: refresh);
     _loadFromCacheThenRefresh();
   }
 
   final Ref _ref;
   final String _year;
+  late final PendingRefreshScheduler _pendingScheduler;
 
-  Map<String, dynamic> get _cacheFilters => {'year': _year, 'status': 'completed'};
+  Map<String, dynamic> get _cacheFilters => {'year': _year};
 
   List<HistoriquePersonnelEntity> _toEntities(List<Map<String, dynamic>> raw) {
     final entities = raw.map(_mapRaw).toList();
@@ -103,7 +114,9 @@ class HistoriquePersonnelCombinedNotifier
     final local = _ref.read(historiquePersoLocalDataSourceProvider);
     final cached = await local.get(_cacheFilters);
     if (cached != null && mounted) {
-      state = AsyncData(_toEntities(cached));
+      final entities = _toEntities(cached);
+      state = AsyncData(entities);
+      _pendingScheduler.scheduleIfNeeded(entities.any((e) => e.isPending));
     }
     await refresh();
   }
@@ -115,10 +128,7 @@ class HistoriquePersonnelCombinedNotifier
 
     try {
       final dio = _ref.read(dioProvider);
-      final queryParams = <String, String>{
-        'status': 'completed',
-        'year': _year,
-      };
+      final queryParams = <String, String>{'year': _year};
 
       final results = await Future.wait([
         _fetchAllPages(dio, '/signatures/historique-personnel', queryParams),
@@ -133,7 +143,9 @@ class HistoriquePersonnelCombinedNotifier
       final local = _ref.read(historiquePersoLocalDataSourceProvider);
       await local.save(_cacheFilters, rawForCache);
 
-      if (mounted) state = AsyncData(_toEntities(rawForCache));
+      final entities = _toEntities(rawForCache);
+      if (mounted) state = AsyncData(entities);
+      _pendingScheduler.scheduleIfNeeded(entities.any((e) => e.isPending));
     } catch (e, st) {
       // Réseau en échec : on garde les données déjà affichées (cache ou
       // précédent succès). On ne propage l'erreur que si on n'a vraiment
@@ -142,6 +154,12 @@ class HistoriquePersonnelCombinedNotifier
         state = AsyncError(e, st);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _pendingScheduler.dispose();
+    super.dispose();
   }
 }
 

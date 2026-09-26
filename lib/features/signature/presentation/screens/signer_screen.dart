@@ -6,7 +6,6 @@ import '../../../../core/design_system/index.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/widgets/index.dart';
-import '../../../../core/payments/card_checkout_webview_screen.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/signer_provider.dart';
 import '../providers/ma_carte_provider.dart';
@@ -23,6 +22,12 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
   final _formKey = GlobalKey<FormState>();
   final _phoneCtrl = TextEditingController();
   late TabController _tab;
+
+  // ── Navigation par étapes (formulaires "stepper") ────────────────────────
+  // État purement local à l'écran (pas dans signerProvider) : c'est de la
+  // navigation UI, pas une donnée métier partagée/persistée.
+  int _distanceStep = 0;
+  int _presentielStep = 0;
 
   @override
   void initState() {
@@ -158,8 +163,6 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                   ? Icons.check_circle_rounded
                   : isFailed
                   ? Icons.error_outline_rounded
-                  : state.paymentMethod == 'card'
-                  ? Icons.credit_card_rounded
                   : Icons.phone_android_rounded,
               color: isCompleted
                   ? SignmeColors.success
@@ -174,8 +177,6 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                   ? 'Paiement réussi'
                   : isFailed
                   ? 'Paiement non confirmé'
-                  : state.paymentMethod == 'card'
-                  ? 'Paiement par carte'
                   : 'Confirmez sur votre téléphone',
               style: SignmeTypography.headlineSmall
                   .copyWith(fontWeight: FontWeight.bold),
@@ -202,9 +203,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
               Text(
                 state.paymentMessage ??
                     (isProcessing
-                        ? (state.paymentMethod == 'card'
-                            ? 'Complétez votre paiement par carte.'
-                            : 'Validez le PUSH ${state.operator_} sur votre mobile.')
+                        ? 'Validez le PUSH ${state.operator_} sur votre mobile.'
                         : 'Signature enregistrée.'),
                 textAlign: TextAlign.center,
                 style: SignmeTypography.bodyMedium
@@ -226,6 +225,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                 onPressed: () {
                   ref.read(signerProvider.notifier).reset();
                   ref.read(formDirtyProvider.notifier).state = false;
+                  setState(() => _distanceStep = 0);
                   if (!isFailed) context.pop();
                 },
               ),
@@ -252,6 +252,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
             onPressed: () {
               ref.read(signerProvider.notifier).reset();
               ref.read(formDirtyProvider.notifier).state = false;
+              setState(() => _presentielStep = 0);
               context.pop();
             },
           ),
@@ -262,57 +263,30 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
 
   // ── Formulaire Distance ──────────────────────────────────────────────────
 
+  /// Formulaire à distance en 2 étapes : (1) période — montant/année/mois,
+  /// validée côté backend comme avant (aucune règle métier déplacée ici) ;
+  /// (2) paiement — opérateur mobile money + numéro (la carte bancaire ne
+  /// fonctionne pas en production, retirée du choix proposé à l'utilisateur).
   Widget _distanceForm(SignerState state) {
     return Form(
       key: _formKey,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-            SignmeSpacing.lg, SignmeSpacing.lg, SignmeSpacing.lg, 120),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.lg, SignmeSpacing.lg, 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _sectionTitle('Montant de la signature'),
-            _amountDropdown(state, false),
-            const SizedBox(height: SignmeSpacing.md),
-            _feeDisplay(state),
-            const SizedBox(height: SignmeSpacing.xl),
-            _sectionTitle('Sélectionner l\'année'),
-            _yearGrid(state, false),
-            const SizedBox(height: SignmeSpacing.xl),
-            _sectionTitle('Sélectionner les mois (${state.selectedYear})'),
-            const SizedBox(height: SignmeSpacing.sm),
-            _monthGrid(state, state.selectedYear, false),
-            const SizedBox(height: SignmeSpacing.xl),
-            _sectionTitle('Méthode de paiement'),
-            const SizedBox(height: SignmeSpacing.sm),
-            PaymentMethodSelector(
-              selected: state.paymentMethod,
-              onChanged: (m) {
-                _markDirty();
-                ref.read(signerProvider.notifier).setPaymentMethod(m);
-              },
+            SignmeStepHeader(
+              currentStep: _distanceStep,
+              stepLabels: const ['Période', 'Paiement'],
             ),
-            const SizedBox(height: SignmeSpacing.xl),
-            if (state.paymentMethod == 'mobile_money') ...[
-              _sectionTitle('Opérateur'),
-              const SizedBox(height: SignmeSpacing.sm),
-              _operatorRow(state),
-              const SizedBox(height: SignmeSpacing.xl),
-              _sectionTitle('Numéro de paiement'),
-              const SizedBox(height: SignmeSpacing.sm),
-              _phoneField(state),
-              const SizedBox(height: SignmeSpacing.xl),
-            ],
-            if (state.selectedMonths.isNotEmpty) ...[
-              _summary(state),
-              const SizedBox(height: SignmeSpacing.lg),
-            ],
-            SignmePrimaryButton(
-              label: 'Confirmer le paiement',
-              enabled: state.selectedMonths.isNotEmpty &&
-                  (state.paymentMethod == 'card' || state.phone.length == 9),
-              isLoading: state.isLoading,
-              onPressed: _submitDistance,
+            const SizedBox(height: SignmeSpacing.lg),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 120),
+                child: _distanceStep == 0
+                    ? _distanceStepPeriode(state)
+                    : _distanceStepPaiement(state),
+              ),
             ),
           ],
         ),
@@ -320,8 +294,71 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
     );
   }
 
+  Widget _distanceStepPeriode(SignerState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Sélectionner l\'année'),
+        _yearGrid(state, false),
+        const SizedBox(height: SignmeSpacing.xl),
+        _sectionTitle('Sélectionner les mois (${state.selectedYear})'),
+        const SizedBox(height: SignmeSpacing.sm),
+        _monthGrid(
+          state,
+          state.selectedYear,
+          false,
+          signedMonths: state.alreadySignedMonths,
+          onToggle: (m) => ref.read(signerProvider.notifier).toggleMonth(m),
+        ),
+        const SizedBox(height: SignmeSpacing.xl),
+        SignmePrimaryButton(
+          label: 'Valider',
+          enabled: state.selectedMonths.isNotEmpty,
+          onPressed: () => setState(() => _distanceStep = 1),
+        ),
+      ],
+    );
+  }
+
+  Widget _distanceStepPaiement(SignerState state) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SignmeStepBackButton(onPressed: () => setState(() => _distanceStep = 0)),
+        const SizedBox(height: SignmeSpacing.md),
+        _sectionTitle('Montant de la signature'),
+        _amountDropdown(state, false),
+        const SizedBox(height: SignmeSpacing.md),
+        _feeDisplay(state),
+        const SizedBox(height: SignmeSpacing.xl),
+        _sectionTitle('Opérateur'),
+        const SizedBox(height: SignmeSpacing.sm),
+        _operatorRow(state),
+        const SizedBox(height: SignmeSpacing.xl),
+        _sectionTitle('Numéro de paiement'),
+        const SizedBox(height: SignmeSpacing.sm),
+        _phoneField(state),
+        const SizedBox(height: SignmeSpacing.xl),
+        _summary(state),
+        const SizedBox(height: SignmeSpacing.lg),
+        SignmePrimaryButton(
+          label: 'Confirmer le paiement',
+          enabled: state.phone.length == 9,
+          isLoading: state.isLoading,
+          onPressed: _submitDistance,
+        ),
+      ],
+    );
+  }
+
   // ── Formulaire Présentiel ────────────────────────────────────────────────
 
+  /// Formulaire présentiel en 3 étapes : (1) recherche/sélection du membre —
+  /// photo, nom, identifiant affichés, validée par la personne qui signe ;
+  /// (2) année + mois, avec repère "Signé"/"Non signé" par mois pour CE
+  /// membre (nouveau — voir [SignerNotifier.loadMemberSignedMonths]) ; (3)
+  /// montant de l'offrande + enregistrement. Aucune règle métier déplacée :
+  /// mêmes appels backend qu'avant, juste répartis sur 3 écrans.
   Widget _presentielForm(SignerState state) {
     final user = ref.watch(authNotifierProvider).auth?.user;
     final isAncienNotInService = user != null && user.isAncien && !user.estDeService;
@@ -330,111 +367,25 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
 
     return Stack(
       children: [
-        SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-              SignmeSpacing.lg, SignmeSpacing.lg, SignmeSpacing.lg, 120),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.lg, SignmeSpacing.lg, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _sectionTitle('Sélectionner le membre'),
-              const SizedBox(height: SignmeSpacing.sm),
-              TextField(
-                enabled: !isAncienNotInService && canSignNow,
-                onChanged: (q) {
-                  ref.read(signerProvider.notifier).updateMemberSearch(q);
-                  if (q.length >= 2) {
-                    ref.read(signerProvider.notifier).searchMembers(q);
-                  }
-                },
-                style: SignmeTypography.bodyMedium,
-                decoration: InputDecoration(
-                  hintText: 'Rechercher par nom...',
-                  prefixIcon: const Icon(Icons.search, color: SignmeColors.mediumGray),
-                  filled: true,
-                  fillColor: SignmeColors.accentSky.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
+              SignmeStepHeader(
+                currentStep: _presentielStep,
+                stepLabels: const ['Membre', 'Période', 'Montant'],
               ),
-              if (state.memberSearchQuery.length >= 2 &&
-                  state.filteredMembers.isNotEmpty &&
-                  state.selectedUserId == null &&
-                  !isAncienNotInService &&
-                  canSignNow)
-                Container(
-                  margin: const EdgeInsets.only(top: SignmeSpacing.xs),
-                  constraints: const BoxConstraints(maxHeight: 200),
-                  decoration: BoxDecoration(
-                    color: SignmeColors.white,
-                    borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
-                    border: Border.all(color: SignmeColors.lightGrayBorder),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withOpacity(0.06), blurRadius: 8)
-                    ],
-                  ),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: state.filteredMembers.length,
-                    separatorBuilder: (_, __) =>
-                    const Divider(height: 1, color: SignmeColors.lightGrayBorder),
-                    itemBuilder: (context, index) {
-                      final member = state.filteredMembers[index];
-                      return ListTile(
-                        dense: true,
-                        leading: GestureDetector(
-                          onTap: member.photoUrl != null
-                              ? () => _showPhotoDialog(context, member.photoUrl!, member.nom)
-                              : null,
-                          child: _MemberAvatar(
-                            photoUrl: member.photoUrl,
-                            nom: member.nom,
-                            radius: 20,
-                          ),
-                        ),
-                        title: Text(member.nom,
-                            style: SignmeTypography.labelMedium
-                                .copyWith(fontWeight: FontWeight.bold)),
-                        subtitle: Text(
-                            member.matricule != null
-                                ? '${member.roleLabel} · ${member.matricule}'
-                                : member.roleLabel,
-                            style: SignmeTypography.bodySmall),
-                        onTap: () {
-                          FocusScope.of(context).unfocus();
-                          _markDirty();
-                          ref
-                              .read(signerProvider.notifier)
-                              .selectUser(member.id, member.nom);
-                        },
-                      );
-                    },
-                  ),
+              const SizedBox(height: SignmeSpacing.lg),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 120),
+                  child: switch (_presentielStep) {
+                    0 => _presentielStepMember(state, isAncienNotInService, canSignNow),
+                    1 => _presentielStepPeriode(state, isAncienNotInService),
+                    _ => _presentielStepMontant(state, isAncienNotInService),
+                  },
                 ),
-              if (state.selectedUserId != null) ...[
-                const SizedBox(height: SignmeSpacing.md),
-                _memberSummaryCard(state),
-              ],
-              const SizedBox(height: SignmeSpacing.xl),
-              _sectionTitle('Montant de l\'offrande'),
-              const SizedBox(height: SignmeSpacing.sm),
-              _amountDropdown(state, isAncienNotInService),
-              const SizedBox(height: SignmeSpacing.xl),
-              _sectionTitle('Sélectionner l\'année'),
-              _yearGrid(state, isAncienNotInService),
-              const SizedBox(height: SignmeSpacing.xl),
-              _sectionTitle('Sélectionner les mois'),
-              const SizedBox(height: SignmeSpacing.sm),
-              _monthGrid(state, state.selectedYear, isAncienNotInService),
-              const SizedBox(height: SignmeSpacing.xl),
-              SignmePrimaryButton(
-                label: 'Enregistrer Signature',
-                enabled:
-                !isAncienNotInService && state.selectedUserId != null && state.selectedMonths.isNotEmpty,
-                isLoading: state.isLoading,
-                onPressed: _submitPresentiel,
               ),
             ],
           ),
@@ -540,6 +491,176 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
     );
   }
 
+  Widget _presentielStepMember(
+    SignerState state,
+    bool isAncienNotInService,
+    bool canSignNow,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Sélectionner le membre'),
+        const SizedBox(height: SignmeSpacing.sm),
+        TextField(
+          enabled: !isAncienNotInService && canSignNow,
+          onChanged: (q) {
+            ref.read(signerProvider.notifier).updateMemberSearch(q);
+            if (q.length >= 2) {
+              ref.read(signerProvider.notifier).searchMembers(q);
+            }
+          },
+          style: SignmeTypography.bodyMedium,
+          decoration: InputDecoration(
+            hintText: 'Rechercher par nom...',
+            prefixIcon: const Icon(Icons.search, color: SignmeColors.mediumGray),
+            filled: true,
+            fillColor: SignmeColors.accentSky.withOpacity(0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        if (state.memberSearchQuery.length >= 2 &&
+            state.filteredMembers.isNotEmpty &&
+            state.selectedUserId == null &&
+            !isAncienNotInService &&
+            canSignNow)
+          Container(
+            margin: const EdgeInsets.only(top: SignmeSpacing.xs),
+            constraints: const BoxConstraints(maxHeight: 200),
+            decoration: BoxDecoration(
+              color: SignmeColors.white,
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+              border: Border.all(color: SignmeColors.lightGrayBorder),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8),
+              ],
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: state.filteredMembers.length,
+              separatorBuilder: (_, __) =>
+                  const Divider(height: 1, color: SignmeColors.lightGrayBorder),
+              itemBuilder: (context, index) {
+                final member = state.filteredMembers[index];
+                return ListTile(
+                  dense: true,
+                  leading: GestureDetector(
+                    onTap: member.photoUrl != null
+                        ? () => _showPhotoDialog(context, member.photoUrl!, member.nom)
+                        : null,
+                    child: _MemberAvatar(
+                      photoUrl: member.photoUrl,
+                      nom: member.nom,
+                      radius: 20,
+                    ),
+                  ),
+                  title: Text(member.nom,
+                      style: SignmeTypography.labelMedium.copyWith(fontWeight: FontWeight.bold)),
+                  subtitle: Text(
+                      member.matricule != null
+                          ? '${member.roleLabel} · ${member.matricule}'
+                          : member.roleLabel,
+                      style: SignmeTypography.bodySmall),
+                  onTap: () {
+                    FocusScope.of(context).unfocus();
+                    _markDirty();
+                    ref.read(signerProvider.notifier).selectUser(member.id, member.nom);
+                  },
+                );
+              },
+            ),
+          ),
+        if (state.selectedUserId != null) ...[
+          const SizedBox(height: SignmeSpacing.md),
+          _memberSummaryCard(state),
+          const SizedBox(height: SignmeSpacing.xl),
+          SignmePrimaryButton(
+            label: 'Valider',
+            enabled: !isAncienNotInService && canSignNow,
+            onPressed: () {
+              setState(() => _presentielStep = 1);
+              ref
+                  .read(signerProvider.notifier)
+                  .loadMemberSignedMonths(state.selectedUserId!, state.selectedYear);
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _presentielStepPeriode(SignerState state, bool isAncienNotInService) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SignmeStepBackButton(onPressed: () => setState(() => _presentielStep = 0)),
+        const SizedBox(height: SignmeSpacing.md),
+        _memberSummaryCard(state, showRemoveButton: false),
+        const SizedBox(height: SignmeSpacing.xl),
+        _sectionTitle('Sélectionner l\'année'),
+        _yearGrid(
+          state,
+          isAncienNotInService,
+          onYearSelected: () => ref
+              .read(signerProvider.notifier)
+              .loadMemberSignedMonths(state.selectedUserId!, state.selectedYear),
+        ),
+        const SizedBox(height: SignmeSpacing.xl),
+        _sectionTitle('Sélectionner les mois'),
+        const SizedBox(height: SignmeSpacing.sm),
+        if (state.isLoadingMemberSignedMonths)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: SignmeSpacing.lg),
+            child: Center(
+              child: CircularProgressIndicator(color: SignmeColors.primaryLight),
+            ),
+          )
+        else
+          _monthGrid(
+            state,
+            state.selectedYear,
+            isAncienNotInService,
+            signedMonths: state.memberSignedMonths,
+            onToggle: (m) => ref.read(signerProvider.notifier).togglePresentielMonth(m),
+          ),
+        const SizedBox(height: SignmeSpacing.xl),
+        SignmePrimaryButton(
+          label: 'Valider',
+          enabled: !isAncienNotInService && state.selectedMonths.isNotEmpty,
+          onPressed: () => setState(() => _presentielStep = 2),
+        ),
+      ],
+    );
+  }
+
+  Widget _presentielStepMontant(SignerState state, bool isAncienNotInService) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SignmeStepBackButton(onPressed: () => setState(() => _presentielStep = 1)),
+        const SizedBox(height: SignmeSpacing.md),
+        _memberSummaryCard(state, showRemoveButton: false),
+        const SizedBox(height: SignmeSpacing.xl),
+        _sectionTitle('Montant de l\'offrande'),
+        const SizedBox(height: SignmeSpacing.sm),
+        _amountDropdown(state, isAncienNotInService),
+        const SizedBox(height: SignmeSpacing.xl),
+        _summary(state),
+        const SizedBox(height: SignmeSpacing.lg),
+        SignmePrimaryButton(
+          label: 'Enregistrer Signature',
+          enabled: !isAncienNotInService &&
+              state.selectedUserId != null &&
+              state.selectedMonths.isNotEmpty,
+          isLoading: state.isLoading,
+          onPressed: _submitPresentiel,
+        ),
+      ],
+    );
+  }
+
   // ── Composants UI premium ────────────────────────────────────────────────
 
   /// Dropdown montant : ligne icône dans cercle bleu clair + montant
@@ -635,7 +756,11 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
   }
 
   /// Grid années : 3 colonnes, card rectangulaire, sélectionné = bleu + check
-  Widget _yearGrid(SignerState state, bool isAncienNotInService) {
+  Widget _yearGrid(
+    SignerState state,
+    bool isAncienNotInService, {
+    VoidCallback? onYearSelected,
+  }) {
     final years = List.generate(5, (i) => 2026 + i);
     return Opacity(
       opacity: isAncienNotInService ? 0.4 : 1.0,
@@ -661,6 +786,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
               onTap: () {
                 _markDirty();
                 ref.read(signerProvider.notifier).setYear(y);
+                onYearSelected?.call();
               },
               child: AnimatedContainer(
                 duration: SignmeSpacing.animationFast,
@@ -716,7 +842,17 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
   }
 
   /// Grid mois : 4 colonnes, icône calendrier au-dessus du label
-  Widget _monthGrid(SignerState state, int year, bool isAncienNotInService) {
+  /// [signedMonths] : "distance" passe `state.alreadySignedMonths` (mois
+  /// déjà signés par l'utilisateur connecté) ; "présentiel" passe
+  /// `state.memberSignedMonths` (mois déjà signés par le membre sélectionné)
+  /// — même widget, deux sources de vérité selon le contexte d'appel.
+  Widget _monthGrid(
+    SignerState state,
+    int year,
+    bool isAncienNotInService, {
+    required List<String> signedMonths,
+    required void Function(String month) onToggle,
+  }) {
     return Opacity(
       opacity: isAncienNotInService ? 0.4 : 1.0,
       child: AbsorbPointer(
@@ -736,7 +872,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
           itemCount: 12,
           itemBuilder: (context, i) {
             final month = '$year-${(i + 1).toString().padLeft(2, '0')}';
-            final isSigned = state.alreadySignedMonths.contains(month);
+            final isSigned = signedMonths.contains(month);
             final isSelected = state.selectedMonths.contains(month);
 
             return GestureDetector(
@@ -744,7 +880,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                   ? null
                   : () {
                       _markDirty();
-                      ref.read(signerProvider.notifier).toggleMonth(month);
+                      onToggle(month);
                     },
               child: AnimatedContainer(
                 duration: SignmeSpacing.animationFast,
@@ -825,7 +961,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
           child: _OperatorCard(
             label: 'Orange Money',
             color: const Color(0xFFFF6600),
-            icon: Icons.circle,
+            logoAsset: 'assets/icones/orange_money.jpg',
             isSelected: state.operator_ == 'ORANGE MONEY',
             onTap: () {
               _markDirty();
@@ -838,7 +974,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
           child: _OperatorCard(
             label: 'MTN Money',
             color: const Color(0xFFFFCC00),
-            icon: Icons.circle,
+            logoAsset: 'assets/icones/mtn_money.jpg',
             isSelected: state.operator_ == 'MTN MOBILE MONEY',
             onTap: () {
               _markDirty();
@@ -961,7 +1097,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
     );
   }
 
-  Widget _memberSummaryCard(SignerState state) {
+  Widget _memberSummaryCard(SignerState state, {bool showRemoveButton = true}) {
     // Retrouver le membre sélectionné pour avoir son photoUrl
     final selectedMember = state.filteredMembers.isEmpty
         ? null
@@ -1019,19 +1155,22 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                 ),
                 if (selectedMember != null)
                   Text(
-                    selectedMember.roleLabel,
+                    selectedMember.matricule != null
+                        ? '${selectedMember.roleLabel} · ${selectedMember.matricule}'
+                        : selectedMember.roleLabel,
                     style: SignmeTypography.bodySmall
                         .copyWith(color: SignmeColors.mediumGray),
                   ),
               ],
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.close_rounded,
-                size: 20, color: SignmeColors.mediumGray),
-            onPressed: () =>
-                ref.read(signerProvider.notifier).selectUser(null, ''),
-          ),
+          if (showRemoveButton)
+            IconButton(
+              icon: const Icon(Icons.close_rounded,
+                  size: 20, color: SignmeColors.mediumGray),
+              onPressed: () =>
+                  ref.read(signerProvider.notifier).selectUser(null, ''),
+            ),
         ],
       ),
     );
@@ -1134,17 +1273,6 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
       ref.read(formDirtyProvider.notifier).state = false;
     }
 
-    final authorizationUrl = ref.read(signerProvider).authorizationUrl;
-    if (authorizationUrl != null && authorizationUrl.isNotEmpty && mounted) {
-      await CardCheckoutWebViewScreen.open(context, authorizationUrl);
-      if (!mounted) return;
-      final completed = await notifier.pollAfterCardCheckout();
-      if (completed && mounted) {
-        ref.read(maCarteProvider.notifier).load(force: true);
-      }
-      return;
-    }
-
     if (ok && mounted) {
       ref.read(maCarteProvider.notifier).load(force: true);
     }
@@ -1205,68 +1333,70 @@ class _OperatorCard extends StatelessWidget {
   const _OperatorCard({
     required this.label,
     required this.color,
-    required this.icon,
+    required this.logoAsset,
     required this.isSelected,
     required this.onTap,
   });
 
   final String label;
   final Color color;
-  final IconData icon;
+  final String logoAsset;
   final bool isSelected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: SignmeSpacing.animationFast,
-        padding: const EdgeInsets.symmetric(
-            vertical: SignmeSpacing.md, horizontal: SignmeSpacing.sm),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.08) : SignmeColors.white,
-          borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
-          border: Border.all(
-            color: isSelected ? color : SignmeColors.lightGrayBorder,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+    return Semantics(
+      label: label,
+      button: true,
+      selected: isSelected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: SignmeSpacing.animationFast,
+          padding: const EdgeInsets.all(SignmeSpacing.xs),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.08) : SignmeColors.white,
+            borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+            border: Border.all(
+              color: isSelected ? color : SignmeColors.lightGrayBorder,
+              width: isSelected ? 2 : 1,
             ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
-            const SizedBox(width: SignmeSpacing.sm),
-            Flexible(
-              child: Text(
-                label,
-                style: SignmeTypography.labelSmall.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? color : SignmeColors.darkGray,
-                  fontSize: 12,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            if (isSelected) ...[
-              const SizedBox(width: 4),
-              Icon(Icons.check_circle_rounded, color: color, size: 16),
             ],
-          ],
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(SignmeSpacing.radiusSm),
+                child: SizedBox(
+                  width: 72,
+                  height: 40,
+                  child: Image.asset(logoAsset, fit: BoxFit.cover),
+                ),
+              ),
+              if (isSelected)
+                Positioned(
+                  top: -4,
+                  right: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(1),
+                    decoration: const BoxDecoration(
+                      color: SignmeColors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.check_circle_rounded, color: color, size: 18),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

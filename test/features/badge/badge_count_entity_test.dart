@@ -9,13 +9,15 @@ void main() {
     "quand rien n'avait changé",
     () {
       const a = BadgeCountEntity(
-        publications: 2,
+        annonces: 2,
+        meditations: 4,
         evenements: 1,
         historique: 0,
         historiqueSignatures: 3,
       );
       const b = BadgeCountEntity(
-        publications: 2,
+        annonces: 2,
+        meditations: 4,
         evenements: 1,
         historique: 0,
         historiqueSignatures: 3,
@@ -28,18 +30,38 @@ void main() {
 
   test('des compteurs différents ne sont pas égaux', () {
     const a = BadgeCountEntity(
-      publications: 2,
+      annonces: 2,
+      meditations: 4,
       evenements: 1,
       historique: 0,
       historiqueSignatures: 3,
     );
     const b = BadgeCountEntity(
-      publications: 3,
+      annonces: 3,
+      meditations: 4,
       evenements: 1,
       historique: 0,
       historiqueSignatures: 3,
     );
 
     expect(a, isNot(equals(b)));
+  });
+
+  test('copyWithZero ne remet à zéro que le type demandé', () {
+    const original = BadgeCountEntity(
+      annonces: 2,
+      meditations: 4,
+      evenements: 1,
+      historique: 5,
+      historiqueSignatures: 3,
+    );
+
+    final result = original.copyWithZero('meditations');
+
+    expect(result.meditations, 0);
+    expect(result.annonces, 2);
+    expect(result.evenements, 1);
+    expect(result.historique, 5);
+    expect(result.historiqueSignatures, 3);
   });
 }

@@ -5,16 +5,20 @@ import 'package:equatable/equatable.dart';
 /// Représente les compteurs non lus pour chaque onglet/section de l'application.
 class BadgeCountEntity extends Equatable {
   const BadgeCountEntity({
-    required this.publications,
+    required this.annonces,
+    required this.meditations,
     required this.evenements,
     required this.historique,
     required this.historiqueSignatures,
   });
 
-  /// Badge onglet Home (Accueil) — Publications non lues
-  final int publications;
+  /// Badge onglet Home (Accueil) — Annonces non lues
+  final int annonces;
 
-  /// Badge onglet Home (Accueil) — Événements non lus (combiné avec publications)
+  /// Badge onglet Home (Accueil) — Méditations non lues
+  final int meditations;
+
+  /// Badge onglet Home (Accueil) — Événements non lus
   final int evenements;
 
   /// Badge onglet Historique — Historique personnel non lu
@@ -25,7 +29,8 @@ class BadgeCountEntity extends Equatable {
 
   /// Aucun badge actif
   static const BadgeCountEntity empty = BadgeCountEntity(
-    publications: 0,
+    annonces: 0,
+    meditations: 0,
     evenements: 0,
     historique: 0,
     historiqueSignatures: 0,
@@ -34,7 +39,8 @@ class BadgeCountEntity extends Equatable {
   /// Remet un type spécifique à zéro (optimistic update local)
   BadgeCountEntity copyWithZero(String type) {
     return BadgeCountEntity(
-      publications: type == 'publications' ? 0 : publications,
+      annonces: type == 'annonces' ? 0 : annonces,
+      meditations: type == 'meditations' ? 0 : meditations,
       evenements: type == 'evenements' ? 0 : evenements,
       historique: type == 'historique' ? 0 : historique,
       historiqueSignatures:
@@ -51,7 +57,8 @@ class BadgeCountEntity extends Equatable {
 
   @override
   String toString() =>
-      'BadgeCountEntity(publications: $publications, '
+      'BadgeCountEntity(annonces: $annonces, '
+      'meditations: $meditations, '
       'evenements: $evenements, '
       'historique: $historique, '
       'historiqueSignatures: $historiqueSignatures)';
@@ -65,5 +72,5 @@ class BadgeCountEntity extends Equatable {
   // interruption, pour chaque utilisateur connecté.
   @override
   List<Object?> get props =>
-      [publications, evenements, historique, historiqueSignatures];
+      [annonces, meditations, evenements, historique, historiqueSignatures];
 }

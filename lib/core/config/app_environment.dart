@@ -44,6 +44,21 @@ abstract final class AppEnvironment {
         '89036303804-acoct8rirtc8ugursmqrerc3p3ni03f5.apps.googleusercontent.com',
   );
 
+  // Client ID OAuth "iOS" créé dans Google Cloud Console. Contrairement à
+  // Android (qui résout son client via le nom de package + l'empreinte SHA-1
+  // signée, sans configuration côté app), iOS n'a AUCUN moyen implicite de
+  // connaître son client OAuth : il lui faut soit un `CLIENT_ID` dans
+  // GoogleService-Info.plist, soit cette valeur passée explicitement au
+  // plugin. GoogleService-Info.plist ne contient pas cette clé ici — sans
+  // elle, google_sign_in échoue silencieusement au lancement sur iPhone,
+  // alors qu'Android fonctionne normalement. Valeur dérivée du schéma d'URL
+  // (REVERSED_CLIENT_ID) déjà déclaré dans ios/Runner/Info.plist.
+  static const String googleIosClientId = String.fromEnvironment(
+    'GOOGLE_IOS_CLIENT_ID',
+    defaultValue:
+        '89036303804-fnbp2m8iuuae3lrg5n22659o193p58ru.apps.googleusercontent.com',
+  );
+
   // ── Reverb WebSocket (Offline-First) ─────────────────────────────────
   // En développement :
   //   flutter run (valeurs defaultValue utilisées)

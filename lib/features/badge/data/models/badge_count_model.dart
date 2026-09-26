@@ -7,7 +7,9 @@ import '../../domain/entities/badge_count_entity.dart';
 /// {
 ///   "success": true,
 ///   "data": {
-///     "publications": 3,
+///     "annonces": 1,
+///     "meditations": 2,
+///     "evenements": 0,
 ///     "historique": 2,
 ///     "historique_signatures": 1
 ///   }
@@ -15,20 +17,23 @@ import '../../domain/entities/badge_count_entity.dart';
 /// ```
 class BadgeCountModel {
   const BadgeCountModel({
-    required this.publications,
+    required this.annonces,
+    required this.meditations,
     required this.evenements,
     required this.historique,
     required this.historiqueSignatures,
   });
 
-  final int publications;
+  final int annonces;
+  final int meditations;
   final int evenements;
   final int historique;
   final int historiqueSignatures;
 
   factory BadgeCountModel.fromJson(Map<String, dynamic> json) {
     return BadgeCountModel(
-      publications: (json['publications'] as num?)?.toInt() ?? 0,
+      annonces: (json['annonces'] as num?)?.toInt() ?? 0,
+      meditations: (json['meditations'] as num?)?.toInt() ?? 0,
       evenements: (json['evenements'] as num?)?.toInt() ?? 0,
       historique: (json['historique'] as num?)?.toInt() ?? 0,
       historiqueSignatures:
@@ -37,7 +42,8 @@ class BadgeCountModel {
   }
 
   BadgeCountEntity toEntity() => BadgeCountEntity(
-        publications: publications,
+        annonces: annonces,
+        meditations: meditations,
         evenements: evenements,
         historique: historique,
         historiqueSignatures: historiqueSignatures,

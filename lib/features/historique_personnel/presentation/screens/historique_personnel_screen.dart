@@ -4,7 +4,6 @@ import '../../../../core/design_system/index.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/widgets/index.dart';
-import '../../../../core/widgets/app_shimmer.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/historique_personnel_entity.dart';
 import '../providers/historique_personnel_combined_provider.dart';
@@ -59,81 +58,61 @@ class _HistoriquePersonnelScreenState
             .read(badgeNotifierProvider.notifier)
             .markRead('historique');
       },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          children: [
-            const OnboardingSection(
-              svgPath: SignmeAssets.onboardingHistorique,
-              title: 'Historique des signatures',
-              description: 'Retrouvez toutes vos signatures enregistrées.',
-            ),
-            const SizedBox(height: SignmeSpacing.lg),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
-              child: SignmeYearSelector(
-                year: yearInt,
-                label: 'Filtrer par année',
-                minYear: DateTime.now().year,
-                maxYear: DateTime.now().year + 4,
-                onPrevious: () => setState(() {
-                  _selectedYear = (yearInt - 1).toString();
-                }),
-                onNext: () => setState(() {
-                  _selectedYear = (yearInt + 1).toString();
-                }),
-              ),
-            ),
-            const SizedBox(height: SignmeSpacing.md),
-            SizedBox(
-              // Bornée pour rester utilisable sur les écrans courts/paysage
-              // (jamais en dessous de 320) sans devenir démesurée sur tablette.
-              height: (MediaQuery.of(context).size.height * 0.65).clamp(320.0, 900.0),
-              child: SignmeAsyncValue<List<HistoriquePersonnelEntity>>(
-                value: historiqueAsync,
-                fitViewport: false,
-
-                onRetry: () => ref.read(
-                  historiquePersonnelCombinedProvider(_selectedYear).notifier,
-                ).refresh(),
-
-                emptyIcon: Icons.history_rounded,
-                emptyTitle: 'Aucune signature',
-                emptyMessage:
-                'Vous n\'avez pas encore de signature pour cette année.',
-
-                isEmpty: (historique) => historique.isEmpty,
-
-                loading: ListView.builder(
-                  padding: const EdgeInsets.all(SignmeSpacing.lg),
-                  itemCount: 3,
-                  itemBuilder: (_, __) => const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: AppShimmerBox(
-                      height: 120,
-                      width: double.infinity,
-                      radius: SignmeSpacing.radiusLg,
-                    ),
+      // CustomScrollView unique (au lieu d'un SingleChildScrollView contenant
+      // une ListView bornée en hauteur) : un seul scroll pour tout l'écran,
+      // comme le module Mes dépenses — plus de double défilement imbriqué.
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const OnboardingSection(
+                  svgPath: SignmeAssets.onboardingHistorique,
+                  title: 'Historique des signatures',
+                  description: 'Retrouvez toutes vos signatures enregistrées.',
+                ),
+                const SizedBox(height: SignmeSpacing.lg),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+                  child: SignmeYearSelector(
+                    year: yearInt,
+                    label: 'Filtrer par année',
+                    minYear: DateTime.now().year,
+                    maxYear: DateTime.now().year + 4,
+                    onPrevious: () => setState(() {
+                      _selectedYear = (yearInt - 1).toString();
+                    }),
+                    onNext: () => setState(() {
+                      _selectedYear = (yearInt + 1).toString();
+                    }),
                   ),
                 ),
-
-                data: (historique) {
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                      SignmeSpacing.lg,
-                      0,
-                      SignmeSpacing.lg,
-                      120,
-                    ),
-                    itemCount: historique.length,
-                    itemBuilder: (context, index) =>
-                        _buildSignatureCard(context, historique[index]),
-                  );
-                },
-              ),
+                const SizedBox(height: SignmeSpacing.md),
+              ],
             ),
-          ],
-        ),
+          ),
+          ...SignmeAsyncValue.buildSlivers<List<HistoriquePersonnelEntity>>(
+            value: historiqueAsync,
+            onRetry: () => ref.read(
+              historiquePersonnelCombinedProvider(_selectedYear).notifier,
+            ).refresh(),
+            emptyIcon: Icons.history_rounded,
+            emptyTitle: 'Aucune signature',
+            emptyMessage: 'Vous n\'avez pas encore de signature pour cette année.',
+            isEmpty: (historique) => historique.isEmpty,
+            data: (historique) {
+              final sections = groupTimelineByMonth<HistoriquePersonnelEntity>(
+                items: historique,
+                monthKeyOf: (sig) => sig.month,
+                cardBuilder: (sig) => _buildSignatureCard(context, sig),
+              );
+              return buildSignmeTimelineSlivers(sections: sections);
+            },
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+        ],
       ),
     );
   }
@@ -142,66 +121,32 @@ class _HistoriquePersonnelScreenState
     BuildContext context,
     HistoriquePersonnelEntity sig,
   ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: SignmeSpacing.md),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        side: BorderSide(color: SignmeColors.lightGrayBorder),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(SignmeSpacing.md),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: (sig.isCompleted ? SignmeColors.success : SignmeColors.warning)
-                .withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            sig.isCompleted
-                ? Icons.check_circle_rounded
-                : Icons.pending_rounded,
-            color:
-                sig.isCompleted ? SignmeColors.success : SignmeColors.warning,
-            size: 28,
-          ),
-        ),
-        title: Text(
-          sig.month,
-          style: SignmeTypography.labelLarge.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              sig.signatureTypeFr,
-              style: SignmeTypography.bodySmall.copyWith(
-                color: SignmeColors.primaryLight,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            Text(
-              sig.formattedDate,
-              style: SignmeTypography.labelSmall.copyWith(
-                color: SignmeColors.mediumGray,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-        trailing: Text(
-          '${sig.amount} F',
-          style: SignmeTypography.labelLarge.copyWith(
-            fontWeight: FontWeight.w800,
-            color: SignmeColors.primaryDark,
-          ),
-        ),
-        onTap: () => _showDetail(context, sig),
-      ),
+    final statusColor = sig.isCompleted
+        ? SignmeColors.success
+        : sig.isFailed
+            ? SignmeColors.error
+            : SignmeColors.warning;
+    final statusIcon = sig.isCompleted
+        ? Icons.check_circle_rounded
+        : sig.isFailed
+            ? Icons.cancel_rounded
+            : Icons.schedule_rounded;
+
+    return SignmeTimelineCard(
+      heading: sig.shortDateLabel,
+      subtitle: sig.signatureTypeFr,
+      timestamp: sig.formattedDate,
+      statusLabel: sig.statusFr,
+      statusColor: statusColor,
+      statusIcon: statusIcon,
+      amountLabel: '${sig.amount} F',
+      // Le moyen de paiement mobile money n'a de sens que pour une signature
+      // à distance — jamais affiché pour une signature présentiel, même si
+      // les données contenaient (par erreur) un paymentMethod renseigné.
+      paymentMethodColor: sig.isDistance ? paymentOperatorColor(sig.paymentMethod) : null,
+      paymentMethodLabel: sig.isDistance ? paymentOperatorLabel(sig.paymentMethod) : null,
+      paymentPhoneNumber: sig.isDistance ? sig.paymentPhoneNumber : null,
+      onTap: () => _showDetail(context, sig),
     );
   }
 

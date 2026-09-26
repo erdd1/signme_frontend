@@ -17,24 +17,29 @@ const BadgeIsarModelSchema = CollectionSchema(
   name: r'BadgeIsarModel',
   id: 5417994865697023577,
   properties: {
-    r'evenements': PropertySchema(
+    r'annonces': PropertySchema(
       id: 0,
+      name: r'annonces',
+      type: IsarType.long,
+    ),
+    r'evenements': PropertySchema(
+      id: 1,
       name: r'evenements',
       type: IsarType.long,
     ),
     r'historique': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'historique',
       type: IsarType.long,
     ),
     r'historiqueSignatures': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'historiqueSignatures',
       type: IsarType.long,
     ),
-    r'publications': PropertySchema(
-      id: 3,
-      name: r'publications',
+    r'meditations': PropertySchema(
+      id: 4,
+      name: r'meditations',
       type: IsarType.long,
     )
   },
@@ -67,10 +72,11 @@ void _badgeIsarModelSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeLong(offsets[0], object.evenements);
-  writer.writeLong(offsets[1], object.historique);
-  writer.writeLong(offsets[2], object.historiqueSignatures);
-  writer.writeLong(offsets[3], object.publications);
+  writer.writeLong(offsets[0], object.annonces);
+  writer.writeLong(offsets[1], object.evenements);
+  writer.writeLong(offsets[2], object.historique);
+  writer.writeLong(offsets[3], object.historiqueSignatures);
+  writer.writeLong(offsets[4], object.meditations);
 }
 
 BadgeIsarModel _badgeIsarModelDeserialize(
@@ -80,11 +86,12 @@ BadgeIsarModel _badgeIsarModelDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = BadgeIsarModel();
-  object.evenements = reader.readLong(offsets[0]);
-  object.historique = reader.readLong(offsets[1]);
-  object.historiqueSignatures = reader.readLong(offsets[2]);
+  object.annonces = reader.readLong(offsets[0]);
+  object.evenements = reader.readLong(offsets[1]);
+  object.historique = reader.readLong(offsets[2]);
+  object.historiqueSignatures = reader.readLong(offsets[3]);
   object.id = id;
-  object.publications = reader.readLong(offsets[3]);
+  object.meditations = reader.readLong(offsets[4]);
   return object;
 }
 
@@ -102,6 +109,8 @@ P _badgeIsarModelDeserializeProp<P>(
     case 2:
       return (reader.readLong(offset)) as P;
     case 3:
+      return (reader.readLong(offset)) as P;
+    case 4:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -204,6 +213,62 @@ extension BadgeIsarModelQueryWhere
 
 extension BadgeIsarModelQueryFilter
     on QueryBuilder<BadgeIsarModel, BadgeIsarModel, QFilterCondition> {
+  QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterFilterCondition>
+      annoncesEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'annonces',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterFilterCondition>
+      annoncesGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'annonces',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterFilterCondition>
+      annoncesLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'annonces',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterFilterCondition>
+      annoncesBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'annonces',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterFilterCondition>
       evenementsEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
@@ -428,45 +493,45 @@ extension BadgeIsarModelQueryFilter
   }
 
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterFilterCondition>
-      publicationsEqualTo(int value) {
+      meditationsEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'publications',
+        property: r'meditations',
         value: value,
       ));
     });
   }
 
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterFilterCondition>
-      publicationsGreaterThan(
+      meditationsGreaterThan(
     int value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'publications',
+        property: r'meditations',
         value: value,
       ));
     });
   }
 
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterFilterCondition>
-      publicationsLessThan(
+      meditationsLessThan(
     int value, {
     bool include = false,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'publications',
+        property: r'meditations',
         value: value,
       ));
     });
   }
 
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterFilterCondition>
-      publicationsBetween(
+      meditationsBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -474,7 +539,7 @@ extension BadgeIsarModelQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'publications',
+        property: r'meditations',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -492,6 +557,19 @@ extension BadgeIsarModelQueryLinks
 
 extension BadgeIsarModelQuerySortBy
     on QueryBuilder<BadgeIsarModel, BadgeIsarModel, QSortBy> {
+  QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy> sortByAnnonces() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'annonces', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy>
+      sortByAnnoncesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'annonces', Sort.desc);
+    });
+  }
+
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy>
       sortByEvenements() {
     return QueryBuilder.apply(this, (query) {
@@ -535,22 +613,35 @@ extension BadgeIsarModelQuerySortBy
   }
 
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy>
-      sortByPublications() {
+      sortByMeditations() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'publications', Sort.asc);
+      return query.addSortBy(r'meditations', Sort.asc);
     });
   }
 
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy>
-      sortByPublicationsDesc() {
+      sortByMeditationsDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'publications', Sort.desc);
+      return query.addSortBy(r'meditations', Sort.desc);
     });
   }
 }
 
 extension BadgeIsarModelQuerySortThenBy
     on QueryBuilder<BadgeIsarModel, BadgeIsarModel, QSortThenBy> {
+  QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy> thenByAnnonces() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'annonces', Sort.asc);
+    });
+  }
+
+  QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy>
+      thenByAnnoncesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'annonces', Sort.desc);
+    });
+  }
+
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy>
       thenByEvenements() {
     return QueryBuilder.apply(this, (query) {
@@ -606,22 +697,28 @@ extension BadgeIsarModelQuerySortThenBy
   }
 
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy>
-      thenByPublications() {
+      thenByMeditations() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'publications', Sort.asc);
+      return query.addSortBy(r'meditations', Sort.asc);
     });
   }
 
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QAfterSortBy>
-      thenByPublicationsDesc() {
+      thenByMeditationsDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'publications', Sort.desc);
+      return query.addSortBy(r'meditations', Sort.desc);
     });
   }
 }
 
 extension BadgeIsarModelQueryWhereDistinct
     on QueryBuilder<BadgeIsarModel, BadgeIsarModel, QDistinct> {
+  QueryBuilder<BadgeIsarModel, BadgeIsarModel, QDistinct> distinctByAnnonces() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'annonces');
+    });
+  }
+
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QDistinct>
       distinctByEvenements() {
     return QueryBuilder.apply(this, (query) {
@@ -644,9 +741,9 @@ extension BadgeIsarModelQueryWhereDistinct
   }
 
   QueryBuilder<BadgeIsarModel, BadgeIsarModel, QDistinct>
-      distinctByPublications() {
+      distinctByMeditations() {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'publications');
+      return query.addDistinctBy(r'meditations');
     });
   }
 }
@@ -656,6 +753,12 @@ extension BadgeIsarModelQueryProperty
   QueryBuilder<BadgeIsarModel, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<BadgeIsarModel, int, QQueryOperations> annoncesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'annonces');
     });
   }
 
@@ -678,9 +781,9 @@ extension BadgeIsarModelQueryProperty
     });
   }
 
-  QueryBuilder<BadgeIsarModel, int, QQueryOperations> publicationsProperty() {
+  QueryBuilder<BadgeIsarModel, int, QQueryOperations> meditationsProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'publications');
+      return query.addPropertyName(r'meditations');
     });
   }
 }

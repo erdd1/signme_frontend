@@ -169,7 +169,10 @@ class SyncService {
   }
 
   Future<void> _syncHistoriqueSignatures() async {
-    final filters = defaultHistoriqueFilters();
+    // Toujours "completed" : signatures présentiel, synchrones (cash), sans
+    // état pending/failed intermédiaire — contrairement à l'historique
+    // personnel (paiement mobile money à distance, voir _syncHistoriquePersonnel).
+    final filters = defaultHistoriqueFilters(status: 'completed');
     try {
       final response = await dio.get(
         '/signatures/historique-signatures',
@@ -189,10 +192,11 @@ class SyncService {
   }
 
   Future<void> _syncHistoriquePersonnel() async {
+    // Pas de filtre status : voir doc de defaultHistoriqueFilters — tous les
+    // statuts (pending/completed/failed) doivent remonter ici.
     final filters = defaultHistoriqueFilters();
     final queryParams = {
       'per_page': filters['per_page'].toString(),
-      'status': filters['status'],
       'year': filters['year'],
     };
     try {

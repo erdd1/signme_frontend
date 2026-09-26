@@ -8,10 +8,17 @@ import '../../../../core/errors/exceptions.dart';
 /// `serverClientId` doit être le Client ID OAuth **Web** (pas Android/iOS)
 /// créé dans Google Cloud Console : c'est lui qui détermine l'audience (aud)
 /// de l'ID token, que le backend vérifie via [GoogleTokenVerifier].
+///
+/// `clientId` est ignoré par le plugin sur Android (qui se configure via
+/// google-services.json + SHA-1) mais **requis sur iOS**, qui n'a pas
+/// d'équivalent implicite — voir [AppEnvironment.googleIosClientId].
 class GoogleAuthDataSource {
   GoogleAuthDataSource()
       : _googleSignIn = GoogleSignIn(
           scopes: const ['email'],
+          clientId: AppEnvironment.googleIosClientId.isEmpty
+              ? null
+              : AppEnvironment.googleIosClientId,
           serverClientId: AppEnvironment.googleServerClientId.isEmpty
               ? null
               : AppEnvironment.googleServerClientId,

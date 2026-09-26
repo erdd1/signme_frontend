@@ -34,7 +34,7 @@ class BadgeRemoteDataSource {
 
   /// Marque un type de badge comme lu sur le backend.
   ///
-  /// [type] : 'publications' | 'evenements' | 'historique' | 'historique_signatures'
+  /// [type] : 'annonces' | 'meditations' | 'evenements' | 'historique' | 'historique_signatures'
   ///
   /// Retourne les nouveaux compteurs mis à jour (le backend les recalcule
   /// et les renvoie directement, évitant un second appel GET).

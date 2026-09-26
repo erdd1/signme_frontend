@@ -8,6 +8,8 @@ class ContributionPersoEntity {
     required this.frais,
     required this.montantTotal,
     required this.statut,
+    this.paymentOperator,
+    this.paymentNumber,
     this.paymentReference,
     this.note,
     required this.createdAt,
@@ -20,6 +22,12 @@ class ContributionPersoEntity {
   final int frais;
   final int montantTotal;
   final String statut; // pending | completed | failed
+
+  /// 'ORANGE MONEY' | 'MTN MOBILE MONEY' — null si payé par carte.
+  final String? paymentOperator;
+
+  /// Numéro ayant servi au paiement mobile money.
+  final String? paymentNumber;
   final String? paymentReference;
   final String? note;
   final DateTime createdAt;
@@ -39,6 +47,8 @@ class ContributionPersoEntity {
       frais: asInt(json['frais']),
       montantTotal: asInt(json['montantTotal']),
       statut: (json['statut'] ?? 'pending').toString(),
+      paymentOperator: json['paymentOperator']?.toString(),
+      paymentNumber: json['paymentNumber']?.toString(),
       paymentReference: json['paymentReference']?.toString(),
       note: json['note']?.toString(),
       createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '') ?? DateTime.now(),
@@ -53,6 +63,8 @@ class ContributionPersoEntity {
         'frais': frais,
         'montantTotal': montantTotal,
         'statut': statut,
+        'paymentOperator': paymentOperator,
+        'paymentNumber': paymentNumber,
         'paymentReference': paymentReference,
         'note': note,
         'createdAt': createdAt.toIso8601String(),

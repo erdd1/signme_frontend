@@ -46,10 +46,6 @@ export 'signme_dropdown.dart';
 export 'signme_compact_dropdown.dart';
 export 'signme_date_picker_field.dart';
 
-// ── Paiement
-export 'payment_method_selector.dart';
-
-
 // ── Onboarding
 export 'onboarding_section.dart';
 
@@ -65,6 +61,13 @@ export 'signme_pill_chip.dart';
 export 'signme_filter_section_header.dart';
 export 'signme_leading_icon_avatar.dart';
 
+// ── Historique (timeline)
+export 'signme_timeline.dart';
+export 'signme_payment_method_info.dart';
+
 // ── Formulaires : garde anti-perte de saisie
 export 'signme_unsaved_changes_guard.dart';
 export 'signme_anchored_action_menu.dart';
+
+// ── Formulaires multi-étapes
+export 'signme_step_header.dart';

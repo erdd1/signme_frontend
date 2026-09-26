@@ -53,11 +53,19 @@ class HistoriqueSignaturesEntity {
     return createdAt.toLocal().toString().split('.')[0];
   }
 
+  /// Date courte pour affichage en tête de carte : "09-09-2026"
+  String get shortDateLabel {
+    final d = createdAt.toLocal();
+    return '${d.day.toString().padLeft(2, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.year}';
+  }
+
   /// Statut lisible en français
   String get statusFr {
     switch (status) {
       case 'completed':
-        return 'Complétée';
+        return 'Validée';
       case 'pending':
         return 'En attente';
       case 'failed':

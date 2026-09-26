@@ -74,8 +74,8 @@ abstract final class AppPermissions {
   /// Désigner / révoquer un ancien
   static bool canManageAnciens(UserEntity u) => u.isPasteur;
 
-  /// Modifier sa propre photo (uniquement pasteur).
-  static bool canChangeOwnProfilePhoto(UserEntity u) => u.isPasteur;
+  /// Modifier sa propre photo — tous les rôles.
+  static bool canChangeOwnProfilePhoto(UserEntity u) => true;
 
   /// Importer / modifier la photo d'un autre membre (création ou édition).
   static bool canUploadMemberPhoto(UserEntity actor, {required int targetUserId}) {

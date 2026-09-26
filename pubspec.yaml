@@ -29,9 +29,6 @@ dependencies:
   # ── Partage (lien d'événement vers WhatsApp, etc.) ───────────────────────
   share_plus: ^10.1.2
 
-  # ── Paiement carte bancaire (WebView NotchPay) ─────────────────────────
-  webview_flutter: ^4.10.0
-
   # ── Notifications push (Firebase Cloud Messaging) ──────────────────────
   firebase_core: ^3.8.0
   firebase_messaging: ^15.1.5
