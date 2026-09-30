@@ -11,7 +11,7 @@ class ProfilePhotoViewer {
     required String photoUrl,
     String? title,
   }) {
-    final url = profilePhotoDisplayUrl(photoUrl, size: 720);
+    final url = profilePhotoDisplayUrl(photoUrl);
     if (url.isEmpty) return;
 
     showDialog<void>(

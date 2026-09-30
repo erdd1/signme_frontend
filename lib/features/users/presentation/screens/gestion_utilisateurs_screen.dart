@@ -6,6 +6,7 @@ import '../../../../core/design_system/index.dart';
 import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/index.dart';
+import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance;
 import '../../../auth/domain/entities/user_lookup_refs.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/lookup_providers.dart';
@@ -547,7 +548,14 @@ class _FilteredMembersResultScreenState extends ConsumerState<FilteredMembersRes
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, 0, SignmeSpacing.lg, 120),
+                  // Padding bas dynamique : dégage la navbar flottante sur
+                  // tous les appareils (voir kFloatingNavClearance).
+                  padding: EdgeInsets.fromLTRB(
+                    SignmeSpacing.lg,
+                    0,
+                    SignmeSpacing.lg,
+                    kFloatingNavClearance + MediaQuery.of(context).padding.bottom + SignmeSpacing.xl,
+                  ),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) => Padding(

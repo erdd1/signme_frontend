@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/design_system/index.dart';
 import '../../../../core/widgets/index.dart';
+import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance;
 import '../../domain/entities/church_about_info_entity.dart';
 import '../providers/about_church_provider.dart';
 
@@ -102,7 +103,14 @@ class _EditChurchInfoScreenState extends ConsumerState<EditChurchInfoScreen> {
         body: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.md, SignmeSpacing.lg, 120),
+            // Padding bas dynamique : dégage la navbar flottante sur tous les
+            // appareils (voir kFloatingNavClearance).
+            padding: EdgeInsets.fromLTRB(
+              SignmeSpacing.lg,
+              SignmeSpacing.md,
+              SignmeSpacing.lg,
+              kFloatingNavClearance + MediaQuery.of(context).padding.bottom + SignmeSpacing.xl,
+            ),
             children: [
               SignmeTextInput(
                 label: 'District',

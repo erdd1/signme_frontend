@@ -8,6 +8,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/signme_unsaved_changes_guard.dart';
 import '../../../../core/utils/evenement_image_picker.dart';
+import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance;
 import '../providers/evenements_provider.dart';
 
 /// Création d'un événement (pasteur/secrétaire uniquement).
@@ -156,7 +157,16 @@ class _CreateEditEvenementScreenState extends ConsumerState<CreateEditEvenementS
       backgroundColor: SignmeColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.md, SignmeSpacing.lg, 120),
+          // Padding bas dynamique : dégage la navbar flottante sur tous les
+          // appareils (voir kFloatingNavClearance). SafeArea a déjà consommé
+          // l'inset système ici, donc MediaQuery.padding.bottom vaut 0 à ce
+          // niveau — la formule reste correcte dans les deux cas.
+          padding: EdgeInsets.fromLTRB(
+            SignmeSpacing.lg,
+            SignmeSpacing.md,
+            SignmeSpacing.lg,
+            kFloatingNavClearance + MediaQuery.of(context).padding.bottom + SignmeSpacing.xl,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

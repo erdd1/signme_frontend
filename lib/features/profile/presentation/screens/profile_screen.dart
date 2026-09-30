@@ -8,6 +8,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/utils/profile_image_picker.dart';
 import '../../../../core/widgets/index.dart';
+import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance;
 import '../../../users/presentation/providers/lookup_providers.dart';
 import '../../../users/presentation/providers/users_provider.dart';
 import '../../../users/presentation/utils/user_display_formatters.dart';
@@ -56,7 +57,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       onRefresh: () => ref.read(authNotifierProvider.notifier).refreshProfile(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.lg, SignmeSpacing.lg, 120),
+        // Padding bas dynamique : une valeur fixe ne suffit pas à dégager la
+        // navbar flottante sur tous les appareils (barre de navigation
+        // système 3-boutons nettement plus haute que la navigation gestuelle
+        // sur certains téléphones Android) — voir [kFloatingNavClearance].
+        padding: EdgeInsets.fromLTRB(
+          SignmeSpacing.lg,
+          SignmeSpacing.lg,
+          SignmeSpacing.lg,
+          kFloatingNavClearance + MediaQuery.of(context).padding.bottom + SignmeSpacing.xl,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

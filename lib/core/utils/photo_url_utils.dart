@@ -12,27 +12,11 @@ String? normalizePhotoUrl(dynamic value) {
   return raw;
 }
 
-/// URL Cloudinary redimensionnée pour avatars (chargement plus rapide sur mobile).
-String profilePhotoDisplayUrl(String? url, {int size = 256}) {
-  final base = normalizePhotoUrl(url);
-  if (base == null) return '';
-
-  if (!base.contains('res.cloudinary.com')) {
-    return base;
-  }
-
-  const uploadSegment = '/upload/';
-  final uploadIndex = base.indexOf(uploadSegment);
-  if (uploadIndex < 0) return base;
-
-  final afterUpload = base.substring(uploadIndex + uploadSegment.length);
-  if (afterUpload.startsWith('c_') || afterUpload.contains('/c_')) {
-    return base;
-  }
-
-  final transform = 'c_fill,w_$size,h_$size,f_jpg,q_auto/';
-  return '${base.substring(0, uploadIndex + uploadSegment.length)}$transform$afterUpload';
-}
+/// URL affichable d'une photo de profil. Le backend enregistre déjà les
+/// photos pré-redimensionnées (512×512) à l'upload — aucune transformation
+/// côté client n'est nécessaire ou possible (contrairement à Cloudinary, qui
+/// supportait un redimensionnement à la volée via l'URL).
+String profilePhotoDisplayUrl(String? url) => normalizePhotoUrl(url) ?? '';
 
 /// Évite un cache HTTP obsolète après remplacement de la photo.
 /// [bust] doit être stable (ex. fixé une fois après upload), sinon chaque

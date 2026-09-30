@@ -35,6 +35,16 @@ const double _kNavHPad = 16.0;
 const double _kNavBPad = 12.0;
 const double _kNavRadius = 28.0;
 
+/// Hauteur totale occupée par la navbar flottante (navbar + relevé du FAB),
+/// hors zone de sécurité système. À ajouter à
+/// `MediaQuery.of(context).padding.bottom` pour calculer le padding bas d'un
+/// écran vivant derrière [MainShell] (tous les écrans du ShellRoute), afin
+/// que son dernier élément ne soit jamais masqué par la navbar — une valeur
+/// fixe ne peut jamais convenir à la fois aux appareils à navigation gestuelle
+/// (zone de sécurité quasi nulle) et à ceux à barre de navigation 3-boutons
+/// (zone de sécurité nettement plus haute).
+const double kFloatingNavClearance = _kNavBPad + _kNavHeight + _kFabLift;
+
 class MainShell extends ConsumerWidget {
   const MainShell({super.key, required this.child});
   final Widget child;

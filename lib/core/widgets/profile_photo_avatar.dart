@@ -42,8 +42,7 @@ class ProfilePhotoAvatar extends StatelessWidget {
         (networkUrl != null && networkUrl.isNotEmpty) || localFile != null;
     final canChange = onChangePhoto != null;
 
-    // FIX: Passage de resolvedUrl à la méthode interne
-    Widget avatar = _buildAvatar(context, networkUrl, resolvedUrl);
+    Widget avatar = _buildAvatar(networkUrl);
 
     if (canChange) {
       avatar = Stack(
@@ -101,8 +100,7 @@ class ProfilePhotoAvatar extends StatelessWidget {
     );
   }
 
-  // FIX: Ajout du paramètre resolvedUrl manquant dans la signature
-  Widget _buildAvatar(BuildContext context, String? networkUrl, String? resolvedUrl) {
+  Widget _buildAvatar(String? networkUrl) {
     final size = radius * 2;
 
     return Container(
@@ -125,7 +123,6 @@ class ProfilePhotoAvatar extends StatelessWidget {
                 ? _NetworkCircleImage(
                     key: ValueKey(networkUrl),
                     imageUrl: networkUrl,
-                    fallbackUrl: resolvedUrl, // Maintenant accessible via le paramètre
                     size: size,
                   )
                 : _placeholderIcon(),
@@ -143,47 +140,15 @@ class ProfilePhotoAvatar extends StatelessWidget {
 }
 
 /// Image réseau fiable (évite le spinner infini de CachedNetworkImage + imageBuilder).
-class _NetworkCircleImage extends StatefulWidget {
+class _NetworkCircleImage extends StatelessWidget {
   const _NetworkCircleImage({
     super.key,
     required this.imageUrl,
-    required this.fallbackUrl,
     required this.size,
   });
 
   final String imageUrl;
-  final String? fallbackUrl;
   final double size;
-
-  @override
-  State<_NetworkCircleImage> createState() => _NetworkCircleImageState();
-}
-
-class _NetworkCircleImageState extends State<_NetworkCircleImage> {
-  late String _currentUrl;
-  bool _triedFallback = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentUrl = widget.imageUrl;
-  }
-
-  @override
-  void didUpdateWidget(_NetworkCircleImage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.imageUrl != widget.imageUrl) {
-      _currentUrl = widget.imageUrl;
-      _triedFallback = false;
-    }
-  }
-
-  void _retryWithFallback() {
-    final fallback = normalizePhotoUrl(widget.fallbackUrl);
-    if (_triedFallback || fallback == null || fallback == _currentUrl) return;
-    _triedFallback = true;
-    setState(() => _currentUrl = fallback);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,13 +157,13 @@ class _NetworkCircleImageState extends State<_NetworkCircleImage> {
     // évite un décodage coûteux répété à chaque avatar affiché, sur chaque
     // écran — cause principale du délai perçu sur les icônes/avatars.
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-    final targetSize = (widget.size * devicePixelRatio).round();
+    final targetSize = (size * devicePixelRatio).round();
 
     return Image.network(
-      _currentUrl,
+      imageUrl,
       fit: BoxFit.cover,
-      width: widget.size,
-      height: widget.size,
+      width: size,
+      height: size,
       cacheWidth: targetSize,
       cacheHeight: targetSize,
       gaplessPlayback: true,
@@ -222,22 +187,10 @@ class _NetworkCircleImageState extends State<_NetworkCircleImage> {
         );
       },
       errorBuilder: (context, error, stackTrace) {
-        if (!_triedFallback) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _retryWithFallback();
-          });
-          return Center(
-            child: SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          );
-        }
         return Center(
           child: Icon(
             Icons.broken_image_outlined,
-            size: widget.size * 0.4,
+            size: size * 0.4,
             color: SignmeColors.mediumGray,
           ),
         );

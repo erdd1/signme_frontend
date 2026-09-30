@@ -39,12 +39,15 @@ class ContributionFormState {
     return f == null ? null : montant + f;
   }
 
+  // Le plan de numérotation camerounais actuel n'a plus que des numéros
+  // mobiles commençant par 6, quel que soit l'opérateur — et c'est aussi le
+  // SEUL préfixe accepté par le backend (NotchPayGateway::formatPhoneNumber).
+  // Accepter '2'/'5' ici laissait passer des numéros que le paiement
+  // rejetait ensuite avec une erreur serveur générique non explicite.
   static bool isValidPhoneNumber(String phone, String operator_) {
     if (phone.length != 9) return false;
-    if (operator_ == 'ORANGE MONEY') {
-      return phone.startsWith('6') || phone.startsWith('2');
-    } else if (operator_ == 'MTN MOBILE MONEY') {
-      return phone.startsWith('6') || phone.startsWith('5');
+    if (operator_ == 'ORANGE MONEY' || operator_ == 'MTN MOBILE MONEY') {
+      return phone.startsWith('6');
     }
     return false;
   }

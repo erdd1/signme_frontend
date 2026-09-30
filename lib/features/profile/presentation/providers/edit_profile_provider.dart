@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
 import 'package:dartz/dartz.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../../../core/network/dio_client.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../../domain/usecases/update_profile_usecase.dart';
@@ -47,8 +45,14 @@ final updateProfileUseCaseProvider = Provider<UpdateProfileUseCase>((ref) {
 final submitProfileUpdateProvider = FutureProvider.family<Either<Failure, UserEntity>, Map<String, dynamic>>(
   (ref, updateData) async {
     final useCase = ref.watch(updateProfileUseCaseProvider);
-    final authState = ref.watch(authNotifierProvider);
-    
+    // `ref.read`, jamais `ref.watch` : ce provider met lui-même à jour
+    // authNotifierProvider en cas de succès (ligne plus bas). Le watcher se
+    // serait donc abonné à un provider qu'il modifie lui-même — Riverpod
+    // annule/relance alors ce FutureProvider en plein vol dès que la mise à
+    // jour réussit, et le `.future` attendu par l'UI n'est jamais livré à
+    // l'appelant (spinner infini, quel que soit le champ modifié).
+    final authState = ref.read(authNotifierProvider);
+
     // Vérifier que l'utilisateur est authentifié
     final userId = authState.auth?.user.id;
     if (userId == null) {

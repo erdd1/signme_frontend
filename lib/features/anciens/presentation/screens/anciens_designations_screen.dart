@@ -5,6 +5,7 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/app_shimmer.dart';
 import '../../../../core/widgets/onboarding_section.dart';
+import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance;
 import '../../domain/entities/ancien_entity.dart';
 import '../providers/anciens_provider.dart';
 import '../widgets/ancien_card.dart';
@@ -43,6 +44,13 @@ class _AncienDesignationsScreenState
             state.mois == 12;
 
     return SingleChildScrollView(
+      // Padding bas dynamique : la liste imbriquée plus bas a sa propre
+      // hauteur bornée (SizedBox) et ne touche jamais le bas de l'écran —
+      // c'est CETTE marge, sur le scroll englobant, qui dégage réellement la
+      // navbar flottante sur tous les appareils (voir kFloatingNavClearance).
+      padding: EdgeInsets.only(
+        bottom: kFloatingNavClearance + MediaQuery.of(context).padding.bottom + SignmeSpacing.xl,
+      ),
       child: Column(
         children: [
 

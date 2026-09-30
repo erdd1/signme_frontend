@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/utils/profile_image_picker.dart';
 import '../../../../core/widgets/index.dart';
+import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance;
 import '../../domain/entities/about_article_entity.dart';
 import '../providers/about_church_provider.dart';
 import '../utils/max_words_input_formatter.dart';
@@ -164,7 +165,14 @@ class _CreateEditArticleScreenState extends ConsumerState<CreateEditArticleScree
         body: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.md, SignmeSpacing.lg, 120),
+            // Padding bas dynamique : dégage la navbar flottante sur tous les
+            // appareils (voir kFloatingNavClearance).
+            padding: EdgeInsets.fromLTRB(
+              SignmeSpacing.lg,
+              SignmeSpacing.md,
+              SignmeSpacing.lg,
+              kFloatingNavClearance + MediaQuery.of(context).padding.bottom + SignmeSpacing.xl,
+            ),
             children: [
               SignmeCompactDropdown<String>(
                 label: 'Type',
