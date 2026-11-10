@@ -10,6 +10,7 @@ import '../../features/auth/presentation/providers/auth_provider.dart';
 import '../../features/badge/domain/entities/badge_count_entity.dart';
 import '../../features/badge/presentation/providers/badge_provider.dart';
 import '../../features/celebrations/presentation/providers/celebrations_provider.dart';
+import '../../features/historique_personnel/presentation/providers/historique_personnel_combined_provider.dart';
 import 'app_snackbar.dart';
 import 'badge_dot.dart';
 
@@ -41,6 +42,22 @@ class RoleMenuDrawer extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: SignmeSpacing.md),
               children: [
                 _buildSectionTitle('NAVIGATION'),
+
+                // Mon historique (tous rôles) — ex-onglet de la navbar, avec badge
+                _MenuItem(
+                  icon: Icons.history_rounded,
+                  label: 'Mon historique',
+                  badgeCount: badges.historique,
+                  onTap: () {
+                    ref.read(badgeNotifierProvider.notifier).markRead('historique');
+                    // Rafraîchit l'année courante (cas majoritaire) — les
+                    // autres années restent rafraîchissables dans l'écran.
+                    ref
+                        .read(historiquePersonnelCombinedProvider(DateTime.now().year.toString()).notifier)
+                        .refresh();
+                    _navigate(context, AppRoutes.historiquePersonnel);
+                  },
+                ),
 
                 // Finances
                 if (AppPermissions.canViewFinances(user))

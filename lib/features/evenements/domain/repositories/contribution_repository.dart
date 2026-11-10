@@ -7,8 +7,9 @@ import '../entities/contribution_entity.dart';
 /// SignatureRepository, pour rester cohérent avec le flux de paiement
 /// existant (initiate + polling du statut).
 abstract class ContributionRepository {
+  /// [evenementUuid] null = don libre à l'église (service « Faire un don »).
   Future<ContributionEntity> initiate({
-    required String evenementUuid,
+    String? evenementUuid,
     required int montant,
     String? note,
     required String paymentMethod,
@@ -27,7 +28,7 @@ class ContributionRepositoryImpl implements ContributionRepository {
 
   @override
   Future<ContributionEntity> initiate({
-    required String evenementUuid,
+    String? evenementUuid,
     required int montant,
     String? note,
     required String paymentMethod,

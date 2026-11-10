@@ -28,8 +28,10 @@ class ContributionsRemoteDataSource {
 
   final Dio _dio;
 
+  /// [evenementUuid] null = don libre à l'église (service « Faire un don »),
+  /// même corps de requête et même réponse qu'une contribution.
   Future<ContributionModel> initiate({
-    required String evenementUuid,
+    String? evenementUuid,
     required int montant,
     String? note,
     required String paymentMethod,
@@ -39,7 +41,9 @@ class ContributionsRemoteDataSource {
   }) async {
     try {
       final resp = await _dio.post(
-        ApiConfig.evenementContributions(evenementUuid),
+        evenementUuid == null
+            ? ApiConfig.dons
+            : ApiConfig.evenementContributions(evenementUuid),
         data: {
           'montant': montant,
           if (note != null && note.isNotEmpty) 'note': note,

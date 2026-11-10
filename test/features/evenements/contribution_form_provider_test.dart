@@ -8,9 +8,12 @@ import 'package:signme/features/evenements/presentation/providers/contribution_f
 class _FakeContributionRepository implements ContributionRepository {
   final List<Completer<ContributionEntity>> pendingInitiate = [];
 
+  /// Destination de chaque paiement lancé (null = don libre, sans événement).
+  final List<String?> initiatedFor = [];
+
   @override
   Future<ContributionEntity> initiate({
-    required String evenementUuid,
+    String? evenementUuid,
     required int montant,
     String? note,
     required String paymentMethod,
@@ -18,6 +21,7 @@ class _FakeContributionRepository implements ContributionRepository {
     String? paymentNumber,
     int? groupeId,
   }) {
+    initiatedFor.add(evenementUuid);
     final completer = Completer<ContributionEntity>();
     pendingInitiate.add(completer);
     return completer.future;
@@ -69,4 +73,43 @@ void main() {
       expect(await first, isTrue);
     },
   );
+
+  group('destination du paiement', () {
+    ContributionEntity pending() => ContributionEntity(
+          uuid: 'contrib-1',
+          montant: 500,
+          frais: 25,
+          montantTotal: 525,
+          statut: 'pending',
+          createdAt: DateTime.now(),
+        );
+
+    test('un don libre (sans événement) est envoyé sans uuid et remercie pour le don', () async {
+      final repo = _FakeContributionRepository();
+      final notifier = ContributionFormNotifier(repo);
+      addTearDown(notifier.disposePoller);
+      notifier.setPhone('699112233');
+
+      final done = notifier.effectuerPaiement(null);
+      repo.pendingInitiate.single.complete(pending());
+
+      expect(await done, isTrue);
+      expect(repo.initiatedFor, [null]);
+      expect(notifier.state.paymentMessage, contains('votre don'));
+    });
+
+    test('une contribution à un événement garde son uuid et son message', () async {
+      final repo = _FakeContributionRepository();
+      final notifier = ContributionFormNotifier(repo);
+      addTearDown(notifier.disposePoller);
+      notifier.setPhone('699112233');
+
+      final done = notifier.effectuerPaiement('evenement-uuid');
+      repo.pendingInitiate.single.complete(pending());
+
+      expect(await done, isTrue);
+      expect(repo.initiatedFor, ['evenement-uuid']);
+      expect(notifier.state.paymentMessage, contains('votre contribution'));
+    });
+  });
 }

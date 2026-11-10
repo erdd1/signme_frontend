@@ -101,4 +101,7 @@ abstract final class ApiConfig {
   static const String celebrations = '/celebrations';
   static String celebrationDetail(String uuid) => '/celebrations/$uuid';
   static String celebrationMarkRead(String uuid) => '/celebrations/$uuid/read';
+
+  // ── Services : « Faire un don » (hors événement) ──────────────────────────
+  static const String dons = '/dons';
 }
