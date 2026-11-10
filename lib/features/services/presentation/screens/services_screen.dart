@@ -92,17 +92,26 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
               style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: SignmeSpacing.md),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: _columns,
-              mainAxisSpacing: SignmeSpacing.lg,
-              crossAxisSpacing: SignmeSpacing.md,
-              childAspectRatio: 0.74,
-              children: [
-                for (final service in entry.value)
-                  ServiceTile(service: service, onTap: () => context.push(service.route)),
-              ],
+            // Wrap + largeur de colonne calculée : chaque tuile prend sa hauteur
+            // naturelle (le libellé peut passer sur 2 lignes ou grandir avec
+            // la taille de police système) — un ratio fixe débordait.
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const spacing = SignmeSpacing.md;
+                final tileWidth = (constraints.maxWidth - spacing * (_columns - 1)) / _columns;
+
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: SignmeSpacing.lg,
+                  children: [
+                    for (final service in entry.value)
+                      SizedBox(
+                        width: tileWidth,
+                        child: ServiceTile(service: service, onTap: () => context.push(service.route)),
+                      ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: SignmeSpacing.xl),
           ],
