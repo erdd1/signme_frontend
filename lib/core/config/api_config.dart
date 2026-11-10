@@ -101,4 +101,8 @@ abstract final class ApiConfig {
   static const String celebrations = '/celebrations';
   static String celebrationDetail(String uuid) => '/celebrations/$uuid';
   static String celebrationMarkRead(String uuid) => '/celebrations/$uuid/read';
+
+  // ── Chants (répertoire — recherche en ligne, aucune donnée stockée) ────────
+  static const String chantsSearch = '/chants/search';
+  static String chantDetail(int id) => '/chants/$id';
 }

@@ -42,6 +42,8 @@ import '../../features/evenements/domain/entities/evenement_entity.dart';
 import '../../features/mes_depenses/presentation/screens/mes_depenses_screen.dart';
 import '../../features/celebrations/presentation/screens/celebrations_screen.dart';
 import '../../features/celebrations/presentation/screens/celebration_detail_screen.dart';
+import '../../features/chants/presentation/screens/chant_detail_screen.dart';
+import '../../features/chants/presentation/screens/chants_screen.dart';
 import '../deep_link/deep_link_state.dart';
 
 // ── Route names ────────────────────────────────────────────────────────────
@@ -96,6 +98,8 @@ abstract final class AppRoutes {
   // ── Célébrations ──────────────────────────────────────────────────────────
   static const celebrations = '/celebrations';
   static String celebrationDetailPath(String uuid) => '/celebrations/$uuid';
+  static const chants = '/chants';
+  static String chantDetailPath(String id) => '/chants/$id';
 }
 
 // ── Router Provider ────────────────────────────────────────────────────────
@@ -486,6 +490,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'celebrations',
             pageBuilder: (ctx, state) => _fadePage(const CelebrationsScreen(), state),
           ),
+
+          // ── Chants (recherche — reste dans le shell : appbar + navbar) ──
+          GoRoute(
+            path: AppRoutes.chants,
+            name: 'chants',
+            pageBuilder: (ctx, state) => _fadePage(const ChantsScreen(), state),
+          ),
         ],
       ),
 
@@ -500,6 +511,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (ctx, state) {
           final uuid = state.pathParameters['uuid'] ?? '';
           return _fadePage(CelebrationDetailScreen(uuid: uuid), state);
+        },
+      ),
+
+      // ── Paroles d'un chant — plein écran, hors shell : lecture sans
+      // distraction (ni appbar ni navbar du shell), comme les célébrations.
+      GoRoute(
+        path: AppRoutes.chantDetailPath(':id'),
+        name: 'chant-detail',
+        pageBuilder: (ctx, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+          return _fadePage(ChantDetailScreen(chantId: id), state);
         },
       ),
     ],
