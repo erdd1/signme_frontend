@@ -52,6 +52,10 @@
 	</array>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>SignMe utilise l'appareil photo pour prendre votre photo de profil et les images des événements.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SignMe accède à vos photos pour choisir votre photo de profil et les images des événements.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
