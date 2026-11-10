@@ -104,11 +104,13 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
         clearError: true,
       );
 
+  /// [evenementUuid] null = don libre à l'église (service « Faire un don »).
+  ///
   /// [requiresGroupeSelection] : true si l'utilisateur appartient à plusieurs
   /// groupes — la sélection est alors obligatoire (avec un seul groupe, le
   /// serveur le déduit automatiquement, aucune sélection nécessaire ici).
   Future<bool> effectuerPaiement(
-    String evenementUuid, {
+    String? evenementUuid, {
     bool requiresGroupeSelection = false,
   }) async {
     // Le bouton se désactive via `isLoading`, mais seulement au prochain
@@ -161,7 +163,7 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
         paymentStatus: 'processing',
       );
 
-      return await _pollUntilTerminal(contribution.uuid);
+      return await _pollUntilTerminal(contribution.uuid, isDon: evenementUuid == null);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -173,7 +175,7 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
     }
   }
 
-  Future<bool> _pollUntilTerminal(String contributionUuid) async {
+  Future<bool> _pollUntilTerminal(String contributionUuid, {required bool isDon}) async {
     try {
       final finalStatus = await _poller!.pollUntilTerminal(
         contributionUuid: contributionUuid,
@@ -191,7 +193,9 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
         state = state.copyWith(
           paymentStatus: 'completed',
           paymentProgress: 1.0,
-          paymentMessage: 'Paiement confirmé. Merci pour votre contribution !',
+          paymentMessage: isDon
+              ? 'Paiement confirmé. Merci pour votre don !'
+              : 'Paiement confirmé. Merci pour votre contribution !',
         );
         return true;
       }

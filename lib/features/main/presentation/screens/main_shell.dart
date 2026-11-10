@@ -197,7 +197,7 @@ class MainShell extends ConsumerWidget {
     final String label = switch (route) {
       AppRoutes.home => "SignMe",
       AppRoutes.finances => "Mes Finances",
-      AppRoutes.historique => "Mon Historique",
+      AppRoutes.services => "Services",
       AppRoutes.historiquePersonnel => "Mon Historique",
       AppRoutes.profile => "Mon Profil",
       AppRoutes.maCarte => "Ma Carte",
@@ -253,8 +253,7 @@ class MainShell extends ConsumerWidget {
   bool _routeMatches(String loc, NavTab t) => switch (t) {
     NavTab.home => loc == AppRoutes.home,
     NavTab.finances => loc == AppRoutes.finances,
-    NavTab.historique =>
-    loc == AppRoutes.historique || loc == AppRoutes.historiquePersonnel,
+    NavTab.services => loc == AppRoutes.services,
     NavTab.profile => loc == AppRoutes.profile,
     NavTab.maCarte => loc == AppRoutes.maCarte,
   };
@@ -320,14 +319,8 @@ class MainShell extends ConsumerWidget {
           ref.read(badgeNotifierProvider.notifier).markRead(
                 ref.read(selectedActualiteCategoryProvider).badgeType,
               );
-        case NavTab.historique:
-          ref.read(badgeNotifierProvider.notifier).markRead('historique');
-          // Rafraîchit l'année courante (cas majoritaire) — si l'utilisateur
-          // avait sélectionné une autre année dans l'écran, elle reste
-          // rafraîchissable manuellement (pull-to-refresh).
-          ref
-              .read(historiquePersonnelCombinedProvider(DateTime.now().year.toString()).notifier)
-              .refresh();
+        case NavTab.services:
+          break; // catalogue statique : rien à rafraîchir
         case NavTab.finances:
           ref.read(financesProvider.notifier).refreshSilently();
         case NavTab.maCarte:
@@ -339,7 +332,7 @@ class MainShell extends ConsumerWidget {
       ctx.go(switch (tab) {
         NavTab.home => AppRoutes.home,
         NavTab.finances => AppRoutes.finances,
-        NavTab.historique => AppRoutes.historique,
+        NavTab.services => AppRoutes.services,
         NavTab.profile => AppRoutes.profile,
         NavTab.maCarte => AppRoutes.maCarte,
       });
@@ -397,7 +390,6 @@ class _FloatingNavBar extends ConsumerWidget {
     final badges = ref.watch(badgeNotifierProvider).valueOrNull ?? BadgeCountEntity.empty;
     int badgeCountForTab(NavTab tab) => switch (tab) {
       NavTab.home => badges.annonces + badges.meditations + badges.evenements,
-      NavTab.historique => badges.historique,
       _ => 0,
     };
     final half = tabs.length ~/ 2;
@@ -619,8 +611,8 @@ class _NavItem extends StatelessWidget {
       NavTab.home => isActive ? Icons.home_rounded : Icons.home_outlined,
       NavTab.finances =>
       isActive ? Icons.bar_chart_rounded : Icons.bar_chart_outlined,
-      NavTab.historique =>
-      isActive ? Icons.history_rounded : Icons.history_outlined,
+      NavTab.services =>
+      isActive ? Icons.grid_view_rounded : Icons.grid_view_outlined,
       NavTab.profile =>
       isActive ? Icons.person_rounded : Icons.person_outline_rounded,
       NavTab.maCarte =>
@@ -629,7 +621,7 @@ class _NavItem extends StatelessWidget {
     final label = switch (tab) {
       NavTab.home => "Accueil",
       NavTab.finances => "Finances",
-      NavTab.historique => 'Historique',
+      NavTab.services => 'Services',
       NavTab.profile => 'Profil',
       NavTab.maCarte => "Ma Carte",
     };

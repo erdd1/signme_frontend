@@ -17,6 +17,7 @@ import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/change_password_screen.dart';
 import '../../features/signature/presentation/screens/ma_carte_screen.dart';
 import '../../features/signature/presentation/screens/signer_screen.dart';
+import '../../features/services/presentation/screens/services_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/welcome/presentation/screens/welcome_screen.dart';
 import '../../features/users/presentation/screens/users_screen.dart';
@@ -57,7 +58,8 @@ abstract final class AppRoutes {
   static const resetPassword   = '/reset-password';
   static const home            = '/home';
   static const finances        = '/finances';
-  static const historique      = '/historique';
+  static const services        = '/services';
+  static const servicesDon     = '/services/don';
   static const maCarte         = '/ma-carte';
   static const profile         = '/profile';
   static const changePassword  = '/profile/change-password';
@@ -253,9 +255,9 @@ final routerProvider = Provider<GoRouter>((ref) {
               ]),
               StatefulShellBranch(routes: [
                 GoRoute(
-                  path: AppRoutes.historique,
-                  name: 'historique',
-                  builder: (ctx, state) => const HistoriquePersonnelScreen(),
+                  path: AppRoutes.services,
+                  name: 'services',
+                  builder: (ctx, state) => const ServicesScreen(),
                 ),
               ]),
               StatefulShellBranch(routes: [
@@ -459,6 +461,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               final evenement = state.extra as EvenementEntity;
               return _fadePage(ContributionFormScreen(evenement: evenement), state);
             },
+          ),
+          GoRoute(
+            path: AppRoutes.servicesDon,
+            name: 'services-don',
+            pageBuilder: (ctx, state) => _fadePage(const ContributionFormScreen(), state),
           ),
           GoRoute(
             path: AppRoutes.contributionsEvenement,

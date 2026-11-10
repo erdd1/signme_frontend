@@ -138,7 +138,7 @@ abstract final class AppPermissions {
 
     tabs.add(NavTab.home);          // Tout le monde voit l'accueil
     tabs.add(NavTab.maCarte);       // Ma Carte — côté gauche du FAB
-    tabs.add(NavTab.historique);    // Historique — côté droit du FAB
+    tabs.add(NavTab.services);      // Services — côté droit du FAB (l'historique est dans le drawer)
     tabs.add(NavTab.profile);       // Profil — côté droit du FAB
 
     // Finances est maintenant dans le drawer, pas dans la navbar
@@ -172,4 +172,4 @@ abstract final class AppPermissions {
 }
 
 // ── Enum des onglets de navigation ────────────────────────────────────────────
-enum NavTab { home, finances, historique, profile, maCarte }
+enum NavTab { home, finances, services, profile, maCarte }

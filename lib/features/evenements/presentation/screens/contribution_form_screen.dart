@@ -11,10 +11,13 @@ import '../../domain/entities/evenement_entity.dart';
 import '../providers/contribution_form_provider.dart';
 
 /// Formulaire de contribution à un événement + suivi du paiement NotchPay.
+///
+/// [evenement] null = don libre à l'église (service « Faire un don ») : même
+/// formulaire et même paiement, sans événement.
 class ContributionFormScreen extends ConsumerStatefulWidget {
-  const ContributionFormScreen({super.key, required this.evenement});
+  const ContributionFormScreen({super.key, this.evenement});
 
-  final EvenementEntity evenement;
+  final EvenementEntity? evenement;
 
   @override
   ConsumerState<ContributionFormScreen> createState() => _ContributionFormScreenState();
@@ -25,6 +28,8 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
   final _noteCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   int _step = 0;
+
+  bool get _isDon => widget.evenement == null;
 
   @override
   void initState() {
@@ -65,7 +70,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
           backgroundColor: SignmeColors.white,
           elevation: 0,
           title: Text(
-            'Contribution',
+            _isDon ? 'Faire un don' : 'Contribution',
             style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
           ),
           iconTheme: const IconThemeData(color: SignmeColors.black),
@@ -77,13 +82,15 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
 
   Future<void> _submitPaiement(bool requiresGroupeSelection) async {
     await ref.read(contributionFormProvider.notifier).effectuerPaiement(
-          widget.evenement.uuid,
+          widget.evenement?.uuid,
           requiresGroupeSelection: requiresGroupeSelection,
         );
   }
 
   Widget _buildForm(ContributionFormState state, List<GroupeRef> groupes) {
     final requiresGroupeSelection = groupes.length > 1;
+    final evenement = widget.evenement;
+    final churchNom = evenement?.church.nom ?? ref.watch(authNotifierProvider).auth?.user.churchNom;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
@@ -92,18 +99,18 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Contribution à l\'événement',
+            evenement == null ? 'Don libre à votre église' : 'Contribution à l\'événement',
             style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray),
           ),
           const SizedBox(height: 2),
           Text(
-            widget.evenement.titre,
+            evenement?.titre ?? churchNom ?? 'Votre église',
             style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w800),
           ),
-          if (widget.evenement.church.nom != null) ...[
+          if (evenement != null && churchNom != null) ...[
             const SizedBox(height: 2),
             Text(
-              widget.evenement.church.nom!,
+              churchNom,
               style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray),
             ),
           ],
@@ -166,7 +173,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
           const SizedBox(height: SignmeSpacing.xl),
         ],
 
-        _sectionTitle('Montant de la contribution (FCFA)'),
+        _sectionTitle(_isDon ? 'Montant du don (FCFA)' : 'Montant de la contribution (FCFA)'),
         _montantField(),
         const SizedBox(height: SignmeSpacing.md),
         _feeDisplay(frais, total),
@@ -289,7 +296,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
           : Row(
               children: [
                 Expanded(
-                  child: _feeColumn('Contribution', FinanceFormatters.fcfaShort(_montantCtrl.text.isEmpty ? 0 : int.parse(_montantCtrl.text))),
+                  child: _feeColumn(_isDon ? 'Don' : 'Contribution', FinanceFormatters.fcfaShort(_montantCtrl.text.isEmpty ? 0 : int.parse(_montantCtrl.text))),
                 ),
                 Expanded(child: _feeColumn('Frais', FinanceFormatters.fcfaShort(frais))),
                 Expanded(child: _feeColumn('Total', FinanceFormatters.fcfaShort(total ?? 0), highlight: true)),
@@ -499,7 +506,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
             const SizedBox(height: SignmeSpacing.lg),
             Text(
               isCompleted
-                  ? 'Contribution réussie'
+                  ? (_isDon ? 'Don réussi' : 'Contribution réussie')
                   : isFailed
                       ? 'Paiement non confirmé'
                       : 'Confirmez sur votre téléphone',
@@ -524,7 +531,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
                 state.paymentMessage ??
                     (isProcessing
                         ? 'Validez le PUSH ${state.operator_} sur votre mobile.'
-                        : 'Merci pour votre contribution.'),
+                        : (_isDon ? 'Merci pour votre don.' : 'Merci pour votre contribution.')),
                 textAlign: TextAlign.center,
                 style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray, height: 1.4),
               ),

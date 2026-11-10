@@ -108,4 +108,7 @@ abstract final class ApiConfig {
   // ── Chants (répertoire — recherche en ligne, aucune donnée stockée) ────────
   static const String chantsSearch = '/chants/search';
   static String chantDetail(int id) => '/chants/$id';
+
+  // ── Services : « Faire un don » (hors événement) ──────────────────────────
+  static const String dons = '/dons';
 }
