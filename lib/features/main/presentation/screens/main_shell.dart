@@ -117,7 +117,14 @@ class MainShell extends ConsumerWidget {
         centerTitle: false,
         title: _buildAppBarTitleForRoute(context),
         actions: [
-          if (GoRouterState.of(context).matchedLocation == AppRoutes.home)
+          if (GoRouterState.of(context).matchedLocation == AppRoutes.home) ...[
+            // ── Répertoire de chants ──
+            IconButton(
+              icon: const Icon(Icons.library_music_rounded,
+                  color: SignmeColors.black, size: 26),
+              tooltip: 'Chants',
+              onPressed: () => context.go(AppRoutes.chants),
+            ),
             Builder(
               builder: (ctx) => Padding(
                 padding: const EdgeInsets.only(right: SignmeSpacing.sm),
@@ -128,6 +135,7 @@ class MainShell extends ConsumerWidget {
                 ),
               ),
             ),
+          ],
         ],
       ),
       body: Stack(
@@ -210,6 +218,7 @@ class MainShell extends ConsumerWidget {
       AppRoutes.mesDepenses => "Mes dépenses",
       AppRoutes.aboutChurch => "À propos de votre Église",
       AppRoutes.celebrations => "Célébrations",
+      AppRoutes.chants => "Chants",
       _ when route.startsWith('${AppRoutes.users}/') &&
           route.endsWith('/edit') =>
       "Modifier le membre",

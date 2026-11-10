@@ -104,4 +104,8 @@ abstract final class ApiConfig {
 
   // ── Assistant religieux (chatbot — aucune conversation stockée) ────────────
   static const String assistantChat = '/assistant/chat';
+
+  // ── Chants (répertoire — recherche en ligne, aucune donnée stockée) ────────
+  static const String chantsSearch = '/chants/search';
+  static String chantDetail(int id) => '/chants/$id';
 }
