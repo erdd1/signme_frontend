@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/about_church/presentation/screens/about_church_screen.dart';
 import '../../features/about_church/presentation/screens/create_edit_article_screen.dart';
 import '../../features/about_church/presentation/screens/edit_church_info_screen.dart';
+import '../../features/assistant/presentation/screens/assistant_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/otp_verification_screen.dart';
@@ -96,6 +97,7 @@ abstract final class AppRoutes {
   // ── Célébrations ──────────────────────────────────────────────────────────
   static const celebrations = '/celebrations';
   static String celebrationDetailPath(String uuid) => '/celebrations/$uuid';
+  static const assistant = '/assistant';
 }
 
 // ── Router Provider ────────────────────────────────────────────────────────
@@ -501,6 +503,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           final uuid = state.pathParameters['uuid'] ?? '';
           return _fadePage(CelebrationDetailScreen(uuid: uuid), state);
         },
+      ),
+
+      // ── Assistant religieux — plein écran, hors shell : le champ de saisie
+      // suit le clavier (ni appbar ni navbar du shell).
+      GoRoute(
+        path: AppRoutes.assistant,
+        name: 'assistant',
+        pageBuilder: (ctx, state) => _fadePage(const AssistantScreen(), state),
       ),
     ],
 

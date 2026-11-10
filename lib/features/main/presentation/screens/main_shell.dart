@@ -162,6 +162,23 @@ class MainShell extends ConsumerWidget {
               ),
             ),
           ),
+          // ── Assistant religieux : accueil uniquement, au-dessus de la
+          // navbar côté Profil (à la manière du bouton IA de WhatsApp) ──
+          if (GoRouterState.of(context).matchedLocation == AppRoutes.home)
+            Positioned(
+              right: _kNavHPad + SignmeSpacing.xs,
+              bottom: _kNavBPad + bottomInset + _kNavHeight + SignmeSpacing.md,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                offset: keyboardVisible ? const Offset(0, 1.5) : Offset.zero,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: keyboardVisible ? 0.0 : 1.0,
+                  child: _AssistantFab(onTap: () => context.push(AppRoutes.assistant)),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -652,6 +669,57 @@ class _NavItem extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Bouton flottant « Assistant religieux » ─────────────────────────────
+class _AssistantFab extends StatelessWidget {
+  const _AssistantFab({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Assistant religieux',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: SignmeColors.primaryGradientLinear,
+                boxShadow: [
+                  BoxShadow(
+                    color: SignmeColors.primaryLight.withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 26),
+            ),
+            const SizedBox(height: SignmeSpacing.xs),
+            Text(
+              'Assistant\nreligieux',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 10,
+                height: 1.15,
+                fontWeight: FontWeight.w700,
+                color: SignmeColors.primaryDark,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

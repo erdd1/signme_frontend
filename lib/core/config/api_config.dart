@@ -101,4 +101,7 @@ abstract final class ApiConfig {
   static const String celebrations = '/celebrations';
   static String celebrationDetail(String uuid) => '/celebrations/$uuid';
   static String celebrationMarkRead(String uuid) => '/celebrations/$uuid/read';
+
+  // ── Assistant religieux (chatbot — aucune conversation stockée) ────────────
+  static const String assistantChat = '/assistant/chat';
 }
