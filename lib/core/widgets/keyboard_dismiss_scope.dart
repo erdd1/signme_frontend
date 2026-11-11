@@ -9,7 +9,15 @@ import '../design_system/signme_colors.dart';
 /// - sur iOS, les claviers numériques (nombre, téléphone) n'ont pas de touche
 ///   de validation : une barre « Terminé » s'affiche alors au-dessus du clavier.
 ///
+/// Quand la barre « Terminé » est affichée, la hauteur qu'elle occupe est
+/// ajoutée à celle du clavier vue par les écrans : le contenu est donc
+/// remonté d'autant et le champ en cours de saisie reste visible au-dessus
+/// de la barre (au lieu d'être caché derrière).
+///
 /// À placer une seule fois, dans le `builder` de l'application.
+/// Hauteur de la barre « Terminé ».
+const double kKeyboardDoneBarHeight = 44;
+
 class KeyboardDismissScope extends StatefulWidget {
   const KeyboardDismissScope({super.key, required this.child});
 
@@ -49,16 +57,26 @@ class _KeyboardDismissScopeState extends State<KeyboardDismissScope> {
 
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final media = MediaQuery.of(context);
+    final keyboardHeight = media.viewInsets.bottom;
     final showDoneBar =
         defaultTargetPlatform == TargetPlatform.iOS && keyboardHeight > 0 && _numericFieldFocused;
+
+    final content = showDoneBar
+        ? MediaQuery(
+            data: media.copyWith(
+              viewInsets: media.viewInsets.copyWith(bottom: keyboardHeight + kKeyboardDoneBarHeight),
+            ),
+            child: widget.child,
+          )
+        : widget.child;
 
     return Stack(
       children: [
         GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: _dismiss,
-          child: widget.child,
+          child: content,
         ),
         if (showDoneBar)
           Positioned(
@@ -84,7 +102,7 @@ class _DoneBar extends StatelessWidget {
       color: SignmeColors.surface,
       elevation: 2,
       child: Container(
-        height: 44,
+        height: kKeyboardDoneBarHeight,
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: const BoxDecoration(

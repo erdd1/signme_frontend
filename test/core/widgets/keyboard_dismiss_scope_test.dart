@@ -58,6 +58,46 @@ void main() {
     });
   });
 
+  testWidgets('iOS : le contenu remonte de la hauteur de la barre pour ne pas être masqué', (tester) async {
+    await _on(TargetPlatform.iOS, () async {
+      _openKeyboard(tester);
+      double? seen;
+      await tester.pumpWidget(MaterialApp(
+        builder: (context, child) => KeyboardDismissScope(child: child!),
+        home: Builder(builder: (context) {
+          seen = MediaQuery.of(context).viewInsets.bottom;
+          return const Scaffold(body: TextField(key: Key('montant'), keyboardType: TextInputType.number));
+        }),
+      ));
+      final keyboard = 300 / tester.view.devicePixelRatio; // pixels physiques -> logiques
+      expect(seen, keyboard); // aucun champ actif : hauteur réelle du clavier
+
+      await tester.tap(find.byKey(const Key('montant')));
+      await tester.pump();
+
+      expect(seen, keyboard + kKeyboardDoneBarHeight);
+    });
+  });
+
+  testWidgets('Android : la hauteur du clavier vue par les écrans reste celle du clavier', (tester) async {
+    await _on(TargetPlatform.android, () async {
+      _openKeyboard(tester);
+      double? seen;
+      await tester.pumpWidget(MaterialApp(
+        builder: (context, child) => KeyboardDismissScope(child: child!),
+        home: Builder(builder: (context) {
+          seen = MediaQuery.of(context).viewInsets.bottom;
+          return const Scaffold(body: TextField(key: Key('montant'), keyboardType: TextInputType.number));
+        }),
+      ));
+
+      await tester.tap(find.byKey(const Key('montant')));
+      await tester.pump();
+
+      expect(seen, 300 / tester.view.devicePixelRatio);
+    });
+  });
+
   testWidgets('iOS : la barre apparaît aussi pour un clavier téléphone', (tester) async {
     await _on(TargetPlatform.iOS, () async {
       _openKeyboard(tester);
