@@ -125,20 +125,43 @@ class CommuniqueEntity {
       );
 }
 
-/// Qui a contribué à un communiqué.
+/// Membre d'un groupe (choix du donateur d'une entrée cash).
+class MembreGroupeEntity {
+  const MembreGroupeEntity({required this.id, required this.nom, this.photoUrl});
+
+  final int id;
+  final String nom;
+  final String? photoUrl;
+
+  factory MembreGroupeEntity.fromJson(Map<String, dynamic> json) => MembreGroupeEntity(
+        id: _int(json['id']),
+        nom: json['nom']?.toString() ?? '',
+        photoUrl: json['photoUrl']?.toString(),
+      );
+}
+
+/// Qui a contribué à un communiqué ([cash] : remis en main propre).
 class ContributeurEntity {
-  const ContributeurEntity({required this.nom, this.photoUrl, required this.montant, required this.date});
+  const ContributeurEntity({
+    required this.nom,
+    this.photoUrl,
+    required this.montant,
+    required this.date,
+    this.cash = false,
+  });
 
   final String nom;
   final String? photoUrl;
   final int montant;
   final String date;
+  final bool cash;
 
   factory ContributeurEntity.fromJson(Map<String, dynamic> json) => ContributeurEntity(
         nom: json['nom']?.toString() ?? '',
         photoUrl: json['photoUrl']?.toString(),
         montant: _int(json['montant']),
         date: json['date']?.toString() ?? '',
+        cash: json['cash'] == true,
       );
 }
 
