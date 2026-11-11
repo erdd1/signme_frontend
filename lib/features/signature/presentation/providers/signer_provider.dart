@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../../core/widgets/signme_payment_method_selector.dart';
 import '../../../auth/domain/entities/user_entity.dart';
+import '../../../evenements/domain/card_fee_calculator.dart';
 import '../../domain/entities/member_signature_status.dart';
 import '../../domain/repositories/signature_repository.dart';
 import '../utils/payment_status_poller.dart';
@@ -13,6 +15,9 @@ class SignerState {
   const SignerState({
     this.selectedMonths = const [],
     this.selectedYear = 2026,
+    this.paymentMethod   = SignmePaymentMethod.mobileMoney,
+    this.cardFeePercent  = 0,
+    this.checkoutUrl,
     this.operator_       = 'ORANGE MONEY',
     this.phone           = '',
     this.isLoading       = false,
@@ -44,6 +49,12 @@ class SignerState {
 
   final List<String> selectedMonths;
   final int     selectedYear;
+  /// [SignmePaymentMethod.mobileMoney] ou [SignmePaymentMethod.card].
+  final String  paymentMethod;
+  final double  cardFeePercent;
+
+  /// Page de paiement hébergée (carte), une fois le paiement initié.
+  final String? checkoutUrl;
   final String  operator_;
   final String  phone;
   final bool    isLoading;
@@ -100,11 +111,26 @@ class SignerState {
     return false;
   }
 
-  int get totalAmount => (amountPerMonth + feesPerMonth) * selectedMonths.length;
+  bool get isCard => paymentMethod == SignmePaymentMethod.card;
+
+  /// Montant net à reverser à l'église (hors frais).
+  int get netAmount => amountPerMonth * selectedMonths.length;
+
+  /// Frais du paiement par carte (totaux, tous mois confondus), à la charge
+  /// du fidèle — réplique du calcul serveur, pour l'affichage uniquement.
+  int? get cardFees {
+    final total = CardFeeCalculator.grossUp(netAmount, cardFeePercent);
+    return total == null ? null : total - netAmount;
+  }
+
+  int get totalAmount => isCard
+      ? CardFeeCalculator.grossUp(netAmount, cardFeePercent) ?? netAmount
+      : (amountPerMonth + feesPerMonth) * selectedMonths.length;
 
   SignerState copyWith({
     List<String>? selectedMonths,
     int? selectedYear,
+    String? paymentMethod, double? cardFeePercent, String? checkoutUrl,
     String? operator_, String? phone, bool? isLoading, bool? success,
     String? paymentRef,
     int? transactionId,
@@ -132,6 +158,9 @@ class SignerState {
   }) => SignerState(
     selectedMonths:       selectedMonths       ?? this.selectedMonths,
     selectedYear:         selectedYear         ?? this.selectedYear,
+    paymentMethod:        paymentMethod        ?? this.paymentMethod,
+    cardFeePercent:       cardFeePercent       ?? this.cardFeePercent,
+    checkoutUrl:          checkoutUrl          ?? this.checkoutUrl,
     operator_:            operator_            ?? this.operator_,
     phone:                phone                ?? this.phone,
     isLoading:            isLoading            ?? this.isLoading,
@@ -219,6 +248,9 @@ class SignerNotifier extends StateNotifier<SignerState> {
     state = state.copyWith(amountPerMonth: amount, feesPerMonth: fees);
   }
 
+  void setPaymentMethod(String method) =>
+      state = state.copyWith(paymentMethod: method, clearError: true);
+  void setCardFeePercent(double percent) => state = state.copyWith(cardFeePercent: percent);
   void setOperator(String op) => state = state.copyWith(operator_: op, clearError: true);
   void setPhone(String v) => state = state.copyWith(phone: v, clearError: true);
 
@@ -350,13 +382,19 @@ class SignerNotifier extends StateNotifier<SignerState> {
     // dupliqué n'est pas une simple gêne visuelle.
     if (state.isLoading) return false;
 
-    if (!SignerState.isValidPhoneNumber(state.phone, state.operator_)) {
+    final isCard = state.isCard;
+    // Carte : pas de numéro, la saisie se fait sur la page sécurisée du
+    // fournisseur.
+    if (!isCard && !SignerState.isValidPhoneNumber(state.phone, state.operator_)) {
       state = state.copyWith(error: 'Numéro invalide');
       return false;
     }
 
     _paymentPoller?.cancel();
-    _paymentPoller = PaymentStatusPoller(_repository);
+    _paymentPoller = PaymentStatusPoller(
+      _repository,
+      maxDuration: isCard ? const Duration(minutes: 14) : const Duration(minutes: 3),
+    );
 
     state = state.copyWith(
       isLoading: true,
@@ -371,16 +409,23 @@ class SignerNotifier extends StateNotifier<SignerState> {
       final init = await _repository.initiateDistancePayment(
         months: state.selectedMonths,
         amount: state.amountPerMonth,
-        paymentMethod: 'mobile_money',
-        paymentOperator: state.operator_,
-        phoneNumber: state.phone,
+        paymentMethod: state.paymentMethod,
+        paymentOperator: isCard ? null : state.operator_,
+        phoneNumber: isCard ? null : state.phone,
       );
+
+      if (isCard && (init.checkoutUrl ?? '').isEmpty) {
+        throw StateError('Page de paiement indisponible.');
+      }
 
       state = state.copyWith(
         isLoading: false,
         paymentRef: init.paymentReference,
         transactionId: init.transactionId,
-        paymentMessage: init.message ?? 'Validez le paiement sur votre téléphone (${state.operator_}).',
+        checkoutUrl: init.checkoutUrl,
+        paymentMessage: isCard
+            ? 'Finalisez le paiement sur la page sécurisée de votre banque.'
+            : init.message ?? 'Validez le paiement sur votre téléphone (${state.operator_}).',
         paymentProgress: 0.3,
         paymentStatus: 'processing',
       );
@@ -406,7 +451,7 @@ class SignerNotifier extends StateNotifier<SignerState> {
           state = state.copyWith(
             paymentStatus: status.status,
             paymentProgress: status.progress.clamp(0.0, 0.99),
-            paymentMessage: status.isPending
+            paymentMessage: status.isPending && !state.isCard
                 ? 'En attente de confirmation du paiement…'
                 : state.paymentMessage,
           );

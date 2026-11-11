@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/design_system/index.dart';
-import '../providers/contribution_form_provider.dart';
+import '../design_system/index.dart';
 
-/// Choix du moyen de paiement : Mobile Money ou carte bancaire.
-class PaymentMethodSelector extends StatelessWidget {
-  const PaymentMethodSelector({super.key, required this.selected, required this.onChanged});
+/// Valeurs `paymentMethod` échangées avec l'API de paiement.
+abstract final class SignmePaymentMethod {
+  static const mobileMoney = 'mobile_money';
+  static const card = 'card';
+}
 
-  /// [ContributionFormState.methodMobileMoney] ou [ContributionFormState.methodCard].
+/// Choix du moyen de paiement : Mobile Money ou carte bancaire. Partagé par
+/// les contributions, les dons et les signatures à distance.
+class SignmePaymentMethodSelector extends StatelessWidget {
+  const SignmePaymentMethodSelector(
+      {super.key, required this.selected, required this.onChanged});
+
+  /// [SignmePaymentMethod.mobileMoney] ou [SignmePaymentMethod.card].
   final String selected;
   final ValueChanged<String> onChanged;
 
@@ -20,8 +27,8 @@ class PaymentMethodSelector extends StatelessWidget {
             icon: Icons.smartphone_rounded,
             title: 'Mobile Money',
             subtitle: 'Orange · MTN',
-            isSelected: selected == ContributionFormState.methodMobileMoney,
-            onTap: () => onChanged(ContributionFormState.methodMobileMoney),
+            isSelected: selected == SignmePaymentMethod.mobileMoney,
+            onTap: () => onChanged(SignmePaymentMethod.mobileMoney),
           ),
         ),
         const SizedBox(width: SignmeSpacing.md),
@@ -30,8 +37,8 @@ class PaymentMethodSelector extends StatelessWidget {
             icon: Icons.credit_card_rounded,
             title: 'Carte bancaire',
             subtitle: 'Visa · Mastercard',
-            isSelected: selected == ContributionFormState.methodCard,
-            onTap: () => onChanged(ContributionFormState.methodCard),
+            isSelected: selected == SignmePaymentMethod.card,
+            onTap: () => onChanged(SignmePaymentMethod.card),
           ),
         ),
       ],
@@ -66,10 +73,14 @@ class _MethodOption extends StatelessWidget {
           duration: SignmeSpacing.animationFast,
           padding: const EdgeInsets.all(SignmeSpacing.md),
           decoration: BoxDecoration(
-            color: isSelected ? SignmeColors.primaryLight.withValues(alpha: 0.08) : SignmeColors.white,
+            color: isSelected
+                ? SignmeColors.primaryLight.withValues(alpha: 0.08)
+                : SignmeColors.white,
             borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
             border: Border.all(
-              color: isSelected ? SignmeColors.primaryLight : SignmeColors.lightGrayBorder,
+              color: isSelected
+                  ? SignmeColors.primaryLight
+                  : SignmeColors.lightGrayBorder,
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -79,9 +90,14 @@ class _MethodOption extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(icon, color: isSelected ? SignmeColors.primaryLight : SignmeColors.darkGray, size: 26),
+                  Icon(icon,
+                      color: isSelected
+                          ? SignmeColors.primaryLight
+                          : SignmeColors.darkGray,
+                      size: 26),
                   if (isSelected)
-                    const Icon(Icons.check_circle_rounded, color: SignmeColors.primaryLight, size: 18),
+                    const Icon(Icons.check_circle_rounded,
+                        color: SignmeColors.primaryLight, size: 18),
                 ],
               ),
               const SizedBox(height: SignmeSpacing.sm),
@@ -89,13 +105,15 @@ class _MethodOption extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: SignmeTypography.labelMedium.copyWith(fontWeight: FontWeight.w800),
+                style: SignmeTypography.labelMedium
+                    .copyWith(fontWeight: FontWeight.w800),
               ),
               Text(
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.textSecondary),
+                style: SignmeTypography.labelSmall
+                    .copyWith(color: SignmeColors.textSecondary),
               ),
             ],
           ),

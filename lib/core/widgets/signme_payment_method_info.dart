@@ -3,11 +3,12 @@ import '../design_system/index.dart';
 
 /// Couleur de l'opérateur mobile money — même palette que le sélecteur du
 /// formulaire de signature (voir `_operatorRow` dans signer_screen.dart).
-/// `null` si le paiement n'est pas passé par mobile money.
+/// `null` si le paiement n'est passé ni par mobile money ni par carte.
 Color? paymentOperatorColor(String? operator) {
   return switch (operator) {
     'ORANGE MONEY' => const Color(0xFFFF6600),
     'MTN MOBILE MONEY' => const Color(0xFFFFCC00),
+    'CARTE' => SignmeColors.primaryLight,
     _ => null,
   };
 }
@@ -17,6 +18,7 @@ String? paymentOperatorLabel(String? operator) {
   return switch (operator) {
     'ORANGE MONEY' => 'Orange Money',
     'MTN MOBILE MONEY' => 'MTN Money',
+    'CARTE' => 'Carte bancaire',
     _ => null,
   };
 }

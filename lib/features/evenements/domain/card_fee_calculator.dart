@@ -18,11 +18,18 @@ abstract final class CardFeeCalculator {
   /// Total à débiter, ou null si le montant est hors barème ou le taux invalide.
   static int? calculateTotal(int montant, double percent) {
     if (!ContributionFeeCalculator.isValidAmount(montant)) return null;
-    if (percent < 0 || percent >= 100) return null;
+    return grossUp(montant, percent);
+  }
+
+  /// Total à débiter pour que l'église reçoive exactement [net], sans borne
+  /// de barème (ex. plusieurs mois de signature cumulés), ou null si le taux
+  /// est invalide. Réplique de `CardFeeCalculatorService::majorer`.
+  static int? grossUp(int net, double percent) {
+    if (net <= 0 || percent < 0 || percent >= 100) return null;
 
     // Arrondi à 6 décimales avant ceil() : évite qu'une erreur de virgule
     // flottante (ex. 1000.0000000000001) ajoute 1 FCFA de trop.
-    final exact = montant / (1 - percent / 100);
+    final exact = net / (1 - percent / 100);
     return double.parse(exact.toStringAsFixed(6)).ceil();
   }
 }
