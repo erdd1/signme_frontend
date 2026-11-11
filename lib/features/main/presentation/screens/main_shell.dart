@@ -21,6 +21,7 @@ import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../badge/domain/entities/badge_count_entity.dart';
 import '../../../badge/presentation/providers/badge_provider.dart';
+import '../../../groupes/presentation/providers/groupes_provider.dart';
 import '../../../signature/presentation/providers/ma_carte_provider.dart';
 import '../../../finances/presentation/providers/finances_provider.dart';
 import '../../../rapports/presentation/providers/rapports_provider.dart';
@@ -414,8 +415,13 @@ class _FloatingNavBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final badges = ref.watch(badgeNotifierProvider).valueOrNull ?? BadgeCountEntity.empty;
+    // Nouveautés des groupes (communiqués, transactions) : badge de l'onglet
+    // Services, actualisé toutes les 60 s comme les autres badges.
+    ref.watch(groupesBadgePollingProvider);
+    final groupesNonLus = ref.watch(groupesNonLusTotalProvider);
     int badgeCountForTab(NavTab tab) => switch (tab) {
       NavTab.home => badges.annonces + badges.meditations + badges.evenements,
+      NavTab.services => groupesNonLus,
       _ => 0,
     };
     final half = tabs.length ~/ 2;

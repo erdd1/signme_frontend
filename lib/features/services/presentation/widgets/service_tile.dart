@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/design_system/index.dart';
+import '../../../../core/widgets/badge_dot.dart';
 import '../../domain/entities/service_entity.dart';
 
 /// Tuile d'un service : pastille arrondie + icône, libellé dessous.
@@ -23,12 +24,17 @@ class ServiceTile extends StatelessWidget {
           children: [
             AspectRatio(
               aspectRatio: 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: SignmeColors.accentSky,
-                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusXl),
+              child: BadgeDot(
+                count: service.badgeCount,
+                child: Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  decoration: BoxDecoration(
+                    color: SignmeColors.accentSky,
+                    borderRadius: BorderRadius.circular(SignmeSpacing.radiusXl),
+                  ),
+                  child: Icon(service.icon, size: 34, color: SignmeColors.primaryLight),
                 ),
-                child: Icon(service.icon, size: 34, color: SignmeColors.primaryLight),
               ),
             ),
             const SizedBox(height: SignmeSpacing.sm),

@@ -39,6 +39,7 @@ class GroupeEntity {
     this.caisse,
     this.president,
     this.tresorier,
+    this.nonLus = 0,
   });
 
   final String uuid;
@@ -48,6 +49,9 @@ class GroupeEntity {
   final GroupeCaisse? caisse;
   final String? president;
   final String? tresorier;
+
+  /// Nouveautés (communiqués, transactions des autres) depuis ma dernière visite.
+  final int nonLus;
 
   bool get estPresident => postes.contains(GroupePoste.president);
   bool get estTresorier => postes.contains(GroupePoste.tresorier);
@@ -74,6 +78,7 @@ class GroupeEntity {
       caisse: caisse is Map<String, dynamic> ? GroupeCaisse.fromJson(caisse) : null,
       president: resp is Map ? resp['president']?.toString() : null,
       tresorier: resp is Map ? resp['tresorier']?.toString() : null,
+      nonLus: _int(json['nonLus']),
     );
   }
 }

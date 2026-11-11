@@ -35,9 +35,19 @@ class _GroupeScreenState extends ConsumerState<GroupeScreen> {
   int _onglet = 0; // 0 communiqués · 1 historique
   final _scroll = ScrollController();
 
+  /// Consulter le groupe efface ses badges (nouveaux communiqués et
+  /// transactions) — échec silencieux : le badge se corrigera à la visite suivante.
+  Future<void> _marquerLu() async {
+    try {
+      await ref.read(mesGroupesRemoteDataSourceProvider).marquerLu(widget.uuid);
+      if (mounted) ref.invalidate(mesGroupesProvider);
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _marquerLu());
     _scroll.addListener(() {
       if (_onglet == 1 && _scroll.position.pixels >= _scroll.position.maxScrollExtent - 240) {
         ref.read(mouvementsProvider(widget.uuid).notifier).loadMore();
@@ -53,6 +63,7 @@ class _GroupeScreenState extends ConsumerState<GroupeScreen> {
 
   Future<void> _actualiser() async {
     refreshGroupe(ref, widget.uuid);
+    _marquerLu();
     try {
       await ref.read(groupeProvider(widget.uuid).future);
     } catch (_) {

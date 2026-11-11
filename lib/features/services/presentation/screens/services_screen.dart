@@ -144,6 +144,9 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
   /// (un don ou un paiement vient peut-être d'être effectué).
   Future<void> _open(String route) async {
     await context.push(route);
-    if (mounted) ref.invalidate(recentTransactionsProvider);
+    if (mounted) {
+      ref.invalidate(recentTransactionsProvider);
+      ref.invalidate(mesGroupesProvider); // badges des groupes mis à jour après la visite
+    }
   }
 }

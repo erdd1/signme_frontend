@@ -124,6 +124,7 @@ abstract final class ApiConfig {
   static String groupeContributions(String uuid) => '/mes-groupes/$uuid/contributions';
   static String groupeMouvements(String uuid) => '/mes-groupes/$uuid/mouvements';
   static String groupeEntreesCash(String uuid) => '/mes-groupes/$uuid/entrees-cash';
+  static String groupeLu(String uuid) => '/mes-groupes/$uuid/lu';
   static String groupeMembres(String uuid) => '/mes-groupes/$uuid/membres';
   static String groupeEntreeCashAnnuler(String uuid, String entreeUuid) =>
       '/mes-groupes/$uuid/entrees-cash/$entreeUuid/annuler';

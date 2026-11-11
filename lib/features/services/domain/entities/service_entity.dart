@@ -11,6 +11,7 @@ class ServiceEntity {
     required this.section,
     required this.route,
     this.availableFor,
+    this.badgeCount = 0,
   });
 
   final String id;
@@ -25,6 +26,9 @@ class ServiceEntity {
 
   /// Restriction éventuelle par rôle / statut ; null = disponible pour tous.
   final bool Function(UserEntity user)? availableFor;
+
+  /// Nouveautés à signaler sur la tuile (0 = aucun badge).
+  final int badgeCount;
 
   bool isAvailableFor(UserEntity user) => availableFor?.call(user) ?? true;
 }

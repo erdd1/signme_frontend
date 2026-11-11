@@ -74,6 +74,13 @@ void main() {
     });
   });
 
+  group('Badges de groupe', () {
+    test('lit le nombre de nouveautés, 0 par défaut', () {
+      expect(GroupeEntity.fromJson({'uuid': 'u', 'nom': 'G', 'postes': [], 'nonLus': 3}).nonLus, 3);
+      expect(GroupeEntity.fromJson({'uuid': 'u', 'nom': 'G', 'postes': []}).nonLus, 0);
+    });
+  });
+
   group('CommuniqueEntity', () {
     CommuniqueEntity communique({int? objectif, int collecte = 0}) => CommuniqueEntity.fromJson({
           'uuid': 'c1',

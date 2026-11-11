@@ -50,6 +50,10 @@ class MesGroupesRemoteDataSource {
   Future<GroupeEntity> groupe(String uuid) =>
       _call(() => _dio.get(ApiConfig.mesGroupe(uuid)), (r) => GroupeEntity.fromJson(_map(r)));
 
+  /// Le membre a consulté le groupe : ses badges repartent de zéro.
+  Future<void> marquerLu(String uuid) =>
+      _call(() => _dio.post(ApiConfig.groupeLu(uuid)), (_) {});
+
   Future<List<CommuniqueEntity>> communiques(String uuid) => _call(
         () => _dio.get(ApiConfig.groupeCommuniques(uuid)),
         (r) => ApiResponseParser.extractList(r.data).map(CommuniqueEntity.fromJson).toList(),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/network/dio_exception_mapper.dart';
@@ -13,6 +15,19 @@ final mesGroupesRemoteDataSourceProvider = Provider<MesGroupesRemoteDataSource>(
 final mesGroupesProvider = FutureProvider.autoDispose<List<GroupeEntity>>(
   (ref) => ref.watch(mesGroupesRemoteDataSourceProvider).mesGroupes(),
 );
+
+/// Total des nouveautés de tous mes groupes — badge de l'onglet Services.
+final groupesNonLusTotalProvider = Provider.autoDispose<int>((ref) {
+  final groupes = ref.watch(mesGroupesProvider).valueOrNull ?? const <GroupeEntity>[];
+  return groupes.fold(0, (total, g) => total + g.nonLus);
+});
+
+/// Rafraîchit les groupes (donc leurs badges) toutes les 60 s tant qu'il est
+/// observé — même cadence que les autres badges de l'application.
+final groupesBadgePollingProvider = Provider.autoDispose<void>((ref) {
+  final timer = Timer.periodic(const Duration(seconds: 60), (_) => ref.invalidate(mesGroupesProvider));
+  ref.onDispose(timer.cancel);
+});
 
 /// Un groupe avec sa caisse et ses responsables.
 final groupeProvider = FutureProvider.autoDispose.family<GroupeEntity, String>(

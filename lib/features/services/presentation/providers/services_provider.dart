@@ -32,10 +32,10 @@ final groupesServicesProvider = Provider<List<ServiceEntity>>((ref) {
 
   final doServeur = ref.watch(mesGroupesProvider).valueOrNull;
   final groupes = doServeur != null
-      ? [for (final g in doServeur) (uuid: g.uuid, nom: g.nom)]
+      ? [for (final g in doServeur) (uuid: g.uuid, nom: g.nom, nonLus: g.nonLus)]
       : [
           for (final g in user.groupes)
-            if (g.uuid != null) (uuid: g.uuid!, nom: g.nom),
+            if (g.uuid != null) (uuid: g.uuid!, nom: g.nom, nonLus: 0),
         ];
 
   return [
@@ -47,6 +47,7 @@ final groupesServicesProvider = Provider<List<ServiceEntity>>((ref) {
         // Même rubrique que « Faire un don ».
         section: ServiceSections.mesActivites,
         route: AppRoutes.servicesGroupe(g.uuid),
+        badgeCount: g.nonLus,
       ),
   ];
 });
