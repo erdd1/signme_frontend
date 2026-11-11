@@ -7,6 +7,7 @@ import '../../../../core/widgets/signme_payment_method_selector.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../evenements/domain/card_fee_calculator.dart';
 import '../../domain/entities/member_signature_status.dart';
+import '../../domain/signable_months.dart';
 import '../../domain/repositories/signature_repository.dart';
 import '../utils/payment_status_poller.dart';
 
@@ -227,6 +228,7 @@ class SignerNotifier extends StateNotifier<SignerState> {
   void toggleMonth(String month) {
     final list = List<String>.from(state.selectedMonths);
     if (state.alreadySignedMonths.contains(month)) return;
+    if (!SignableMonths.isSignable(month, DateTime.now())) return;
     list.contains(month) ? list.remove(month) : list.add(month);
     state = state.copyWith(selectedMonths: list);
   }
@@ -237,6 +239,7 @@ class SignerNotifier extends StateNotifier<SignerState> {
   void togglePresentielMonth(String month) {
     final list = List<String>.from(state.selectedMonths);
     if (state.memberSignedMonths.contains(month)) return;
+    if (!SignableMonths.isSignable(month, DateTime.now())) return;
     list.contains(month) ? list.remove(month) : list.add(month);
     state = state.copyWith(selectedMonths: list);
   }

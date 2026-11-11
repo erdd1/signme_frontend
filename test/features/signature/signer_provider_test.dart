@@ -6,6 +6,7 @@ import 'package:signme/features/signature/domain/entities/member_signature_statu
 import 'package:signme/features/signature/domain/entities/payment_transaction_status.dart';
 import 'package:signme/features/signature/domain/entities/signature_entity.dart';
 import 'package:signme/features/signature/domain/repositories/signature_repository.dart';
+import 'package:signme/features/signature/domain/signable_months.dart';
 import 'package:signme/features/signature/presentation/providers/signer_provider.dart';
 
 class _PendingSearch {
@@ -263,6 +264,49 @@ void main() {
       expect(init.checkoutUrl, checkout);
       expect(status.checkoutUrl, checkout);
       expect(DistancePaymentInitResult.fromJson({'transaction_id': 1}).checkoutUrl, isNull);
+    });
+  });
+
+  group('mois signables (jusqu\'au mois prochain)', () {
+    test('le dernier mois signable est le mois prochain, avec le passage d\'année', () {
+      expect(SignableMonths.last(DateTime(2026, 10, 15)), '2026-11');
+      expect(SignableMonths.last(DateTime(2026, 12, 15)), '2027-01');
+      expect(SignableMonths.last(DateTime(2026, 1, 31)), '2026-02'); // pas de débordement un 31
+    });
+
+    test('octobre : novembre oui, décembre non ; décembre : janvier oui, février non', () {
+      final octobre = DateTime(2026, 10, 15);
+      expect(SignableMonths.isSignable('2026-11', octobre), isTrue);
+      expect(SignableMonths.isSignable('2026-12', octobre), isFalse);
+
+      final decembre = DateTime(2026, 12, 15);
+      expect(SignableMonths.isSignable('2027-01', decembre), isTrue);
+      expect(SignableMonths.isSignable('2027-02', decembre), isFalse);
+    });
+
+    test('le mois courant et les mois passés restent signables', () {
+      final now = DateTime(2026, 10, 15);
+      expect(SignableMonths.isSignable('2026-10', now), isTrue);
+      expect(SignableMonths.isSignable('2026-01', now), isTrue);
+    });
+
+    test('la sélection ignore un mois au-delà du mois prochain (distance et présentiel)', () {
+      final notifier = SignerNotifier(_FakeSignatureRepository());
+      addTearDown(notifier.dispose);
+      final now = DateTime.now();
+      final suivant = SignableMonths.last(now);
+      final trop = DateTime(now.year, now.month + 2);
+      final tropLoin = '${trop.year}-${trop.month.toString().padLeft(2, '0')}';
+
+      notifier.toggleMonth(suivant);
+      notifier.toggleMonth(tropLoin);
+      expect(notifier.state.selectedMonths, [suivant]);
+
+      notifier.reset();
+      notifier.togglePresentielMonth(tropLoin);
+      expect(notifier.state.selectedMonths, isEmpty);
+      notifier.togglePresentielMonth(suivant);
+      expect(notifier.state.selectedMonths, [suivant]);
     });
   });
 }

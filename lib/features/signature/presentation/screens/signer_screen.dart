@@ -11,6 +11,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../evenements/domain/entities/card_payment_config_entity.dart';
 import '../../../evenements/presentation/providers/contribution_form_provider.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
+import '../../domain/signable_months.dart';
 import '../providers/signer_provider.dart';
 import '../providers/ma_carte_provider.dart';
 
@@ -351,6 +352,8 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
           signedMonths: state.alreadySignedMonths,
           onToggle: (m) => ref.read(signerProvider.notifier).toggleMonth(m),
         ),
+        const SizedBox(height: SignmeSpacing.sm),
+        _limiteMois(),
         const SizedBox(height: SignmeSpacing.xl),
         SignmePrimaryButton(
           label: 'Valider',
@@ -686,6 +689,8 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
             signedMonths: state.memberSignedMonths,
             onToggle: (m) => ref.read(signerProvider.notifier).togglePresentielMonth(m),
           ),
+        const SizedBox(height: SignmeSpacing.sm),
+        _limiteMois(),
         const SizedBox(height: SignmeSpacing.xl),
         SignmePrimaryButton(
           label: 'Valider',
@@ -902,6 +907,25 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
     );
   }
 
+  /// Rappel de la limite : on signe au plus jusqu'au mois prochain.
+  Widget _limiteMois() {
+    final fin = SignableMonths.last(DateTime.now()).split('-');
+    final mois = AppStrings.moisFull[int.parse(fin[1]) - 1];
+
+    return Row(
+      children: [
+        const Icon(Icons.info_outline_rounded, size: 14, color: SignmeColors.mediumGray),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'Vous pouvez signer jusqu\'à $mois ${fin[0]} (mois prochain).',
+            style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Grid mois : 4 colonnes, icône calendrier au-dessus du label
   /// [signedMonths] : "distance" passe `state.alreadySignedMonths` (mois
   /// déjà signés par l'utilisateur connecté) ; "présentiel" passe
@@ -934,10 +958,20 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
           itemBuilder: (context, i) {
             final month = '$year-${(i + 1).toString().padLeft(2, '0')}';
             final isSigned = signedMonths.contains(month);
+            // Au-delà du mois prochain : verrouillé (le serveur refuse aussi).
+            final isLocked = !SignableMonths.isSignable(month, DateTime.now());
             final isSelected = state.selectedMonths.contains(month);
 
-            return GestureDetector(
-              onTap: isSigned
+            return Semantics(
+              button: !isLocked && !isSigned,
+              enabled: !isLocked,
+              label: isLocked
+                  ? '${AppStrings.moisFull[i]} — pas encore disponible'
+                  : isSigned
+                      ? '${AppStrings.moisFull[i]} — déjà signé'
+                      : AppStrings.moisFull[i],
+              child: GestureDetector(
+              onTap: isSigned || isLocked
                   ? null
                   : () {
                       _markDirty();
@@ -946,14 +980,14 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
               child: AnimatedContainer(
                 duration: SignmeSpacing.animationFast,
                 decoration: BoxDecoration(
-                  color: isSigned
+                  color: isSigned || isLocked
                       ? SignmeColors.lightGray
                       : isSelected
                       ? SignmeColors.primaryLight.withOpacity(0.08)
                       : SignmeColors.white,
                   borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
                   border: Border.all(
-                    color: isSigned
+                    color: isSigned || isLocked
                         ? SignmeColors.lightGrayBorder
                         : isSelected
                         ? SignmeColors.primaryLight
@@ -980,11 +1014,13 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      isSigned
+                      isLocked
+                          ? Icons.lock_outline_rounded
+                          : isSigned
                           ? Icons.check_circle_outline_rounded
                           : Icons.calendar_today_outlined,
                       size: 20,
-                      color: isSigned
+                      color: isSigned || isLocked
                           ? SignmeColors.mediumGray
                           : isSelected
                           ? SignmeColors.primaryLight
@@ -996,7 +1032,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                       style: SignmeTypography.bodySmall.copyWith(
                         fontWeight:
                         isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSigned
+                        color: isSigned || isLocked
                             ? SignmeColors.mediumGray
                             : isSelected
                             ? SignmeColors.primaryLight
@@ -1007,6 +1043,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                   ],
             ),
           ),
+        ),
         );
       },
         )
