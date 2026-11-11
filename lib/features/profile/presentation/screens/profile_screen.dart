@@ -819,8 +819,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   void _showGroupesDialog(BuildContext context, UserEntity user, WidgetRef ref) {
     final canManage = AppPermissions.canManageMembers(user);
-    Set<int> selectedIds = user.groupes.map((g) => g.id).toSet();
-    int? principalId = user.groupePrincipal?.id;
+    Map<int, Set<String>> selected = {for (final g in user.groupes) g.id: g.postes.toSet()};
 
     showModalBottomSheet(
       context: context,
@@ -867,8 +866,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         error: (e, _) => Text('Chargement impossible', style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.error)),
                         data: (groupes) => GroupesMultiSelect(
                           groupes: groupes,
-                          selectedIds: selectedIds,
-                          principalId: principalId,
+                          selected: selected,
                           onAddPressed: canManage
                               ? () async {
                             final created = await showAddLookupBottomSheet<GroupeRef>(
@@ -882,10 +880,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               },
                             );
                             if (created != null) {
-                              setState(() {
-                                selectedIds = {...selectedIds, created.id};
-                                principalId ??= created.id;
-                              });
+                              setState(() => selected = {...selected, created.id: <String>{}});
                             }
                           }
                               : null,
@@ -893,18 +888,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               ? (g) async {
                             await sheetRef.read(groupesRemoteDataSourceProvider).delete(g.id);
                             sheetRef.read(groupesListProvider.notifier).removeItem(g);
-                            setState(() {
-                              selectedIds = {...selectedIds}..remove(g.id);
-                              if (principalId == g.id) {
-                                principalId = selectedIds.isNotEmpty ? selectedIds.first : null;
-                              }
-                            });
+                            setState(() => selected = {...selected}..remove(g.id));
                           }
                               : null,
-                          onChanged: (ids, principal) => setState(() {
-                            selectedIds = ids;
-                            principalId = principal;
-                          }),
+                          onChanged: (value) => setState(() => selected = value),
                         ),
                       ),
                       const SizedBox(height: SignmeSpacing.xl),
@@ -913,8 +900,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onPressed: () {
                           Navigator.pop(sheetContext);
                           _submitProfileField(context, ref, {
-                            'groupeIds': selectedIds.toList(),
-                            if (principalId != null) 'groupePrincipalId': principalId,
+                            'groupes': [
+                              for (final e in selected.entries) {'id': e.key, 'postes': e.value.toList()},
+                            ],
                           });
                         },
                       ),

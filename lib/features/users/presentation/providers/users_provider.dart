@@ -291,7 +291,6 @@ class UsersActionsNotifier extends StateNotifier<AsyncValue<void>> {
       dateNaissance: base.dateNaissance,
       quartier: base.quartier,
       ville: base.ville,
-      groupePrincipal: base.groupePrincipal,
       groupes: base.groupes,
     );
   }

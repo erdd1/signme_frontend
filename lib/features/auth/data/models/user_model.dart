@@ -28,7 +28,6 @@ class UserModel extends UserEntity {
     super.dateNaissance,
     super.quartier,
     super.ville,
-    super.groupePrincipal,
     super.groupes,
   });
 
@@ -44,7 +43,6 @@ class UserModel extends UserEntity {
 
     final quartierJson = json['quartier'];
     final villeJson = json['ville'];
-    final groupePrincipalJson = json['groupePrincipal'];
     final groupesJson = json['groupes'];
 
     return UserModel(
@@ -82,9 +80,6 @@ class UserModel extends UserEntity {
           : null,
       ville: villeJson is Map<String, dynamic>
           ? VilleRef.fromJson(villeJson)
-          : null,
-      groupePrincipal: groupePrincipalJson is Map<String, dynamic>
-          ? GroupeRef.fromJson(groupePrincipalJson)
           : null,
       groupes: groupesJson is List
           ? groupesJson
@@ -126,10 +121,7 @@ class UserModel extends UserEntity {
                 'estDiaspora': ville!.estDiaspora,
               }
             : null,
-        'groupePrincipal': groupePrincipal != null
-            ? {'id': groupePrincipal!.id, 'nom': groupePrincipal!.nom}
-            : null,
-        'groupes': groupes.map((g) => {'id': g.id, 'nom': g.nom}).toList(),
+        'groupes': groupes.map((g) => g.toJson()).toList(),
       };
 
   factory UserModel.fromEntity(UserEntity entity) {
@@ -156,7 +148,6 @@ class UserModel extends UserEntity {
       dateNaissance: entity.dateNaissance,
       quartier: entity.quartier,
       ville: entity.ville,
-      groupePrincipal: entity.groupePrincipal,
       groupes: entity.groupes,
     );
   }

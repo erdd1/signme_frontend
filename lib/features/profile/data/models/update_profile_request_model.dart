@@ -9,7 +9,9 @@ class UpdateProfileRequestModel {
   final int? quartierId;
   final int? villeId;
   final List<int>? groupeIds;
-  final int? groupePrincipalId;
+
+  /// Groupes avec poste : [{id, postes: ['president', 'tresorier']}].
+  final List<Map<String, dynamic>>? groupes;
 
   UpdateProfileRequestModel({
     this.nom,
@@ -21,7 +23,7 @@ class UpdateProfileRequestModel {
     this.quartierId,
     this.villeId,
     this.groupeIds,
-    this.groupePrincipalId,
+    this.groupes,
   });
 
   Map<String, dynamic> toJson() => {
@@ -34,7 +36,7 @@ class UpdateProfileRequestModel {
         if (quartierId != null) 'quartierId': quartierId,
         if (villeId != null) 'villeId': villeId,
         if (groupeIds != null) 'groupeIds': groupeIds,
-        if (groupePrincipalId != null) 'groupePrincipalId': groupePrincipalId,
+        if (groupes != null) 'groupes': groupes,
       };
 
   factory UpdateProfileRequestModel.fromMap(Map<String, dynamic> data) {
@@ -49,7 +51,7 @@ class UpdateProfileRequestModel {
       quartierId: (data['quartierId'] as num?)?.toInt(),
       villeId: (data['villeId'] as num?)?.toInt(),
       groupeIds: (data['groupeIds'] as List?)?.map((e) => (e as num).toInt()).toList(),
-      groupePrincipalId: (data['groupePrincipalId'] as num?)?.toInt(),
+      groupes: (data['groupes'] as List?)?.whereType<Map<String, dynamic>>().toList(),
     );
   }
 }

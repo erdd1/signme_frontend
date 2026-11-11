@@ -59,8 +59,8 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
   String? _originaireDe;
   QuartierRef? _quartier;
   VilleRef? _ville;
-  Set<int> _groupeIds = {};
-  int? _groupePrincipalId;
+  /// groupeId → postes cochés (vide = simple membre)
+  Map<int, Set<String>> _groupes = {};
 
   @override
   void initState() {
@@ -121,8 +121,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     _originaireDe = user.originaireDe;
     _quartier = user.quartier;
     _ville = user.ville;
-    _groupeIds = user.groupes.map((g) => g.id).toSet();
-    _groupePrincipalId = user.groupePrincipal?.id;
+    _groupes = {for (final g in user.groupes) g.id: g.postes.toSet()};
     _isPrefilling = false;
   }
 
@@ -576,7 +575,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
             ),
             const SizedBox(height: SignmeSpacing.lg),
 
-            // ── Groupes (multi-sélection + groupe principal) ────────────
+            // ── Groupes (multi-sélection + poste dans chaque groupe) ────────────
             groupesAsync.when(
               loading: () => const _LoadingLookupField(label: 'Groupes'),
               error: (e, _) => _LookupErrorField(
@@ -585,17 +584,13 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
               ),
               data: (groupes) => GroupesMultiSelect(
                 groupes: groupes,
-                selectedIds: _groupeIds,
-                principalId: _groupePrincipalId,
+                selected: _groupes,
                 enabled: !isSaving,
                 onAddPressed: canManageLookups ? () => _addGroupe(context) : null,
                 onDelete: canManageLookups ? (g) => _deleteGroupe(g) : null,
-                onChanged: (ids, principalId) {
+                onChanged: (selected) {
                   _markDirty();
-                  setState(() {
-                    _groupeIds = ids;
-                    _groupePrincipalId = principalId;
-                  });
+                  setState(() => _groupes = selected);
                 },
               ),
             ),
@@ -674,8 +669,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     );
     if (created != null && mounted) {
       setState(() {
-        _groupeIds = {..._groupeIds, created.id};
-        _groupePrincipalId ??= created.id;
+        _groupes = {..._groupes, created.id: <String>{}};
       });
     }
     return created;
@@ -686,10 +680,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     ref.read(groupesListProvider.notifier).removeItem(groupe);
     if (mounted) {
       setState(() {
-        _groupeIds = {..._groupeIds}..remove(groupe.id);
-        if (_groupePrincipalId == groupe.id) {
-          _groupePrincipalId = _groupeIds.isNotEmpty ? _groupeIds.first : null;
-        }
+        _groupes = {..._groupes}..remove(groupe.id);
       });
     }
   }
@@ -746,8 +737,9 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
       if (_originaireDe != null) 'originaireDe': _originaireDe,
       if (_quartier != null) 'quartierId': _quartier!.id,
       if (_ville != null) 'villeId': _ville!.id,
-      'groupeIds': _groupeIds.toList(),
-      if (_groupePrincipalId != null) 'groupePrincipalId': _groupePrincipalId,
+      'groupes': [
+        for (final e in _groupes.entries) {'id': e.key, 'postes': e.value.toList()},
+      ],
     };
 
     try {

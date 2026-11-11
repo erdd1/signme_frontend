@@ -26,7 +26,6 @@ class UserEntity extends Equatable {
     this.dateNaissance,
     this.quartier,
     this.ville,
-    this.groupePrincipal,
     this.groupes = const [],
   });
 
@@ -64,7 +63,6 @@ class UserEntity extends Equatable {
   final String? dateNaissance;
   final QuartierRef? quartier;
   final VilleRef? ville;
-  final GroupeRef? groupePrincipal;
   final List<GroupeRef> groupes;
 
   bool get isPasteur => role == 'pasteur';
@@ -114,7 +112,6 @@ class UserEntity extends Equatable {
     dateNaissance,
     quartier,
     ville,
-    groupePrincipal,
     groupes,
   ];
 }

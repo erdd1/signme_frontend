@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../auth/domain/entities/user_lookup_refs.dart';
 
-/// Sélection multiple de groupes (ministères) avec désignation d'un groupe
-/// "principal" parmi ceux cochés. Appuyer sur un groupe le sélectionne/le
-/// désélectionne ; appuyer sur l'étoile d'un groupe déjà sélectionné en fait
-/// le groupe principal. Si [onDelete] est fourni (pasteur/secrétaire), une
-/// icône de suppression (avec confirmation) apparaît sur chaque groupe.
+/// Sélection multiple de groupes avec, pour chaque groupe choisi, le poste du
+/// chrétien : simple membre (par défaut), président et/ou trésorier. Un
+/// chrétien peut cumuler président et trésorier, mais pas être « simple
+/// membre » en plus : « Membre » n'est actif que si aucun poste n'est coché.
+///
+/// Ces postes sont ceux du GROUPE — sans rapport avec le rôle du chrétien
+/// (le rôle « trésorier » de l'église reste inchangé).
+///
+/// [selected] : groupeId → postes cochés (vide = simple membre). Si
+/// [onDelete] est fourni (pasteur/secrétaire), une icône de suppression (avec
+/// confirmation) apparaît sur chaque groupe.
 class GroupesMultiSelect extends StatelessWidget {
   const GroupesMultiSelect({
     super.key,
     required this.groupes,
-    required this.selectedIds,
-    required this.principalId,
+    required this.selected,
     required this.onChanged,
     this.enabled = true,
     this.onAddPressed,
@@ -20,39 +25,34 @@ class GroupesMultiSelect extends StatelessWidget {
   });
 
   final List<GroupeRef> groupes;
-  final Set<int> selectedIds;
-  final int? principalId;
+  final Map<int, Set<String>> selected;
   final bool enabled;
   final VoidCallback? onAddPressed;
   final Future<void> Function(GroupeRef groupe)? onDelete;
+  final void Function(Map<int, Set<String>> selected) onChanged;
 
-  /// (ids sélectionnés, id du groupe principal)
-  final void Function(Set<int> ids, int? principalId) onChanged;
-
-  void _toggle(GroupeRef groupe) {
-    final ids = {...selectedIds};
-    int? newPrincipal = principalId;
-
-    if (ids.contains(groupe.id)) {
-      ids.remove(groupe.id);
-      if (newPrincipal == groupe.id) {
-        newPrincipal = ids.isNotEmpty ? ids.first : null;
-      }
+  void _toggleGroupe(GroupeRef groupe) {
+    final next = {...selected};
+    if (next.containsKey(groupe.id)) {
+      next.remove(groupe.id);
     } else {
-      ids.add(groupe.id);
-      newPrincipal ??= groupe.id;
+      next[groupe.id] = <String>{};
     }
-
-    onChanged(ids, newPrincipal);
+    onChanged(next);
   }
 
-  void _setPrincipal(GroupeRef groupe) {
-    if (!selectedIds.contains(groupe.id)) return;
-    onChanged(selectedIds, groupe.id);
+  void _togglePoste(GroupeRef groupe, String poste) {
+    final postes = {...?selected[groupe.id]};
+    postes.contains(poste) ? postes.remove(poste) : postes.add(poste);
+    onChanged({...selected, groupe.id: postes});
   }
+
+  void _setSimpleMembre(GroupeRef groupe) => onChanged({...selected, groupe.id: <String>{}});
 
   @override
   Widget build(BuildContext context) {
+    final choisis = groupes.where((g) => selected.containsKey(g.id)).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -98,27 +98,166 @@ class GroupesMultiSelect extends StatelessWidget {
             spacing: SignmeSpacing.sm,
             runSpacing: SignmeSpacing.sm,
             children: groupes.map((groupe) {
-              final isSelected = selectedIds.contains(groupe.id);
-              final isPrincipal = principalId == groupe.id;
               return _GroupeChip(
                 groupe: groupe,
-                isSelected: isSelected,
-                isPrincipal: isPrincipal,
+                isSelected: selected.containsKey(groupe.id),
                 enabled: enabled,
-                onTap: () => _toggle(groupe),
-                onTapStar: isSelected ? () => _setPrincipal(groupe) : null,
+                onTap: () => _toggleGroupe(groupe),
                 onDelete: onDelete,
               );
             }).toList(),
           ),
-        if (selectedIds.length > 1) ...[
-          const SizedBox(height: SignmeSpacing.xs),
+        if (choisis.isNotEmpty) ...[
+          const SizedBox(height: SignmeSpacing.lg),
           Text(
-            'Touchez l\'étoile pour définir le groupe principal.',
-            style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
+            'Poste dans le groupe',
+            style: SignmeTypography.inputLabel.copyWith(fontWeight: FontWeight.bold),
           ),
+          const SizedBox(height: SignmeSpacing.sm),
+          for (final groupe in choisis) ...[
+            _PosteCard(
+              groupe: groupe,
+              postes: selected[groupe.id] ?? const {},
+              enabled: enabled,
+              onSimpleMembre: () => _setSimpleMembre(groupe),
+              onTogglePoste: (poste) => _togglePoste(groupe, poste),
+            ),
+            const SizedBox(height: SignmeSpacing.sm),
+          ],
         ],
       ],
+    );
+  }
+}
+
+/// Choix du poste d'un chrétien dans un groupe : trois puces, « Membre »
+/// exclusive des deux autres qui sont cumulables.
+class _PosteCard extends StatelessWidget {
+  const _PosteCard({
+    required this.groupe,
+    required this.postes,
+    required this.enabled,
+    required this.onSimpleMembre,
+    required this.onTogglePoste,
+  });
+
+  final GroupeRef groupe;
+  final Set<String> postes;
+  final bool enabled;
+  final VoidCallback onSimpleMembre;
+  final void Function(String poste) onTogglePoste;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(SignmeSpacing.md),
+      decoration: BoxDecoration(
+        color: SignmeColors.white,
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        border: Border.all(color: SignmeColors.lightGrayBorder),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.groups_rounded, size: 18, color: SignmeColors.primaryLight),
+              const SizedBox(width: SignmeSpacing.sm),
+              Expanded(
+                child: Text(
+                  groupe.nom,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: SignmeTypography.labelMedium.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: SignmeSpacing.sm),
+          Wrap(
+            spacing: SignmeSpacing.sm,
+            runSpacing: SignmeSpacing.sm,
+            children: [
+              _PosteChip(
+                label: 'Membre',
+                icon: Icons.person_rounded,
+                selected: postes.isEmpty,
+                enabled: enabled,
+                onTap: onSimpleMembre,
+              ),
+              _PosteChip(
+                label: 'Président',
+                icon: Icons.workspace_premium_rounded,
+                selected: postes.contains(GroupePoste.president),
+                enabled: enabled,
+                onTap: () => onTogglePoste(GroupePoste.president),
+              ),
+              _PosteChip(
+                label: 'Trésorier',
+                icon: Icons.account_balance_wallet_rounded,
+                selected: postes.contains(GroupePoste.tresorier),
+                enabled: enabled,
+                onTap: () => onTogglePoste(GroupePoste.tresorier),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PosteChip extends StatelessWidget {
+  const _PosteChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: AnimatedContainer(
+          duration: SignmeSpacing.animationFast,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? SignmeColors.primaryLight.withValues(alpha: 0.08) : SignmeColors.white,
+            borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+            border: Border.all(
+              color: selected ? SignmeColors.primaryLight : SignmeColors.lightGrayBorder,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: selected ? SignmeColors.primaryLight : SignmeColors.mediumGray),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: SignmeTypography.labelSmall.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: selected ? SignmeColors.primaryLight : SignmeColors.darkGray,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -127,19 +266,15 @@ class _GroupeChip extends StatefulWidget {
   const _GroupeChip({
     required this.groupe,
     required this.isSelected,
-    required this.isPrincipal,
     required this.enabled,
     required this.onTap,
-    required this.onTapStar,
     this.onDelete,
   });
 
   final GroupeRef groupe;
   final bool isSelected;
-  final bool isPrincipal;
   final bool enabled;
   final VoidCallback onTap;
-  final VoidCallback? onTapStar;
   final Future<void> Function(GroupeRef groupe)? onDelete;
 
   @override
@@ -212,20 +347,6 @@ class _GroupeChipState extends State<_GroupeChip> {
                 color: widget.isSelected ? Colors.white : SignmeColors.black,
               ),
             ),
-            if (widget.isSelected) ...[
-              const SizedBox(width: 2),
-              GestureDetector(
-                onTap: widget.onTapStar,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(
-                    widget.isPrincipal ? Icons.star_rounded : Icons.star_border_rounded,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
             if (widget.onDelete != null) ...[
               const SizedBox(width: 2),
               if (_isDeleting)
