@@ -138,22 +138,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            evenement == null ? 'Don libre à votre église' : 'Contribution à l\'événement',
-            style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            evenement?.titre ?? churchNom ?? 'Votre église',
-            style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w800),
-          ),
-          if (evenement != null && churchNom != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              churchNom,
-              style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray),
-            ),
-          ],
+          _heroHeader(evenement?.titre, churchNom, isEvent: evenement != null),
           const SizedBox(height: SignmeSpacing.xl),
 
           SignmeStepHeader(
@@ -216,6 +201,8 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
         _sectionTitle(_isDon ? 'Montant du don (FCFA)' : 'Montant de la contribution (FCFA)'),
         _montantField(),
         const SizedBox(height: SignmeSpacing.md),
+        _quickAmounts(state.montant),
+        const SizedBox(height: SignmeSpacing.lg),
         _feeDisplay(frais, total),
 
         const SizedBox(height: SignmeSpacing.xl),
@@ -334,47 +321,202 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
     );
   }
 
-  Widget _feeDisplay(int? frais, int? total) {
-    final invalide = frais == null;
+  /// En-tête : pastille d'icône + intitulé + église, dans une carte douce.
+  Widget _heroHeader(String? titre, String? churchNom, {required bool isEvent}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg, vertical: SignmeSpacing.md),
+      padding: const EdgeInsets.all(SignmeSpacing.lg),
       decoration: BoxDecoration(
-        color: invalide ? SignmeColors.error.withOpacity(0.06) : SignmeColors.accentSky,
+        color: SignmeColors.white,
         borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        border: Border.all(
-          color: invalide
-              ? SignmeColors.error.withOpacity(0.3)
-              : SignmeColors.primaryLight.withOpacity(0.15),
-        ),
+        border: Border.all(color: SignmeColors.lightGrayBorder),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
       ),
-      child: invalide
-          ? Text(
-              'Montant invalide : entre 500 et 1 000 000 FCFA, par multiples de 50.',
-              style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.error),
-            )
-          : Row(
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+            ),
+            child: Icon(
+              isEvent ? Icons.event_available_rounded : Icons.volunteer_activism_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: SignmeSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _feeColumn(_isDon ? 'Don' : 'Contribution', FinanceFormatters.fcfaShort(_montantCtrl.text.isEmpty ? 0 : int.parse(_montantCtrl.text))),
+                Text(
+                  isEvent ? 'Contribution à l\'événement' : 'Don libre à votre église',
+                  style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
                 ),
-                Expanded(child: _feeColumn('Frais', FinanceFormatters.fcfaShort(frais))),
-                Expanded(child: _feeColumn('Total', FinanceFormatters.fcfaShort(total ?? 0), highlight: true)),
+                const SizedBox(height: 2),
+                Text(
+                  titre ?? churchNom ?? 'Votre église',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                if (isEvent && churchNom != null)
+                  Text(
+                    churchNom,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.mediumGray),
+                  ),
               ],
             ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _feeColumn(String label, String value, {bool highlight = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  static const _quickAmountValues = [500, 1000, 2000, 5000, 10000];
+
+  /// Montants rapides : même langage visuel que la grille des mois de la
+  /// signature (carte sélectionnable, bordure et ombre bleues).
+  Widget _quickAmounts(int montant) {
+    return Wrap(
+      spacing: SignmeSpacing.sm,
+      runSpacing: SignmeSpacing.sm,
       children: [
-        Text(label, style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.darkGray)),
-        const SizedBox(height: 2),
+        for (final value in _quickAmountValues)
+          Semantics(
+            button: true,
+            selected: montant == value,
+            label: FinanceFormatters.fcfaShort(value),
+            child: GestureDetector(
+              onTap: () {
+                _markDirty();
+                _montantCtrl.value = TextEditingValue(
+                  text: '$value',
+                  selection: TextSelection.collapsed(offset: '$value'.length),
+                );
+                ref.read(contributionFormProvider.notifier).setMontant(value);
+              },
+              child: AnimatedContainer(
+                duration: SignmeSpacing.animationFast,
+                padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg, vertical: SignmeSpacing.md),
+                decoration: BoxDecoration(
+                  color: montant == value
+                      ? SignmeColors.primaryLight.withOpacity(0.08)
+                      : SignmeColors.white,
+                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                  border: Border.all(
+                    color: montant == value ? SignmeColors.primaryLight : SignmeColors.lightGrayBorder,
+                    width: montant == value ? 1.5 : 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: montant == value
+                          ? SignmeColors.primaryLight.withOpacity(0.15)
+                          : Colors.black.withOpacity(0.03),
+                      blurRadius: montant == value ? 6 : 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  FinanceFormatters.fcfaShort(value),
+                  style: SignmeTypography.labelMedium.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: montant == value ? SignmeColors.primaryLight : SignmeColors.onSurface,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Récapitulatif : lignes don / frais, puis total mis en avant.
+  Widget _feeDisplay(int? frais, int? total) {
+    if (frais == null) {
+      return Container(
+        padding: const EdgeInsets.all(SignmeSpacing.lg),
+        decoration: BoxDecoration(
+          color: SignmeColors.error.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+          border: Border.all(color: SignmeColors.error.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline_rounded, color: SignmeColors.error, size: 20),
+            const SizedBox(width: SignmeSpacing.sm),
+            Expanded(
+              child: Text(
+                'Montant invalide : entre 500 et 1 000 000 FCFA, par multiples de 50.',
+                style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.error),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final montant = int.tryParse(_montantCtrl.text) ?? 0;
+    return Container(
+      padding: const EdgeInsets.all(SignmeSpacing.lg),
+      decoration: BoxDecoration(
+        color: SignmeColors.accentSky,
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        border: Border.all(color: SignmeColors.primaryLight.withOpacity(0.15)),
+      ),
+      child: Column(
+        children: [
+          _feeRow(Icons.volunteer_activism_outlined, _isDon ? 'Don' : 'Contribution', FinanceFormatters.fcfaShort(montant)),
+          const SizedBox(height: SignmeSpacing.sm),
+          _feeRow(Icons.account_balance_wallet_outlined, 'Frais', FinanceFormatters.fcfaShort(frais)),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: SignmeSpacing.md),
+            child: Divider(height: 1, color: SignmeColors.primaryLight.withOpacity(0.2)),
+          ),
+          _feeRow(Icons.payments_outlined, 'Total à payer', FinanceFormatters.fcfaShort(total ?? 0), highlight: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _feeRow(IconData icon, String label, String value, {bool highlight = false}) {
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(SignmeSpacing.radiusSm),
+          ),
+          child: Icon(icon, color: SignmeColors.primaryLight, size: 17),
+        ),
+        const SizedBox(width: SignmeSpacing.md),
+        Expanded(
+          child: Text(
+            label,
+            style: SignmeTypography.bodyMedium.copyWith(
+              color: highlight ? SignmeColors.onSurface : SignmeColors.darkGray,
+              fontWeight: highlight ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
         Text(
           value,
-          style: SignmeTypography.labelMedium.copyWith(
+          style: SignmeTypography.labelLarge.copyWith(
             fontWeight: FontWeight.w800,
             color: highlight ? SignmeColors.primaryLight : SignmeColors.black,
+            fontSize: highlight ? 18 : 15,
           ),
         ),
       ],
@@ -390,6 +532,9 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
             color: SignmeColors.white,
             borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
             border: Border.all(color: SignmeColors.lightGrayBorder),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+            ],
           ),
           child: TextFormField(
             controller: _noteCtrl,
