@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/design_system/index.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/index.dart';
+import '../../../transactions/presentation/providers/transactions_provider.dart';
+import '../../../transactions/presentation/widgets/recent_transactions_section.dart';
 import '../../domain/entities/service_entity.dart';
 import '../providers/services_provider.dart';
 import '../widgets/service_tile.dart';
@@ -44,7 +47,14 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
-      body: ListView(
+      body: RefreshIndicator(
+        color: SignmeColors.primaryLight,
+        onRefresh: () async {
+          ref.invalidate(recentTransactionsProvider);
+          await ref.read(recentTransactionsProvider.future).catchError((_) => const []);
+        },
+        child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.fromLTRB(
           SignmeSpacing.lg,
@@ -107,7 +117,7 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
                     for (final service in entry.value)
                       SizedBox(
                         width: tileWidth,
-                        child: ServiceTile(service: service, onTap: () => context.push(service.route)),
+                        child: ServiceTile(service: service, onTap: () => _open(service.route)),
                       ),
                   ],
                 );
@@ -115,8 +125,19 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
             ),
             const SizedBox(height: SignmeSpacing.xl),
           ],
+          // Aperçu des transactions : masqué pendant une recherche de service.
+          if (_controller.text.isEmpty)
+            RecentTransactionsSection(onSeeAll: () => _open(AppRoutes.servicesTransactions)),
         ],
       ),
+      ),
     );
+  }
+
+  /// Ouvre un service ; au retour, l'aperçu des transactions est rafraîchi
+  /// (un don ou un paiement vient peut-être d'être effectué).
+  Future<void> _open(String route) async {
+    await context.push(route);
+    if (mounted) ref.invalidate(recentTransactionsProvider);
   }
 }
