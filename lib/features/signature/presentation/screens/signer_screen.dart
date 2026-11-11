@@ -352,8 +352,6 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
           signedMonths: state.alreadySignedMonths,
           onToggle: (m) => ref.read(signerProvider.notifier).toggleMonth(m),
         ),
-        const SizedBox(height: SignmeSpacing.sm),
-        _limiteMois(),
         const SizedBox(height: SignmeSpacing.xl),
         SignmePrimaryButton(
           label: 'Valider',
@@ -689,8 +687,6 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
             signedMonths: state.memberSignedMonths,
             onToggle: (m) => ref.read(signerProvider.notifier).togglePresentielMonth(m),
           ),
-        const SizedBox(height: SignmeSpacing.sm),
-        _limiteMois(),
         const SizedBox(height: SignmeSpacing.xl),
         SignmePrimaryButton(
           label: 'Valider',
@@ -904,25 +900,6 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
       },
         )
       )
-    );
-  }
-
-  /// Rappel de la limite : on signe au plus jusqu'au mois prochain.
-  Widget _limiteMois() {
-    final fin = SignableMonths.last(DateTime.now()).split('-');
-    final mois = AppStrings.moisFull[int.parse(fin[1]) - 1];
-
-    return Row(
-      children: [
-        const Icon(Icons.info_outline_rounded, size: 14, color: SignmeColors.mediumGray),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            'Vous pouvez signer jusqu\'à $mois ${fin[0]} (mois prochain).',
-            style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
-          ),
-        ),
-      ],
     );
   }
 
