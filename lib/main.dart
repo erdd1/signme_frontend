@@ -17,6 +17,7 @@ import 'core/notifications/push_notification_listener.dart';
 import 'core/notifications/push_notification_service.dart';
 import 'core/utils/app_logger.dart';
 import 'core/widgets/app_error_fallback.dart';
+import 'core/widgets/keyboard_dismiss_scope.dart';
 import 'features/auth/presentation/widgets/session_expired_listener.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -136,7 +137,8 @@ class SignMeApp extends ConsumerWidget {
                   maxScaleFactor: 1.2,
                 ),
               ),
-              child: child ?? const SizedBox.shrink(),
+              // Clavier refermable partout (toucher dehors, barre « Terminé » iOS).
+              child: KeyboardDismissScope(child: child ?? const SizedBox.shrink()),
               ),
             ),
           ),
