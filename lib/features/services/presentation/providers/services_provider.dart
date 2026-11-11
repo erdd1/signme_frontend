@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../groupes/presentation/providers/groupes_provider.dart';
 import '../../domain/entities/service_entity.dart';
 
 /// Rubriques de l'écran Services.
 abstract final class ServiceSections {
   static const monEglise = 'Mon église';
+  static const mesGroupes = 'Mes groupes';
 }
 
 /// Catalogue des services. Ajouter un service = ajouter une entrée ici
@@ -22,10 +24,40 @@ final List<ServiceEntity> servicesCatalog = [
   ),
 ];
 
+/// Un service « Groupe <nom> » par groupe auquel appartient l'utilisateur
+/// (ex. « Groupe Cojeunesse »). Liste fraîche du serveur ; à défaut (chargement,
+/// hors ligne), les groupes connus du profil. Sans groupe : aucun service.
+final groupesServicesProvider = Provider<List<ServiceEntity>>((ref) {
+  final user = ref.watch(authNotifierProvider).auth?.user;
+  if (user == null) return const [];
+
+  final doServeur = ref.watch(mesGroupesProvider).valueOrNull;
+  final groupes = doServeur != null
+      ? [for (final g in doServeur) (uuid: g.uuid, nom: g.nom)]
+      : [
+          for (final g in user.groupes)
+            if (g.uuid != null) (uuid: g.uuid!, nom: g.nom),
+        ];
+
+  return [
+    for (final g in groupes)
+      ServiceEntity(
+        id: 'groupe:${g.uuid}',
+        label: 'Groupe ${g.nom}',
+        icon: Icons.groups_rounded,
+        section: ServiceSections.mesGroupes,
+        route: AppRoutes.servicesGroupe(g.uuid),
+      ),
+  ];
+});
+
 /// Services disponibles pour l'utilisateur connecté.
 final availableServicesProvider = Provider<List<ServiceEntity>>((ref) {
   final user = ref.watch(authNotifierProvider).auth?.user;
   if (user == null) return const [];
 
-  return servicesCatalog.where((s) => s.isAvailableFor(user)).toList();
+  return [
+    ...servicesCatalog.where((s) => s.isAvailableFor(user)),
+    ...ref.watch(groupesServicesProvider),
+  ];
 });

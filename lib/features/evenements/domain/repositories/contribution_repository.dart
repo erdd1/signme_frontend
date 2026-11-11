@@ -16,6 +16,8 @@ abstract class ContributionRepository {
     String? paymentOperator,
     String? paymentNumber,
     int? groupeId,
+    String? groupeUuid,
+    String? communiqueUuid,
   });
 
   Future<ContributionEntity> getStatus(String contributionUuid);
@@ -35,6 +37,8 @@ class ContributionRepositoryImpl implements ContributionRepository {
     String? paymentOperator,
     String? paymentNumber,
     int? groupeId,
+    String? groupeUuid,
+    String? communiqueUuid,
   }) async {
     final model = await _remote.initiate(
       evenementUuid: evenementUuid,
@@ -44,6 +48,8 @@ class ContributionRepositoryImpl implements ContributionRepository {
       paymentOperator: paymentOperator,
       paymentNumber: paymentNumber,
       groupeId: groupeId,
+      groupeUuid: groupeUuid,
+      communiqueUuid: communiqueUuid,
     );
     return model.toEntity();
   }

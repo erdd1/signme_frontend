@@ -30,7 +30,9 @@ class ContributionsRemoteDataSource {
   final Dio _dio;
 
   /// [evenementUuid] null = don libre à l'église (service « Faire un don »),
-  /// même corps de requête et même réponse qu'une contribution.
+  /// même corps de requête et même réponse qu'une contribution. [groupeUuid]
+  /// = contribution/don à la caisse d'un groupe ([communiqueUuid] absent =
+  /// don libre au groupe).
   Future<ContributionModel> initiate({
     String? evenementUuid,
     required int montant,
@@ -39,13 +41,18 @@ class ContributionsRemoteDataSource {
     String? paymentOperator,
     String? paymentNumber,
     int? groupeId,
+    String? groupeUuid,
+    String? communiqueUuid,
   }) async {
     try {
       final resp = await _dio.post(
-        evenementUuid == null
-            ? ApiConfig.dons
-            : ApiConfig.evenementContributions(evenementUuid),
+        groupeUuid != null
+            ? ApiConfig.groupeContributions(groupeUuid)
+            : evenementUuid == null
+                ? ApiConfig.dons
+                : ApiConfig.evenementContributions(evenementUuid),
         data: {
+          if (communiqueUuid != null) 'communiqueUuid': communiqueUuid,
           'montant': montant,
           if (note != null && note.isNotEmpty) 'note': note,
           'paymentMethod': paymentMethod,

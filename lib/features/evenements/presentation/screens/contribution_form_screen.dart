@@ -8,6 +8,7 @@ import '../../../../core/widgets/index.dart';
 import '../../../auth/domain/entities/user_lookup_refs.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
+import '../../../groupes/domain/entities/groupe_contribution_target.dart';
 import '../../domain/entities/evenement_entity.dart';
 import '../../domain/entities/card_payment_config_entity.dart';
 import '../providers/contribution_form_provider.dart';
@@ -15,11 +16,13 @@ import '../providers/contribution_form_provider.dart';
 /// Formulaire de contribution à un événement + suivi du paiement NotchPay.
 ///
 /// [evenement] null = don libre à l'église (service « Faire un don ») : même
-/// formulaire et même paiement, sans événement.
+/// formulaire et même paiement, sans événement. [groupe] = contribution ou don
+/// à la caisse d'un groupe (même formulaire, mêmes frais, même paiement).
 class ContributionFormScreen extends ConsumerStatefulWidget {
-  const ContributionFormScreen({super.key, this.evenement});
+  const ContributionFormScreen({super.key, this.evenement, this.groupe});
 
   final EvenementEntity? evenement;
+  final GroupeContributionTarget? groupe;
 
   @override
   ConsumerState<ContributionFormScreen> createState() => _ContributionFormScreenState();
@@ -31,7 +34,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
   final _phoneCtrl = TextEditingController();
   int _step = 0;
 
-  bool get _isDon => widget.evenement == null;
+  bool get _isDon => widget.evenement == null && (widget.groupe?.estDonLibre ?? true);
 
   @override
   void initState() {
@@ -76,7 +79,11 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(contributionFormProvider);
-    final groupes = ref.watch(authNotifierProvider).auth?.user.groupes ?? const <GroupeRef>[];
+    // Contribution à un groupe : l'argent va à sa caisse, le groupe du
+    // contributeur n'a pas à être choisi.
+    final groupes = widget.groupe != null
+        ? const <GroupeRef>[]
+        : ref.watch(authNotifierProvider).auth?.user.groupes ?? const <GroupeRef>[];
 
     // Carte : ouvre la page de paiement sécurisée dès qu'elle est prête, et la
     // referme (iOS) quand le paiement est terminé.
@@ -124,6 +131,8 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
     await ref.read(contributionFormProvider.notifier).effectuerPaiement(
           widget.evenement?.uuid,
           requiresGroupeSelection: requiresGroupeSelection,
+          groupeUuid: widget.groupe?.groupeUuid,
+          communiqueUuid: widget.groupe?.communiqueUuid,
         );
   }
 
@@ -138,7 +147,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _heroHeader(evenement?.titre, churchNom, isEvent: evenement != null),
+          _heroHeader(evenement?.titre ?? widget.groupe?.communiqueTitre ?? widget.groupe?.groupeNom, churchNom, isEvent: evenement != null),
           const SizedBox(height: SignmeSpacing.xl),
 
           SignmeStepHeader(
@@ -358,7 +367,11 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isEvent ? 'Contribution à l\'événement' : 'Don libre à votre église',
+                  isEvent
+                      ? 'Contribution à l\'événement'
+                      : widget.groupe != null
+                          ? (widget.groupe!.estDonLibre ? 'Don au groupe' : 'Contribution — ${widget.groupe!.groupeNom}')
+                          : 'Don libre à votre église',
                   style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray),
                 ),
                 const SizedBox(height: 2),

@@ -139,9 +139,15 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
   /// [requiresGroupeSelection] : true si l'utilisateur appartient à plusieurs
   /// groupes — la sélection est alors obligatoire (avec un seul groupe, le
   /// serveur le déduit automatiquement, aucune sélection nécessaire ici).
+  ///
+  /// [groupeUuid] : contribution/don à la CAISSE D'UN GROUPE ([communiqueUuid]
+  /// absent = don libre au groupe) — le groupe du contributeur n'a alors pas
+  /// à être choisi.
   Future<bool> effectuerPaiement(
     String? evenementUuid, {
     bool requiresGroupeSelection = false,
+    String? groupeUuid,
+    String? communiqueUuid,
   }) async {
     // Le bouton se désactive via `isLoading`, mais seulement au prochain
     // frame — un double-tap très rapide peut encore atteindre ce callback
@@ -184,6 +190,8 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
     try {
       final contribution = await _repository.initiate(
         evenementUuid: evenementUuid,
+        groupeUuid: groupeUuid,
+        communiqueUuid: communiqueUuid,
         montant: state.montant,
         note: state.note.isEmpty ? null : state.note,
         paymentMethod: state.paymentMethod,
@@ -207,7 +215,7 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
         paymentStatus: 'processing',
       );
 
-      return await _pollUntilTerminal(contribution.uuid, isDon: evenementUuid == null);
+      return await _pollUntilTerminal(contribution.uuid, isDon: evenementUuid == null && communiqueUuid == null);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,

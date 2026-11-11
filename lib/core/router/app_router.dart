@@ -17,6 +17,10 @@ import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/change_password_screen.dart';
 import '../../features/signature/presentation/screens/ma_carte_screen.dart';
 import '../../features/signature/presentation/screens/signer_screen.dart';
+import '../../features/groupes/domain/entities/groupe_contribution_target.dart';
+import '../../features/groupes/domain/entities/groupe_entities.dart';
+import '../../features/groupes/presentation/screens/communique_form_screen.dart';
+import '../../features/groupes/presentation/screens/groupe_screen.dart';
 import '../../features/services/presentation/screens/services_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
@@ -62,6 +66,7 @@ abstract final class AppRoutes {
   static const services        = '/services';
   static const servicesDon     = '/services/don';
   static const servicesTransactions = '/services/transactions';
+  static String servicesGroupe(String uuid) => '/services/groupes/$uuid';
   static const maCarte         = '/ma-carte';
   static const profile         = '/profile';
   static const changePassword  = '/profile/change-password';
@@ -550,6 +555,37 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.servicesTransactions,
         name: 'services-transactions',
         pageBuilder: (ctx, state) => _fadePage(const TransactionsScreen(), state),
+      ),
+
+      // ── Groupes : écran du groupe, communiqués, contribution — plein écran,
+      // hors shell. Le serveur vérifie le poste de l'utilisateur à chaque appel.
+      GoRoute(
+        path: '/services/groupes/:uuid',
+        name: 'services-groupe',
+        pageBuilder: (ctx, state) =>
+            _fadePage(GroupeScreen(uuid: state.pathParameters['uuid'] ?? ''), state),
+      ),
+      GoRoute(
+        path: '/services/groupes/:uuid/communique',
+        name: 'services-groupe-communique',
+        pageBuilder: (ctx, state) => _fadePage(
+          CommuniqueFormScreen(
+            groupeUuid: state.pathParameters['uuid'] ?? '',
+            communique: state.extra is CommuniqueEntity ? state.extra as CommuniqueEntity : null,
+          ),
+          state,
+        ),
+      ),
+      GoRoute(
+        path: '/services/groupes/:uuid/contribuer',
+        name: 'services-groupe-contribuer',
+        pageBuilder: (ctx, state) {
+          final cible = state.extra;
+          return _fadePage(
+            ContributionFormScreen(groupe: cible is GroupeContributionTarget ? cible : null),
+            state,
+          );
+        },
       ),
     ],
 

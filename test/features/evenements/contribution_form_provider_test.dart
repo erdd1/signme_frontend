@@ -23,8 +23,10 @@ class _FakeContributionRepository implements ContributionRepository {
     String? paymentOperator,
     String? paymentNumber,
     int? groupeId,
+    String? groupeUuid,
+    String? communiqueUuid,
   }) {
-    initiatedFor.add(evenementUuid);
+    initiatedFor.add(groupeUuid ?? evenementUuid);
     initiated.add((method: paymentMethod, operator: paymentOperator, number: paymentNumber));
     final completer = Completer<ContributionEntity>();
     pendingInitiate.add(completer);

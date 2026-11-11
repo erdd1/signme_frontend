@@ -113,6 +113,22 @@ abstract final class ApiConfig {
   // ── Services : « Faire un don » (hors événement) ──────────────────────────
   static const String dons = '/dons';
 
+  // ── Groupes (service « Groupes » — droits par poste dans le groupe) ───────
+  static const String mesGroupes = '/mes-groupes';
+  static String mesGroupe(String uuid) => '/mes-groupes/$uuid';
+  static String groupeCommuniques(String uuid) => '/mes-groupes/$uuid/communiques';
+  static String groupeCommunique(String uuid, String communiqueUuid) =>
+      '/mes-groupes/$uuid/communiques/$communiqueUuid';
+  static String groupeCommuniqueContributions(String uuid, String communiqueUuid) =>
+      '/mes-groupes/$uuid/communiques/$communiqueUuid/contributions';
+  static String groupeContributions(String uuid) => '/mes-groupes/$uuid/contributions';
+  static String groupeMouvements(String uuid) => '/mes-groupes/$uuid/mouvements';
+  static String groupeEntreesCash(String uuid) => '/mes-groupes/$uuid/entrees-cash';
+  static String groupeEntreeCashAnnuler(String uuid, String entreeUuid) =>
+      '/mes-groupes/$uuid/entrees-cash/$entreeUuid/annuler';
+  static String groupeBeneficiaire(String uuid) => '/mes-groupes/$uuid/retraits/beneficiaire';
+  static String groupeRetraits(String uuid) => '/mes-groupes/$uuid/retraits';
+
   // ── Paiement par carte (page hébergée Flutterwave) ────────────────────────
   static const String cardPaymentConfig = '/payments/card-config';
 

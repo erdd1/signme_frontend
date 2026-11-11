@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/index.dart';
+import '../../../groupes/presentation/providers/groupes_provider.dart';
 import '../../../transactions/presentation/providers/transactions_provider.dart';
 import '../../../transactions/presentation/widgets/recent_transactions_section.dart';
 import '../../domain/entities/service_entity.dart';
@@ -51,6 +52,7 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
         color: SignmeColors.primaryLight,
         onRefresh: () async {
           ref.invalidate(recentTransactionsProvider);
+          ref.invalidate(mesGroupesProvider);
           try {
             await ref.read(recentTransactionsProvider.future);
           } catch (_) {
