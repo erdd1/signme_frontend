@@ -111,4 +111,7 @@ abstract final class ApiConfig {
 
   // ── Services : « Faire un don » (hors événement) ──────────────────────────
   static const String dons = '/dons';
+
+  // ── Paiement par carte (page hébergée Flutterwave) ────────────────────────
+  static const String cardPaymentConfig = '/payments/card-config';
 }

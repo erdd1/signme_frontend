@@ -12,7 +12,7 @@ class ContributionModel {
     this.paymentOperator,
     this.paymentNumber,
     this.paymentReference,
-    this.authorizationUrl,
+    this.checkoutUrl,
     this.contributeurId,
     this.contributeurNom,
     this.contributeurGroupeNom,
@@ -32,7 +32,7 @@ class ContributionModel {
   final String? paymentOperator;
   final String? paymentNumber;
   final String? paymentReference;
-  final String? authorizationUrl;
+  final String? checkoutUrl;
   final int? contributeurId;
   final String? contributeurNom;
   final String? contributeurGroupeNom;
@@ -61,7 +61,7 @@ class ContributionModel {
       paymentOperator: json['paymentOperator']?.toString(),
       paymentNumber: json['paymentNumber']?.toString(),
       paymentReference: json['paymentReference']?.toString(),
-      authorizationUrl: json['authorizationUrl']?.toString(),
+      checkoutUrl: json['checkoutUrl']?.toString(),
       contributeurId: contributeur?['id'] == null ? null : _asInt(contributeur?['id']),
       contributeurNom: contributeur?['nom']?.toString(),
       contributeurGroupeNom: (contributeur?['groupe'] as Map<String, dynamic>?)?['nom']?.toString(),
@@ -83,7 +83,7 @@ class ContributionModel {
         paymentOperator: paymentOperator,
         paymentNumber: paymentNumber,
         paymentReference: paymentReference,
-        authorizationUrl: authorizationUrl,
+        checkoutUrl: checkoutUrl,
         contributeurId: contributeurId,
         contributeurNom: contributeurNom,
         contributeurGroupeNom: contributeurGroupeNom,

@@ -8,11 +8,14 @@ import '../../domain/repositories/contribution_repository.dart';
 /// garder les deux modules indépendants plutôt que de coupler leurs
 /// implémentations de paiement.
 class ContributionStatusPoller {
-  ContributionStatusPoller(this._repository);
+  /// [maxDuration] : 3 min pour un paiement Mobile Money (simple PUSH à
+  /// valider) ; plus long pour une carte, dont la saisie et l'éventuelle
+  /// authentification de la banque prennent du temps.
+  ContributionStatusPoller(this._repository, {this.maxDuration = const Duration(minutes: 3)});
 
   final ContributionRepository _repository;
+  final Duration maxDuration;
 
-  static const _maxDuration = Duration(minutes: 3);
   static const _intervalsMs = [2000, 3000, 4000, 5000, 6000, 8000, 10000];
 
   DateTime? _startedAt;
@@ -32,7 +35,7 @@ class ContributionStatusPoller {
     ContributionEntity? last;
 
     while (!_cancelled) {
-      if (DateTime.now().difference(_startedAt!) > _maxDuration) {
+      if (DateTime.now().difference(_startedAt!) > maxDuration) {
         return last ?? await _repository.getStatus(contributionUuid);
       }
 

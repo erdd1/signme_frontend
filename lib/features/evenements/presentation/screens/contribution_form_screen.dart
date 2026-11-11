@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/widgets/index.dart';
 import '../../../auth/domain/entities/user_lookup_refs.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/entities/evenement_entity.dart';
+import '../../domain/entities/card_payment_config_entity.dart';
 import '../providers/contribution_form_provider.dart';
+import '../widgets/payment_method_selector.dart';
 
 /// Formulaire de contribution à un événement + suivi du paiement NotchPay.
 ///
@@ -40,6 +43,19 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
     for (final controller in [_montantCtrl, _noteCtrl, _phoneCtrl]) {
       controller.addListener(_markDirty);
     }
+
+    // Taux de frais de carte fourni par le serveur (l'option carte n'apparaît
+    // que si le serveur l'active : sinon le formulaire reste inchangé).
+    ref.listenManual<AsyncValue<CardPaymentConfigEntity>>(
+      cardPaymentConfigProvider,
+      (_, next) {
+        final config = next.valueOrNull;
+        if (config != null) {
+          ref.read(contributionFormProvider.notifier).setCardFeePercent(config.feePercent);
+        }
+      },
+      fireImmediately: true,
+    );
   }
 
   @override
@@ -63,6 +79,19 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
     final state = ref.watch(contributionFormProvider);
     final groupes = ref.watch(authNotifierProvider).auth?.user.groupes ?? const <GroupeRef>[];
 
+    // Carte : ouvre la page de paiement sécurisée dès qu'elle est prête, et la
+    // referme (iOS) quand le paiement est terminé.
+    ref.listen<ContributionFormState>(contributionFormProvider, (previous, next) {
+      if (next.isCard && next.checkoutUrl != null && previous?.checkoutUrl != next.checkoutUrl) {
+        _openCheckout(next.checkoutUrl!);
+      }
+      final finished = next.paymentStatus == 'completed' || next.paymentStatus == 'failed';
+      if (next.isCard && finished && previous?.paymentStatus != next.paymentStatus) {
+        closeInAppWebView();
+      }
+    });
+    final cardConfig = ref.watch(cardPaymentConfigProvider).valueOrNull ?? CardPaymentConfigEntity.disabled;
+
     return SignmeUnsavedChangesGuard(
       child: Scaffold(
         backgroundColor: SignmeColors.background,
@@ -75,9 +104,21 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
           ),
           iconTheme: const IconThemeData(color: SignmeColors.black),
         ),
-        body: state.paymentStatus == 'idle' ? _buildForm(state, groupes) : _buildPaymentStatus(state),
+        body: state.paymentStatus == 'idle'
+            ? _buildForm(state, groupes, cardConfig)
+            : _buildPaymentStatus(state),
       ),
     );
+  }
+
+  /// Ouvre la page de paiement hébergée dans le navigateur intégré
+  /// (SFSafariViewController / Chrome Custom Tabs) : les données de carte
+  /// ne transitent jamais par SignMe.
+  Future<void> _openCheckout(String url) async {
+    final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.inAppBrowserView);
+    if (!opened && mounted) {
+      AppSnackbar.error(context, 'Impossible d\'ouvrir la page de paiement.');
+    }
   }
 
   Future<void> _submitPaiement(bool requiresGroupeSelection) async {
@@ -87,7 +128,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
         );
   }
 
-  Widget _buildForm(ContributionFormState state, List<GroupeRef> groupes) {
+  Widget _buildForm(ContributionFormState state, List<GroupeRef> groupes, CardPaymentConfigEntity cardConfig) {
     final requiresGroupeSelection = groupes.length > 1;
     final evenement = widget.evenement;
     final churchNom = evenement?.church.nom ?? ref.watch(authNotifierProvider).auth?.user.churchNom;
@@ -124,7 +165,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
 
           _step == 0
               ? _stepDetails(state, groupes, requiresGroupeSelection)
-              : _stepPaiement(state, requiresGroupeSelection),
+              : _stepPaiement(state, requiresGroupeSelection, cardConfig),
         ],
       ),
     );
@@ -192,7 +233,8 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
     );
   }
 
-  Widget _stepPaiement(ContributionFormState state, bool requiresGroupeSelection) {
+  Widget _stepPaiement(
+      ContributionFormState state, bool requiresGroupeSelection, CardPaymentConfigEntity cardConfig) {
     final total = state.total;
 
     return Column(
@@ -201,24 +243,40 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
         SignmeStepBackButton(onPressed: () => setState(() => _step = 0)),
         const SizedBox(height: SignmeSpacing.md),
 
-        _sectionTitle('Opérateur'),
-        const SizedBox(height: SignmeSpacing.sm),
-        _operatorRow(state),
+        if (cardConfig.enabled) ...[
+          _sectionTitle('Moyen de paiement'),
+          PaymentMethodSelector(
+            selected: state.paymentMethod,
+            onChanged: (method) {
+              _markDirty();
+              ref.read(contributionFormProvider.notifier).setPaymentMethod(method);
+            },
+          ),
+          const SizedBox(height: SignmeSpacing.xl),
+        ],
 
-        const SizedBox(height: SignmeSpacing.xl),
-        _sectionTitle('Numéro de paiement'),
-        const SizedBox(height: SignmeSpacing.sm),
-        _phoneField(state),
+        if (state.isCard)
+          _cardInfo(state.frais)
+        else ...[
+          _sectionTitle('Opérateur'),
+          const SizedBox(height: SignmeSpacing.sm),
+          _operatorRow(state),
+
+          const SizedBox(height: SignmeSpacing.xl),
+          _sectionTitle('Numéro de paiement'),
+          const SizedBox(height: SignmeSpacing.sm),
+          _phoneField(state),
+        ],
 
         const SizedBox(height: SignmeSpacing.xl),
         if (total != null) _summary(total),
         const SizedBox(height: SignmeSpacing.lg),
 
         SignmePrimaryButton(
-          label: 'Effectuer le paiement',
-          enabled: state.phone.length == 9,
+          label: state.isCard ? 'Payer par carte' : 'Effectuer le paiement',
+          enabled: state.isCard || state.phone.length == 9,
           isLoading: state.isLoading,
-          icon: Icons.volunteer_activism_rounded,
+          icon: state.isCard ? Icons.credit_card_rounded : Icons.volunteer_activism_rounded,
           onPressed: () => _submitPaiement(requiresGroupeSelection),
         ),
         if (state.error != null)
@@ -230,6 +288,47 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
             ),
           ),
       ],
+    );
+  }
+
+  /// Information affichée à la place de l'opérateur et du numéro quand le
+  /// paiement se fait par carte.
+  Widget _cardInfo(int? frais) {
+    return Container(
+      padding: const EdgeInsets.all(SignmeSpacing.lg),
+      decoration: BoxDecoration(
+        color: SignmeColors.accentSky,
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        border: Border.all(color: SignmeColors.primaryLight.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.lock_rounded, color: SignmeColors.primaryLight, size: 20),
+              const SizedBox(width: SignmeSpacing.sm),
+              Text(
+                'Paiement sécurisé',
+                style: SignmeTypography.labelMedium.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const SizedBox(height: SignmeSpacing.sm),
+          Text(
+            'Vous serez redirigé vers une page sécurisée pour saisir votre carte. '
+            'Vos données bancaires ne passent jamais par SignMe.',
+            style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.darkGray, height: 1.4),
+          ),
+          if (frais != null) ...[
+            const SizedBox(height: SignmeSpacing.sm),
+            Text(
+              'Frais de carte : ${FinanceFormatters.fcfaShort(frais)}',
+              style: SignmeTypography.labelSmall.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -495,7 +594,9 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
                   ? Icons.check_circle_rounded
                   : isFailed
                       ? Icons.error_outline_rounded
-                      : Icons.phone_android_rounded,
+                      : state.isCard
+                          ? Icons.credit_card_rounded
+                          : Icons.phone_android_rounded,
               color: isCompleted
                   ? SignmeColors.success
                   : isFailed
@@ -509,7 +610,9 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
                   ? (_isDon ? 'Don réussi' : 'Contribution réussie')
                   : isFailed
                       ? 'Paiement non confirmé'
-                      : 'Confirmez sur votre téléphone',
+                      : state.isCard
+                          ? 'Finalisez le paiement'
+                          : 'Confirmez sur votre téléphone',
               style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
@@ -544,6 +647,16 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
               ),
             ],
             const SizedBox(height: SignmeSpacing.xl),
+            // Carte : page de paiement fermée par erreur → on peut la rouvrir
+            // pendant que l'application suit toujours le paiement.
+            if (isProcessing && state.isCard && state.checkoutUrl != null) ...[
+              SignmeSecondaryButton(
+                label: 'Rouvrir la page de paiement',
+                icon: Icons.open_in_new_rounded,
+                onPressed: () => _openCheckout(state.checkoutUrl!),
+              ),
+              const SizedBox(height: SignmeSpacing.md),
+            ],
             if (!isProcessing)
               SignmePrimaryButton(
                 label: isFailed ? 'Réessayer' : 'Fermer',
