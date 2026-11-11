@@ -1,5 +1,7 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,6 +35,11 @@ const double _kFabSize = 62.0;
 const double _kFabLift = 24.0;
 const double _kNavHPad = 16.0;
 const double _kNavBPad = 12.0;
+
+/// Sur iPhone, la zone de sécurité du bas (~34 pt) est occupée par la barre
+/// d'accueil, qui n'a que quelques points de hauteur : la navbar peut s'y
+/// enfoncer de cette valeur sans la toucher.
+const double _kHomeIndicatorOverlap = 14.0;
 const double _kNavRadius = 28.0;
 
 /// Hauteur totale occupée par la navbar flottante (navbar + relevé du FAB),
@@ -44,6 +51,17 @@ const double _kNavRadius = 28.0;
 /// (zone de sécurité quasi nulle) et à ceux à barre de navigation 3-boutons
 /// (zone de sécurité nettement plus haute).
 const double kFloatingNavClearance = _kNavBPad + _kNavHeight + _kFabLift;
+
+/// Distance entre le bas de l'écran et la navbar flottante.
+///
+/// Sur iPhone à barre d'accueil, la navbar se pose juste au-dessus de celle-ci
+/// (≈ 20 pt) au lieu de flotter 46 pt plus haut ; ailleurs (Android, iPhone à
+/// bouton), elle garde sa marge habituelle au-dessus de la zone de sécurité.
+double floatingNavBottomOffset({required double safeBottom, required TargetPlatform platform}) {
+  if (platform != TargetPlatform.iOS) return _kNavBPad + safeBottom;
+
+  return math.max(safeBottom - _kHomeIndicatorOverlap, _kNavBPad);
+}
 
 class MainShell extends ConsumerWidget {
   const MainShell({super.key, required this.child});
@@ -144,7 +162,7 @@ class MainShell extends ConsumerWidget {
           Positioned(
             left: _kNavHPad,
             right: _kNavHPad,
-            bottom: _kNavBPad + bottomInset,
+            bottom: floatingNavBottomOffset(safeBottom: bottomInset, platform: defaultTargetPlatform),
             child: AnimatedSlide(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeInOut,
