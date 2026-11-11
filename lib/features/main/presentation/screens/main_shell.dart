@@ -26,6 +26,7 @@ import '../../../evenements/presentation/providers/evenements_provider.dart';
 import '../../../home/presentation/providers/home_feed_provider.dart';
 
 import '../../../historique_personnel/presentation/providers/historique_personnel_combined_provider.dart';
+import '../../../transactions/presentation/providers/transactions_provider.dart';
 import '../../../historique_signatures/presentation/providers/historique_signatures_provider.dart';
 
 const double _kNavHeight = 76.0;
@@ -173,6 +174,7 @@ class MainShell extends ConsumerWidget {
       AppRoutes.home => "SignMe",
       AppRoutes.finances => "Mes Finances",
       AppRoutes.services => "Services",
+      AppRoutes.servicesTransactions => "Mes transactions",
       AppRoutes.historiquePersonnel => "Mon Historique",
       AppRoutes.profile => "Mon Profil",
       AppRoutes.maCarte => "Ma Carte",
@@ -294,7 +296,8 @@ class MainShell extends ConsumerWidget {
                 ref.read(selectedActualiteCategoryProvider).badgeType,
               );
         case NavTab.services:
-          break; // catalogue statique : rien à rafraîchir
+          // Catalogue statique ; seul l'aperçu des transactions se rafraîchit.
+          ref.invalidate(recentTransactionsProvider);
         case NavTab.finances:
           ref.read(financesProvider.notifier).refreshSilently();
         case NavTab.maCarte:

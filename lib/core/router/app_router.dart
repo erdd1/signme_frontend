@@ -17,6 +17,7 @@ import '../../features/profile/presentation/screens/change_password_screen.dart'
 import '../../features/signature/presentation/screens/ma_carte_screen.dart';
 import '../../features/signature/presentation/screens/signer_screen.dart';
 import '../../features/services/presentation/screens/services_screen.dart';
+import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../features/welcome/presentation/screens/welcome_screen.dart';
 import '../../features/users/presentation/screens/users_screen.dart';
@@ -57,6 +58,7 @@ abstract final class AppRoutes {
   static const finances        = '/finances';
   static const services        = '/services';
   static const servicesDon     = '/services/don';
+  static const servicesTransactions = '/services/transactions';
   static const maCarte         = '/ma-carte';
   static const profile         = '/profile';
   static const changePassword  = '/profile/change-password';
@@ -455,6 +457,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               final evenement = state.extra as EvenementEntity;
               return _fadePage(ContributionFormScreen(evenement: evenement), state);
             },
+          ),
+          GoRoute(
+            path: AppRoutes.servicesTransactions,
+            name: 'services-transactions',
+            pageBuilder: (ctx, state) => _fadePage(const TransactionsScreen(), state),
           ),
           GoRoute(
             path: AppRoutes.servicesDon,

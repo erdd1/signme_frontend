@@ -107,4 +107,7 @@ abstract final class ApiConfig {
 
   // ── Paiement par carte (page hébergée Flutterwave) ────────────────────────
   static const String cardPaymentConfig = '/payments/card-config';
+
+  // ── Mes transactions (toutes les opérations financières de l'utilisateur) ─
+  static const String transactions = '/transactions';
 }
