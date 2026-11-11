@@ -12,6 +12,56 @@ final transactionsRemoteDataSourceProvider = Provider<TransactionsRemoteDataSour
   return TransactionsRemoteDataSource(ref.watch(dioProvider));
 });
 
+// ── Badge « nouvelle transaction » (onglet Services) ─────────────────────────
+
+/// Nombre de nouvelles transactions effectuées depuis la dernière consultation.
+/// Rafraîchi toutes les 60 s (même cadence que les autres badges) ; remis à
+/// zéro (optimiste) dès que l'utilisateur ouvre l'onglet Services.
+class TransactionsBadgeNotifier extends StateNotifier<int> {
+  TransactionsBadgeNotifier(this._remote, {required bool authenticated}) : super(0) {
+    if (!authenticated) return;
+    refresh();
+    _timer = Timer.periodic(const Duration(seconds: 60), (_) => refresh());
+  }
+
+  final TransactionsRemoteDataSource _remote;
+  Timer? _timer;
+
+  Future<void> refresh() async {
+    try {
+      final count = await _remote.nonLues();
+      if (mounted) state = count;
+    } catch (_) {
+      // Sans conséquence : le prochain sondage corrige. Le badge garde sa valeur.
+    }
+  }
+
+  /// Remise à zéro immédiate, puis confirmation côté serveur.
+  Future<void> markRead() async {
+    if (state == 0) return;
+    state = 0;
+    try {
+      await _remote.marquerLues();
+    } catch (_) {
+      refresh();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+}
+
+final transactionsBadgeProvider = StateNotifierProvider<TransactionsBadgeNotifier, int>((ref) {
+  final authenticated = ref.watch(authNotifierProvider.select((s) => s.isAuthenticated));
+  return TransactionsBadgeNotifier(
+    ref.watch(transactionsRemoteDataSourceProvider),
+    authenticated: authenticated,
+  );
+});
+
 /// Nombre de transactions affichées dans l'aperçu de l'écran Services.
 const int recentTransactionsCount = 5;
 

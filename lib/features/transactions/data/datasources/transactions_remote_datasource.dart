@@ -11,6 +11,30 @@ class TransactionsRemoteDataSource {
 
   final Dio _dio;
 
+  /// Nombre de nouvelles transactions effectuées depuis la dernière consultation
+  /// (badge de l'onglet Services).
+  Future<int> nonLues() async {
+    try {
+      final resp = await _dio.get(ApiConfig.transactionsNonLues);
+      if (resp.statusCode == 200 && ApiResponseParser.isSuccess(resp.data)) {
+        final count = ApiResponseParser.dataMap(resp.data)?['count'];
+        return count is num ? count.toInt() : 0;
+      }
+      throw ServerException(message: ApiResponseParser.message(resp.data));
+    } on DioException catch (e) {
+      throwFromDio(e);
+    }
+  }
+
+  /// « Mes transactions » consultées : le badge repart de zéro.
+  Future<void> marquerLues() async {
+    try {
+      await _dio.post(ApiConfig.transactionsLues);
+    } on DioException catch (e) {
+      throwFromDio(e);
+    }
+  }
+
   /// Transactions de l'utilisateur connecté, de la plus récente à la plus
   /// ancienne. [statut] : completed | pending | failed ; [type] :
   /// contribution | don | signature.

@@ -22,6 +22,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../badge/domain/entities/badge_count_entity.dart';
 import '../../../badge/presentation/providers/badge_provider.dart';
 import '../../../groupes/presentation/providers/groupes_provider.dart';
+import '../../../transactions/presentation/providers/transactions_provider.dart';
 import '../../../signature/presentation/providers/ma_carte_provider.dart';
 import '../../../finances/presentation/providers/finances_provider.dart';
 import '../../../rapports/presentation/providers/rapports_provider.dart';
@@ -30,7 +31,6 @@ import '../../../evenements/presentation/providers/evenements_provider.dart';
 import '../../../home/presentation/providers/home_feed_provider.dart';
 
 import '../../../historique_personnel/presentation/providers/historique_personnel_combined_provider.dart';
-import '../../../transactions/presentation/providers/transactions_provider.dart';
 import '../../../historique_signatures/presentation/providers/historique_signatures_provider.dart';
 
 const double _kNavHeight = 76.0;
@@ -346,8 +346,10 @@ class MainShell extends ConsumerWidget {
                 ref.read(selectedActualiteCategoryProvider).badgeType,
               );
         case NavTab.services:
-          // Catalogue statique ; seul l'aperçu des transactions se rafraîchit.
+          // Catalogue statique ; seul l'aperçu des transactions se rafraîchit,
+          // et le badge « nouvelle transaction » repart de zéro.
           ref.invalidate(recentTransactionsProvider);
+          ref.read(transactionsBadgeProvider.notifier).markRead();
         case NavTab.finances:
           ref.read(financesProvider.notifier).refreshSilently();
         case NavTab.maCarte:
@@ -419,9 +421,17 @@ class _FloatingNavBar extends ConsumerWidget {
     // Services, actualisé toutes les 60 s comme les autres badges.
     ref.watch(groupesBadgePollingProvider);
     final groupesNonLus = ref.watch(groupesNonLusTotalProvider);
+    // Nouvelles transactions (tout type) : même badge Services. Si l'utilisateur
+    // est déjà sur Services quand elles arrivent, il les voit tout de suite :
+    // on les marque lues sans attendre qu'il quitte l'onglet.
+    final transactionsNonLues = ref.watch(transactionsBadgeProvider);
+    final onServices = currentIndex == tabs.indexOf(NavTab.services) && isTabRoute;
+    ref.listen<int>(transactionsBadgeProvider, (_, next) {
+      if (onServices && next > 0) ref.read(transactionsBadgeProvider.notifier).markRead();
+    });
     int badgeCountForTab(NavTab tab) => switch (tab) {
       NavTab.home => badges.annonces + badges.meditations + badges.evenements,
-      NavTab.services => groupesNonLus,
+      NavTab.services => groupesNonLus + transactionsNonLues,
       _ => 0,
     };
     final half = tabs.length ~/ 2;

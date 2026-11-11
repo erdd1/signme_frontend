@@ -136,4 +136,6 @@ abstract final class ApiConfig {
 
   // ── Mes transactions (toutes les opérations financières de l'utilisateur) ─
   static const String transactions = '/transactions';
+  static const String transactionsNonLues = '/transactions/non-lues';
+  static const String transactionsLues = '/transactions/lues';
 }
