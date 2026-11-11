@@ -10,6 +10,7 @@ import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/services/sync_service.dart';
 import '../../../../core/widgets/badge_dot.dart';
+import '../../../../core/widgets/keyboard_avoiding_body.dart';
 import '../../../../core/widgets/offline_banner.dart';
 import '../../../../core/widgets/role_menu_drawer.dart';
 import '../../../../core/widgets/signme_unsaved_changes_guard.dart';
@@ -132,7 +133,10 @@ class MainShell extends ConsumerWidget {
       ),
       body: Stack(
         children: [
-          child,
+          // Le contenu se réduit avec le clavier pour que le champ en cours de
+          // saisie reste visible ; la navbar, elle, garde sa position (elle se
+          // masque déjà quand le clavier s'ouvre).
+          KeyboardAvoidingBody(child: child),
           // ── Bannière hors ligne ──
           const Positioned(
             top: 0,
