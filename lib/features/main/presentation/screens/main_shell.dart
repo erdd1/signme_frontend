@@ -198,7 +198,9 @@ class MainShell extends ConsumerWidget {
           if (GoRouterState.of(context).matchedLocation == AppRoutes.home)
             Positioned(
               right: _kNavHPad + SignmeSpacing.xs,
-              bottom: _kNavBPad + bottomInset + _kNavHeight + SignmeSpacing.md,
+              bottom: floatingNavBottomOffset(safeBottom: bottomInset, platform: defaultTargetPlatform) +
+                  _kNavHeight +
+                  SignmeSpacing.md,
               child: AnimatedSlide(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOut,
