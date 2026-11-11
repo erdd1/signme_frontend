@@ -3,6 +3,7 @@ import '../../../../core/config/api_config.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/api_response_parser.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../domain/entities/card_payment_config_entity.dart';
 import '../../domain/entities/contribution_entity.dart';
 import '../../domain/entities/contribution_filter_event_entity.dart';
 import '../../domain/entities/contributions_treasury_stats_entity.dart';
@@ -53,6 +54,21 @@ class ContributionsRemoteDataSource {
         final data = ApiResponseParser.dataMap(resp.data);
         if (data == null) throw ServerException(message: 'Réponse paiement invalide.');
         return ContributionModel.fromJson(data);
+      }
+      throw ServerException(message: ApiResponseParser.message(resp.data));
+    } on DioException catch (e) {
+      throwFromDio(e);
+    }
+  }
+
+  /// Paramètres du paiement par carte (interrupteur serveur + taux de frais).
+  Future<CardPaymentConfigEntity> fetchCardPaymentConfig() async {
+    try {
+      final resp = await _dio.get(ApiConfig.cardPaymentConfig);
+      if (resp.statusCode == 200 && ApiResponseParser.isSuccess(resp.data)) {
+        final data = ApiResponseParser.dataMap(resp.data);
+        if (data == null) throw ServerException(message: 'Réponse invalide.');
+        return CardPaymentConfigEntity.fromJson(data);
       }
       throw ServerException(message: ApiResponseParser.message(resp.data));
     } on DioException catch (e) {

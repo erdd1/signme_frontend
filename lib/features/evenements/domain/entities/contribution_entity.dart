@@ -13,7 +13,7 @@ class ContributionEntity {
     this.paymentOperator,
     this.paymentNumber,
     this.paymentReference,
-    this.authorizationUrl,
+    this.checkoutUrl,
     this.contributeurId,
     this.contributeurNom,
     this.contributeurGroupeNom,
@@ -33,7 +33,10 @@ class ContributionEntity {
   final String? paymentOperator;
   final String? paymentNumber;
   final String? paymentReference;
-  final String? authorizationUrl;
+
+  /// Page de paiement hébergée (carte bancaire) — renvoyée par le serveur à
+  /// l'initiation, tant que le paiement est en cours.
+  final String? checkoutUrl;
   final int? contributeurId;
   final String? contributeurNom;
   final String? contributeurGroupeNom;

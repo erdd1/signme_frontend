@@ -101,4 +101,7 @@ abstract final class ApiConfig {
   static const String celebrations = '/celebrations';
   static String celebrationDetail(String uuid) => '/celebrations/$uuid';
   static String celebrationMarkRead(String uuid) => '/celebrations/$uuid/read';
+
+  // ── Paiement par carte (page hébergée Flutterwave) ────────────────────────
+  static const String cardPaymentConfig = '/payments/card-config';
 }

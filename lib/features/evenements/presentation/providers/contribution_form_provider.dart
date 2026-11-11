@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../domain/card_fee_calculator.dart';
 import '../../domain/contribution_fee_calculator.dart';
+import '../../domain/entities/card_payment_config_entity.dart';
 import '../../domain/repositories/contribution_repository.dart';
 import '../utils/contribution_status_poller.dart';
 
@@ -18,7 +20,13 @@ class ContributionFormState {
     this.paymentStatus = 'idle',
     this.paymentProgress = 0.0,
     this.selectedGroupeId,
+    this.paymentMethod = methodMobileMoney,
+    this.cardFeePercent = 0,
+    this.checkoutUrl,
   });
+
+  static const methodMobileMoney = 'mobile_money';
+  static const methodCard = 'card';
 
   final int montant;
   final String note;
@@ -33,7 +41,20 @@ class ContributionFormState {
   final double paymentProgress;
   final int? selectedGroupeId;
 
-  int? get frais => ContributionFeeCalculator.calculate(montant);
+  /// mobile_money | card
+  final String paymentMethod;
+
+  /// Taux de frais de carte (en %), fourni par le serveur.
+  final double cardFeePercent;
+
+  /// Page de paiement hébergée (carte), une fois le paiement initié.
+  final String? checkoutUrl;
+
+  bool get isCard => paymentMethod == methodCard;
+
+  int? get frais => isCard
+      ? CardFeeCalculator.calculate(montant, cardFeePercent)
+      : ContributionFeeCalculator.calculate(montant);
   int? get total {
     final f = frais;
     return f == null ? null : montant + f;
@@ -67,6 +88,9 @@ class ContributionFormState {
     bool clearError = false,
     int? selectedGroupeId,
     bool clearSelectedGroupeId = false,
+    String? paymentMethod,
+    double? cardFeePercent,
+    String? checkoutUrl,
   }) =>
       ContributionFormState(
         montant: montant ?? this.montant,
@@ -82,6 +106,9 @@ class ContributionFormState {
         paymentProgress: paymentProgress ?? this.paymentProgress,
         selectedGroupeId:
             clearSelectedGroupeId ? null : selectedGroupeId ?? this.selectedGroupeId,
+        paymentMethod: paymentMethod ?? this.paymentMethod,
+        cardFeePercent: cardFeePercent ?? this.cardFeePercent,
+        checkoutUrl: checkoutUrl ?? this.checkoutUrl,
       );
 }
 
@@ -96,6 +123,9 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
   void setMontant(int montant) => state = state.copyWith(montant: montant, clearError: true);
   void setNote(String note) =>
       state = state.copyWith(note: note.length > 100 ? note.substring(0, 100) : note);
+  void setPaymentMethod(String method) =>
+      state = state.copyWith(paymentMethod: method, clearError: true);
+  void setCardFeePercent(double percent) => state = state.copyWith(cardFeePercent: percent);
   void setOperator(String op) => state = state.copyWith(operator_: op, clearError: true);
   void setPhone(String phone) => state = state.copyWith(phone: phone, clearError: true);
   void setGroupe(int? groupeId) => state = state.copyWith(
@@ -122,7 +152,9 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
       state = state.copyWith(error: 'Montant invalide.');
       return false;
     }
-    if (!ContributionFormState.isValidPhoneNumber(state.phone, state.operator_)) {
+    // Carte : pas de numéro de téléphone, la saisie se fait sur la page
+    // sécurisée du fournisseur.
+    if (!state.isCard && !ContributionFormState.isValidPhoneNumber(state.phone, state.operator_)) {
       state = state.copyWith(error: 'Numéro invalide.');
       return false;
     }
@@ -132,7 +164,12 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
     }
 
     _poller?.cancel();
-    _poller = ContributionStatusPoller(_repository);
+    _poller = ContributionStatusPoller(
+      _repository,
+      // Carte : saisie + éventuelle authentification de la banque, plus longues
+      // qu'un PUSH Mobile Money ; reste sous l'expiration serveur (15 min).
+      maxDuration: state.isCard ? const Duration(minutes: 14) : const Duration(minutes: 3),
+    );
 
     state = state.copyWith(
       isLoading: true,
@@ -147,16 +184,23 @@ class ContributionFormNotifier extends StateNotifier<ContributionFormState> {
         evenementUuid: evenementUuid,
         montant: state.montant,
         note: state.note.isEmpty ? null : state.note,
-        paymentMethod: 'mobile_money',
-        paymentOperator: state.operator_,
-        paymentNumber: state.phone,
+        paymentMethod: state.paymentMethod,
+        paymentOperator: state.isCard ? null : state.operator_,
+        paymentNumber: state.isCard ? null : state.phone,
         groupeId: state.selectedGroupeId,
       );
+
+      if (state.isCard && (contribution.checkoutUrl ?? '').isEmpty) {
+        throw StateError('Page de paiement indisponible.');
+      }
 
       state = state.copyWith(
         isLoading: false,
         contributionUuid: contribution.uuid,
-        paymentMessage: 'Validez le paiement sur votre téléphone (${state.operator_}).',
+        checkoutUrl: contribution.checkoutUrl,
+        paymentMessage: state.isCard
+            ? 'Finalisez le paiement sur la page sécurisée de votre banque.'
+            : 'Validez le paiement sur votre téléphone (${state.operator_}).',
         paymentProgress: 0.3,
         paymentStatus: 'processing',
       );
@@ -235,3 +279,14 @@ final contributionFormProvider = StateNotifierProvider.autoDispose<ContributionF
     return notifier;
   },
 );
+
+/// Paramètres du paiement par carte (interrupteur serveur + taux de frais).
+/// En cas d'erreur ou tant que le serveur n'a pas répondu, l'option carte
+/// reste masquée : le formulaire se comporte exactement comme avant.
+final cardPaymentConfigProvider = FutureProvider.autoDispose<CardPaymentConfigEntity>((ref) async {
+  try {
+    return await ref.watch(contributionsRemoteDataSourceProvider).fetchCardPaymentConfig();
+  } catch (_) {
+    return CardPaymentConfigEntity.disabled;
+  }
+});
