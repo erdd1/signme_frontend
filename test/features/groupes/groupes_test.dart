@@ -112,6 +112,20 @@ void main() {
     });
   });
 
+  group('Entrée cash rattachée', () {
+    test('un contributeur remis en main propre est reconnu', () {
+      final c = ContributeurEntity.fromJson({'nom': 'Paul', 'montant': 3000, 'date': '2026-11-12', 'cash': true});
+      expect(c.cash, isTrue);
+      expect(ContributeurEntity.fromJson({'nom': 'Paul', 'montant': 1, 'date': 'd'}).cash, isFalse);
+    });
+
+    test('lit les membres proposés pour le choix du donateur', () {
+      final m = MembreGroupeEntity.fromJson({'id': 7, 'nom': 'Ruth Manga', 'photoUrl': null});
+      expect(m.id, 7);
+      expect(m.nom, 'Ruth Manga');
+    });
+  });
+
   group('UserModel', () {
     test('lit le poste et l\'uuid de chaque groupe, sans groupe principal', () {
       final user = UserModel.fromJson({

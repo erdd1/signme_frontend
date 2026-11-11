@@ -29,6 +29,11 @@ final contributeursProvider =
   (ref, key) => ref.watch(mesGroupesRemoteDataSourceProvider).contributeurs(key.$1, key.$2),
 );
 
+/// Membres du groupe (président/trésorier) — choix du donateur d'une entrée cash.
+final groupeMembresProvider = FutureProvider.autoDispose.family<List<MembreGroupeEntity>, String>(
+  (ref, uuid) => ref.watch(mesGroupesRemoteDataSourceProvider).membres(uuid),
+);
+
 /// Compte de retrait de l'utilisateur (réservé président/trésorier).
 final groupeBeneficiaireProvider = FutureProvider.autoDispose.family(
   (ref, String uuid) => ref.watch(mesGroupesRemoteDataSourceProvider).beneficiaire(uuid),

@@ -114,7 +114,14 @@ class _Detail extends ConsumerWidget {
                             ProfilePhotoAvatar(photoUrl: c.photoUrl, displayName: c.nom, radius: 18, showViewerOnTap: false),
                             const SizedBox(width: SignmeSpacing.md),
                             Expanded(
-                              child: Text(c.nom, maxLines: 1, overflow: TextOverflow.ellipsis, style: SignmeTypography.labelMedium.copyWith(fontWeight: FontWeight.w700)),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(c.nom, maxLines: 1, overflow: TextOverflow.ellipsis, style: SignmeTypography.labelMedium.copyWith(fontWeight: FontWeight.w700)),
+                                  if (c.cash)
+                                    Text('Remis en main propre', style: SignmeTypography.labelSmall.copyWith(color: SignmeColors.mediumGray)),
+                                ],
+                              ),
                             ),
                             Text(FinanceFormatters.fcfaShort(c.montant), style: SignmeTypography.labelMedium.copyWith(fontWeight: FontWeight.w800, color: SignmeColors.primaryLight)),
                           ],

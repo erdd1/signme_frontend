@@ -86,9 +86,26 @@ class MesGroupesRemoteDataSource {
         },
       );
 
-  Future<void> enregistrerCash(String uuid, {required int montant, String? donateur, String? note}) => _call(
+  Future<List<MembreGroupeEntity>> membres(String uuid) => _call(
+        () => _dio.get(ApiConfig.groupeMembres(uuid)),
+        (r) => ApiResponseParser.extractList(r.data).map(MembreGroupeEntity.fromJson).toList(),
+      );
+
+  /// [communiqueUuid] / [membreId] : rattachement facultatif de l'argent reçu
+  /// à un communiqué et au membre qui l'a remis.
+  Future<void> enregistrerCash(
+    String uuid, {
+    required int montant,
+    String? donateur,
+    String? note,
+    String? communiqueUuid,
+    int? membreId,
+  }) =>
+      _call(
         () => _dio.post(ApiConfig.groupeEntreesCash(uuid), data: {
           'montant': montant,
+          if (communiqueUuid != null) 'communiqueUuid': communiqueUuid,
+          if (membreId != null) 'membreId': membreId,
           if (donateur != null && donateur.isNotEmpty) 'donateur': donateur,
           if (note != null && note.isNotEmpty) 'note': note,
         }),
