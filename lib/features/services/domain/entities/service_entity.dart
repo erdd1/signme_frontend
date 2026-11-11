@@ -17,7 +17,7 @@ class ServiceEntity {
   final String label;
   final IconData icon;
 
-  /// Rubrique sous laquelle la tuile est rangée (ex. « Mon église »).
+  /// Rubrique sous laquelle la tuile est rangée (ex. « Mes activités »).
   final String section;
 
   /// Route ouverte au toucher de la tuile.

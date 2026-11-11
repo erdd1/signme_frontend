@@ -9,7 +9,7 @@ const _don = ServiceEntity(
   id: 'don',
   label: 'Faire un don',
   icon: Icons.volunteer_activism_rounded,
-  section: 'Mon église',
+  section: 'Mes activités',
   route: '/services/don',
 );
 
@@ -45,7 +45,7 @@ void main() {
     });
 
     test('cherche aussi dans la rubrique', () {
-      expect(filterServices([_don, _rapport], 'eglise'), [_don]);
+      expect(filterServices([_don, _rapport], 'activites'), [_don]);
       expect(filterServices([_don, _rapport], 'documents'), [_rapport]);
     });
 

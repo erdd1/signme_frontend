@@ -8,7 +8,7 @@ import '../../domain/entities/service_entity.dart';
 
 /// Rubriques de l'écran Services.
 abstract final class ServiceSections {
-  static const monEglise = 'Mon église';
+  static const mesActivites = 'Mes activités';
 }
 
 /// Catalogue des services. Ajouter un service = ajouter une entrée ici
@@ -18,7 +18,7 @@ final List<ServiceEntity> servicesCatalog = [
     id: 'don',
     label: 'Faire un don',
     icon: Icons.volunteer_activism_rounded,
-    section: ServiceSections.monEglise,
+    section: ServiceSections.mesActivites,
     route: AppRoutes.servicesDon,
   ),
 ];
@@ -44,8 +44,8 @@ final groupesServicesProvider = Provider<List<ServiceEntity>>((ref) {
         id: 'groupe:${g.uuid}',
         label: 'Groupe ${g.nom}',
         icon: Icons.groups_rounded,
-        // Même rubrique que « Faire un don » : les groupes sont des services de l'église.
-        section: ServiceSections.monEglise,
+        // Même rubrique que « Faire un don ».
+        section: ServiceSections.mesActivites,
         route: AppRoutes.servicesGroupe(g.uuid),
       ),
   ];
