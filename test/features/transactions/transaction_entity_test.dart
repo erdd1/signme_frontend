@@ -47,7 +47,7 @@ void main() {
       expect(t.montantTotal, 1100);
       expect(t.account, '+237 6 99 80 31 65');
       expect(t.typeLabel, 'Contribution à un événement');
-      expect(t.createdAt.isUtc || t.createdAt.timeZoneOffset != null, isTrue);
+      expect(t.createdAt.toUtc(), DateTime.utc(2026, 11, 11, 1, 14, 5)); // 02:14 à Douala
     });
 
     test('un paiement par carte affiche la marque et les 4 derniers chiffres', () {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/design_system/index.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/index.dart';
 import '../providers/transactions_provider.dart';
 import '../widgets/transaction_detail_sheet.dart';
@@ -10,6 +12,9 @@ import '../widgets/transactions_filter_sheet.dart';
 
 /// Historique des transactions : toutes les opérations financières de
 /// l'utilisateur, avec recherche, filtres et défilement infini.
+///
+/// Plein écran, hors coquille (ni appbar ni navbar du shell) : bouton retour
+/// et grand titre, comme un relevé.
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
 
@@ -43,16 +48,32 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final state = ref.watch(transactionsHistoryProvider);
     final notifier = ref.read(transactionsHistoryProvider.notifier);
 
-    final keyboardInset = MediaQuery.of(context).viewInsets.bottom;
-    final bottomPadding =
-        keyboardInset > 0 ? keyboardInset + SignmeSpacing.lg : SignmeSpacing.navbarClearance;
+    final bottomPadding = MediaQuery.of(context).padding.bottom + SignmeSpacing.xl;
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
+      appBar: AppBar(
+        backgroundColor: SignmeColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
+          tooltip: 'Retour',
+          onPressed: () => context.canPop() ? context.pop() : context.go(AppRoutes.services),
+        ),
+      ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.sm, SignmeSpacing.lg, SignmeSpacing.md),
+            padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, 0, SignmeSpacing.lg, SignmeSpacing.lg),
+            child: Text(
+              'Historique des transactions',
+              style: SignmeTypography.displaySmall.copyWith(fontWeight: FontWeight.w900, height: 1.2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, 0, SignmeSpacing.lg, SignmeSpacing.md),
             child: Row(
               children: [
                 Expanded(

@@ -51,7 +51,11 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
         color: SignmeColors.primaryLight,
         onRefresh: () async {
           ref.invalidate(recentTransactionsProvider);
-          await ref.read(recentTransactionsProvider.future).catchError((_) => const []);
+          try {
+            await ref.read(recentTransactionsProvider.future);
+          } catch (_) {
+            // L'erreur s'affiche dans la section : le geste de rafraîchissement se termine.
+          }
         },
         child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
