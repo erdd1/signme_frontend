@@ -11,6 +11,9 @@ class _FakeContributionRepository implements ContributionRepository {
   /// Destination de chaque paiement lancé (null = don libre, sans événement).
   final List<String?> initiatedFor = [];
 
+  /// Derniers paramètres de paiement reçus par initiate().
+  final List<({String method, String? operator, String? number})> initiated = [];
+
   @override
   Future<ContributionEntity> initiate({
     String? evenementUuid,
@@ -22,6 +25,7 @@ class _FakeContributionRepository implements ContributionRepository {
     int? groupeId,
   }) {
     initiatedFor.add(evenementUuid);
+    initiated.add((method: paymentMethod, operator: paymentOperator, number: paymentNumber));
     final completer = Completer<ContributionEntity>();
     pendingInitiate.add(completer);
     return completer.future;
@@ -110,6 +114,77 @@ void main() {
       expect(await done, isTrue);
       expect(repo.initiatedFor, ['evenement-uuid']);
       expect(notifier.state.paymentMessage, contains('votre contribution'));
+    });
+  });
+
+  group('paiement par carte', () {
+    ContributionEntity pending({String? checkoutUrl}) => ContributionEntity(
+          uuid: 'contrib-carte',
+          montant: 1000,
+          frais: 53,
+          montantTotal: 1053,
+          statut: 'pending',
+          createdAt: DateTime.now(),
+          checkoutUrl: checkoutUrl,
+        );
+
+    test('les frais de carte suivent le taux du serveur, pas la grille Mobile Money', () {
+      final notifier = ContributionFormNotifier(_FakeContributionRepository());
+      addTearDown(notifier.disposePoller);
+      notifier.setMontant(1000);
+
+      expect(notifier.state.frais, 100); // grille Mobile Money
+
+      notifier
+        ..setCardFeePercent(5)
+        ..setPaymentMethod('card');
+
+      expect(notifier.state.isCard, isTrue);
+      expect(notifier.state.frais, 53); // 1000 / 0,95 = 1052,6 -> total 1053
+      expect(notifier.state.total, 1053);
+    });
+
+    test('un paiement par carte n\'exige ni numéro ni opérateur et envoie la méthode card', () async {
+      final repo = _FakeContributionRepository();
+      final notifier = ContributionFormNotifier(repo);
+      addTearDown(notifier.disposePoller);
+      notifier
+        ..setCardFeePercent(5)
+        ..setPaymentMethod('card'); // aucun numéro saisi
+
+      final done = notifier.effectuerPaiement('evenement-uuid');
+      repo.pendingInitiate.single.complete(pending(checkoutUrl: 'https://checkout.test/pay/1'));
+
+      expect(await done, isTrue);
+      expect(repo.initiated.single, (method: 'card', operator: null, number: null));
+      expect(notifier.state.checkoutUrl, 'https://checkout.test/pay/1');
+    });
+
+    test('le Mobile Money exige toujours un numéro valide', () async {
+      final repo = _FakeContributionRepository();
+      final notifier = ContributionFormNotifier(repo);
+      addTearDown(notifier.disposePoller);
+
+      expect(await notifier.effectuerPaiement('evenement-uuid'), isFalse);
+
+      expect(notifier.state.error, 'Numéro invalide.');
+      expect(repo.initiated, isEmpty);
+    });
+
+    test('sans page de paiement renvoyée, l\'erreur est affichée et rien n\'est suivi', () async {
+      final repo = _FakeContributionRepository();
+      final notifier = ContributionFormNotifier(repo);
+      addTearDown(notifier.disposePoller);
+      notifier
+        ..setCardFeePercent(5)
+        ..setPaymentMethod('card');
+
+      final done = notifier.effectuerPaiement('evenement-uuid');
+      repo.pendingInitiate.single.complete(pending()); // pas de checkoutUrl
+
+      expect(await done, isFalse);
+      expect(notifier.state.paymentStatus, 'failed');
+      expect(notifier.state.checkoutUrl, isNull);
     });
   });
 }
