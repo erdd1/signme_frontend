@@ -10,6 +10,7 @@ import '../providers/transactions_provider.dart';
 Future<void> showTransactionsFilterSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     backgroundColor: SignmeColors.white,
     showDragHandle: true,
     shape: const RoundedRectangleBorder(

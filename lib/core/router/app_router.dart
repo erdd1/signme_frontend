@@ -465,11 +465,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
-            path: AppRoutes.servicesTransactions,
-            name: 'services-transactions',
-            pageBuilder: (ctx, state) => _fadePage(const TransactionsScreen(), state),
-          ),
-          GoRoute(
             path: AppRoutes.servicesDon,
             name: 'services-don',
             pageBuilder: (ctx, state) => _fadePage(const ContributionFormScreen(), state),
@@ -547,6 +542,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
           return _fadePage(ChantDetailScreen(chantId: id), state);
         },
+      ),
+
+      // ── Historique des transactions — plein écran, hors shell : bouton
+      // retour et grand titre, sans appbar ni navbar du shell.
+      GoRoute(
+        path: AppRoutes.servicesTransactions,
+        name: 'services-transactions',
+        pageBuilder: (ctx, state) => _fadePage(const TransactionsScreen(), state),
       ),
     ],
 

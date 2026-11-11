@@ -199,7 +199,6 @@ class MainShell extends ConsumerWidget {
       AppRoutes.home => "SignMe",
       AppRoutes.finances => "Mes Finances",
       AppRoutes.services => "Services",
-      AppRoutes.servicesTransactions => "Mes transactions",
       AppRoutes.historiquePersonnel => "Mon Historique",
       AppRoutes.profile => "Mon Profil",
       AppRoutes.maCarte => "Ma Carte",
