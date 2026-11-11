@@ -12,7 +12,7 @@ import '../../domain/entities/groupe_entities.dart';
 import '../providers/groupes_provider.dart';
 import '../widgets/groupe_sheet.dart';
 
-/// Création ou modification d'un communiqué (président du groupe).
+/// Création ou modification d'un communiqué (président ou trésorier du groupe).
 /// [communique] null = création. Plein écran, hors coquille.
 class CommuniqueFormScreen extends ConsumerStatefulWidget {
   const CommuniqueFormScreen({super.key, required this.groupeUuid, this.communique});

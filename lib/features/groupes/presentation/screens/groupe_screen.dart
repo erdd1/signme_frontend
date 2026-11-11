@@ -21,8 +21,7 @@ import '../widgets/mouvement_tile.dart';
 /// historique des entrées/sorties d'argent. Ce que chaque membre peut faire
 /// dépend de son POSTE dans le groupe (le serveur le vérifie aussi) :
 ///   membre    : lire, contribuer, faire un don
-///   président : + publier/modifier/retirer les communiqués
-///   président ou trésorier : + entrées cash, retraits
+///   président ou trésorier : + publier/modifier/retirer les communiqués, entrées cash, retraits
 class GroupeScreen extends ConsumerStatefulWidget {
   const GroupeScreen({super.key, required this.uuid});
 
@@ -79,7 +78,7 @@ class _GroupeScreenState extends ConsumerState<GroupeScreen> {
       context,
       groupeUuid: groupe.uuid,
       communique: communique,
-      peutGerer: groupe.estPresident,
+      peutGerer: groupe.estResponsable,
     );
     if (!mounted || action == null) return;
 
@@ -275,7 +274,7 @@ class _GroupeScreenState extends ConsumerState<GroupeScreen> {
     final async = ref.watch(communiquesProvider(widget.uuid));
 
     return [
-      if (groupe.estPresident) ...[
+      if (groupe.estResponsable) ...[
         SignmeSecondaryButton(
           label: 'Nouveau communiqué',
           icon: Icons.campaign_rounded,
