@@ -5,11 +5,14 @@ import '../../domain/repositories/signature_repository.dart';
 
 /// Polling exponentiel du statut paiement (comme les apps Mobile Money).
 class PaymentStatusPoller {
-  PaymentStatusPoller(this._repository);
+  /// [maxDuration] : 3 min suffisent pour valider un PUSH Mobile Money ; la
+  /// carte (saisie + authentification bancaire) demande plus, tout en restant
+  /// sous l'expiration serveur (15 min).
+  PaymentStatusPoller(this._repository, {this.maxDuration = const Duration(minutes: 3)});
 
   final SignatureRepository _repository;
+  final Duration maxDuration;
 
-  static const _maxDuration = Duration(minutes: 3);
   static const _intervalsMs = [2000, 3000, 4000, 5000, 6000, 8000, 10000];
 
   Timer? _timer;
@@ -34,7 +37,7 @@ class PaymentStatusPoller {
     PaymentTransactionStatus? last;
 
     while (!_cancelled) {
-      if (DateTime.now().difference(_startedAt!) > _maxDuration) {
+      if (DateTime.now().difference(_startedAt!) > maxDuration) {
         return last ??
             PaymentTransactionStatus(
               status: 'pending',

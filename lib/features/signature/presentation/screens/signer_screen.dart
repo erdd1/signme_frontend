@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/widgets/index.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../evenements/domain/entities/card_payment_config_entity.dart';
+import '../../../evenements/presentation/providers/contribution_form_provider.dart';
+import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../providers/signer_provider.dart';
 import '../providers/ma_carte_provider.dart';
 
@@ -56,6 +60,19 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
       if (mounted) ref.read(formDirtyProvider.notifier).state = false;
     });
     _phoneCtrl.addListener(_markDirty);
+
+    // Taux de frais de carte fourni par le serveur (l'option carte n'apparaît
+    // que si le serveur l'active : sinon le formulaire reste inchangé).
+    ref.listenManual<AsyncValue<CardPaymentConfigEntity>>(
+      cardPaymentConfigProvider,
+      (_, next) {
+        final config = next.valueOrNull;
+        if (config != null) {
+          ref.read(signerProvider.notifier).setCardFeePercent(config.feePercent);
+        }
+      },
+      fireImmediately: true,
+    );
   }
 
   @override
@@ -79,6 +96,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
     final state = ref.watch(signerProvider);
     final user = ref.watch(authNotifierProvider).auth?.user;
     final canPres = user != null && AppPermissions.canSignPresentiel(user);
+    final cardEnabled = ref.watch(cardPaymentConfigProvider).valueOrNull?.enabled ?? false;
 
     // Paroissien non communiant : ni signature à distance (pour lui-même)
     // ni présentiel (n'a jamais ce droit) — écran entièrement bloqué, même
@@ -99,6 +117,15 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
       if (next.error != null && next.error != previous?.error) {
         AppSnackbar.error(context, next.error!);
         ref.read(signerProvider.notifier).clearError();
+      }
+      // Carte : ouvre la page de paiement sécurisée dès qu'elle est prête, et
+      // la referme (iOS) quand le paiement est terminé.
+      if (next.isCard && next.checkoutUrl != null && previous?.checkoutUrl != next.checkoutUrl) {
+        _openCheckout(next.checkoutUrl!);
+      }
+      final finished = next.paymentStatus == 'completed' || next.paymentStatus == 'failed';
+      if (next.isCard && finished && previous?.paymentStatus != next.paymentStatus) {
+        closeInAppWebView();
       }
     });
 
@@ -135,9 +162,9 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
             child: canPres
                 ? TabBarView(
               controller: _tab,
-              children: [_distanceForm(state), _presentielForm(state)],
+              children: [_distanceForm(state, cardEnabled), _presentielForm(state)],
             )
-                : _distanceForm(state),
+                : _distanceForm(state, cardEnabled),
           ),
         ],
       ),
@@ -163,6 +190,8 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                   ? Icons.check_circle_rounded
                   : isFailed
                   ? Icons.error_outline_rounded
+                  : state.isCard
+                  ? Icons.credit_card_rounded
                   : Icons.phone_android_rounded,
               color: isCompleted
                   ? SignmeColors.success
@@ -177,6 +206,8 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                   ? 'Paiement réussi'
                   : isFailed
                   ? 'Paiement non confirmé'
+                  : state.isCard
+                  ? 'Finalisez le paiement'
                   : 'Confirmez sur votre téléphone',
               style: SignmeTypography.headlineSmall
                   .copyWith(fontWeight: FontWeight.bold),
@@ -219,6 +250,16 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
               ),
             ],
             const SizedBox(height: SignmeSpacing.xl),
+            // Carte : page de paiement fermée par erreur → on peut la rouvrir
+            // pendant que l'application suit toujours le paiement.
+            if (isProcessing && state.isCard && state.checkoutUrl != null) ...[
+              SignmeSecondaryButton(
+                label: 'Rouvrir la page de paiement',
+                icon: Icons.open_in_new_rounded,
+                onPressed: () => _openCheckout(state.checkoutUrl!),
+              ),
+              const SizedBox(height: SignmeSpacing.md),
+            ],
             if (!isProcessing)
               SignmePrimaryButton(
                 label: isFailed ? 'Réessayer' : 'Fermer',
@@ -265,9 +306,9 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
 
   /// Formulaire à distance en 2 étapes : (1) période — montant/année/mois,
   /// validée côté backend comme avant (aucune règle métier déplacée ici) ;
-  /// (2) paiement — opérateur mobile money + numéro (la carte bancaire ne
-  /// fonctionne pas en production, retirée du choix proposé à l'utilisateur).
-  Widget _distanceForm(SignerState state) {
+  /// (2) paiement — Mobile Money (opérateur + numéro) ou, si le serveur
+  /// l'active, carte bancaire via une page de paiement sécurisée.
+  Widget _distanceForm(SignerState state, bool cardEnabled) {
     return Form(
       key: _formKey,
       child: Padding(
@@ -285,7 +326,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
                 padding: const EdgeInsets.only(bottom: 120),
                 child: _distanceStep == 0
                     ? _distanceStepPeriode(state)
-                    : _distanceStepPaiement(state),
+                    : _distanceStepPaiement(state, cardEnabled),
               ),
             ),
           ],
@@ -320,7 +361,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
     );
   }
 
-  Widget _distanceStepPaiement(SignerState state) {
+  Widget _distanceStepPaiement(SignerState state, bool cardEnabled) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -329,21 +370,41 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
         _sectionTitle('Montant de la signature'),
         _amountDropdown(state, false),
         const SizedBox(height: SignmeSpacing.md),
-        _feeDisplay(state),
-        const SizedBox(height: SignmeSpacing.xl),
-        _sectionTitle('Opérateur'),
-        const SizedBox(height: SignmeSpacing.sm),
-        _operatorRow(state),
-        const SizedBox(height: SignmeSpacing.xl),
-        _sectionTitle('Numéro de paiement'),
-        const SizedBox(height: SignmeSpacing.sm),
-        _phoneField(state),
+        if (!state.isCard) ...[
+          _feeDisplay(state),
+          const SizedBox(height: SignmeSpacing.xl),
+        ],
+        if (cardEnabled) ...[
+          _sectionTitle('Moyen de paiement'),
+          SignmePaymentMethodSelector(
+            selected: state.paymentMethod,
+            onChanged: (method) {
+              _markDirty();
+              ref.read(signerProvider.notifier).setPaymentMethod(method);
+            },
+          ),
+          const SizedBox(height: SignmeSpacing.xl),
+        ],
+        if (state.isCard)
+          SignmeCardPaymentInfo(
+            feesLabel: state.cardFees == null ? null : FinanceFormatters.fcfaShort(state.cardFees!),
+          )
+        else ...[
+          _sectionTitle('Opérateur'),
+          const SizedBox(height: SignmeSpacing.sm),
+          _operatorRow(state),
+          const SizedBox(height: SignmeSpacing.xl),
+          _sectionTitle('Numéro de paiement'),
+          const SizedBox(height: SignmeSpacing.sm),
+          _phoneField(state),
+        ],
         const SizedBox(height: SignmeSpacing.xl),
         _summary(state),
         const SizedBox(height: SignmeSpacing.lg),
         SignmePrimaryButton(
-          label: 'Confirmer le paiement',
-          enabled: state.phone.length == 9,
+          label: state.isCard ? 'Payer par carte' : 'Confirmer le paiement',
+          icon: state.isCard ? Icons.credit_card_rounded : null,
+          enabled: state.isCard || state.phone.length == 9,
           isLoading: state.isLoading,
           onPressed: _submitDistance,
         ),
@@ -1261,6 +1322,16 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
       ),
     ),
   );
+
+  /// Ouvre la page de paiement hébergée dans le navigateur intégré
+  /// (SFSafariViewController / Chrome Custom Tabs) : les données de carte
+  /// ne transitent jamais par SignMe.
+  Future<void> _openCheckout(String url) async {
+    final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.inAppBrowserView);
+    if (!opened && mounted) {
+      AppSnackbar.error(context, 'Impossible d\'ouvrir la page de paiement.');
+    }
+  }
 
   Future<void> _submitDistance() async {
     final notifier = ref.read(signerProvider.notifier);

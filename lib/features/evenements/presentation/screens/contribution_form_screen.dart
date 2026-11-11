@@ -11,7 +11,6 @@ import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/entities/evenement_entity.dart';
 import '../../domain/entities/card_payment_config_entity.dart';
 import '../providers/contribution_form_provider.dart';
-import '../widgets/payment_method_selector.dart';
 
 /// Formulaire de contribution à un événement + suivi du paiement NotchPay.
 ///
@@ -245,7 +244,7 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
 
         if (cardConfig.enabled) ...[
           _sectionTitle('Moyen de paiement'),
-          PaymentMethodSelector(
+          SignmePaymentMethodSelector(
             selected: state.paymentMethod,
             onChanged: (method) {
               _markDirty();
@@ -256,7 +255,9 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
         ],
 
         if (state.isCard)
-          _cardInfo(state.frais)
+          SignmeCardPaymentInfo(
+            feesLabel: state.frais == null ? null : FinanceFormatters.fcfaShort(state.frais!),
+          )
         else ...[
           _sectionTitle('Opérateur'),
           const SizedBox(height: SignmeSpacing.sm),
@@ -288,47 +289,6 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
             ),
           ),
       ],
-    );
-  }
-
-  /// Information affichée à la place de l'opérateur et du numéro quand le
-  /// paiement se fait par carte.
-  Widget _cardInfo(int? frais) {
-    return Container(
-      padding: const EdgeInsets.all(SignmeSpacing.lg),
-      decoration: BoxDecoration(
-        color: SignmeColors.accentSky,
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        border: Border.all(color: SignmeColors.primaryLight.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.lock_rounded, color: SignmeColors.primaryLight, size: 20),
-              const SizedBox(width: SignmeSpacing.sm),
-              Text(
-                'Paiement sécurisé',
-                style: SignmeTypography.labelMedium.copyWith(fontWeight: FontWeight.w800),
-              ),
-            ],
-          ),
-          const SizedBox(height: SignmeSpacing.sm),
-          Text(
-            'Vous serez redirigé vers une page sécurisée pour saisir votre carte. '
-            'Vos données bancaires ne passent jamais par SignMe.',
-            style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.darkGray, height: 1.4),
-          ),
-          if (frais != null) ...[
-            const SizedBox(height: SignmeSpacing.sm),
-            Text(
-              'Frais de carte : ${FinanceFormatters.fcfaShort(frais)}',
-              style: SignmeTypography.labelSmall.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ],
-        ],
-      ),
     );
   }
 

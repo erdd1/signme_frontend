@@ -20,6 +20,7 @@ class _PendingSearch {
 class _FakeSignatureRepository implements SignatureRepository {
   final List<_PendingSearch> pending = [];
   final List<Completer<DistancePaymentInitResult>> pendingPayments = [];
+  final List<Map<String, Object?>> paymentRequests = [];
 
   @override
   Future<List<UserEntity>> searchMembers(String query) {
@@ -39,6 +40,12 @@ class _FakeSignatureRepository implements SignatureRepository {
     String? paymentOperator,
     String? phoneNumber,
   }) {
+    paymentRequests.add({
+      'amount': amount,
+      'paymentMethod': paymentMethod,
+      'paymentOperator': paymentOperator,
+      'phoneNumber': phoneNumber,
+    });
     final completer = Completer<DistancePaymentInitResult>();
     pendingPayments.add(completer);
     return completer.future;
@@ -160,4 +167,102 @@ void main() {
       expect(await first, isTrue);
     },
   );
+
+  group('paiement par carte', () {
+    const checkout = 'https://checkout.flutterwave.test/pay/sig123';
+
+    SignerNotifier cardNotifier(_FakeSignatureRepository repo) {
+      final notifier = SignerNotifier(repo);
+      addTearDown(notifier.dispose);
+      notifier.setPaymentMethod('card');
+      notifier.setCardFeePercent(5);
+      notifier.setAmount(1000);
+      notifier.toggleMonth('2026-01');
+      notifier.toggleMonth('2026-02');
+      return notifier;
+    }
+
+    test('le total est majoré des frais de carte, à la charge du fidèle', () {
+      final notifier = cardNotifier(_FakeSignatureRepository());
+
+      expect(notifier.state.netAmount, 2000);
+      expect(notifier.state.totalAmount, 2106); // 2000 / 0,95 = 2105,3 -> 2106
+      expect(notifier.state.cardFees, 106);
+    });
+
+    test('Mobile Money garde ses frais fixes par mois (inchangé)', () {
+      final notifier = cardNotifier(_FakeSignatureRepository());
+      notifier.setPaymentMethod('mobile_money');
+
+      expect(notifier.state.totalAmount, 2100); // (1000 + 50) x 2
+      expect(notifier.state.cardFees, 106);
+    });
+
+    test('sans numéro ni opérateur : la carte part avec method=card', () async {
+      final repo = _FakeSignatureRepository();
+      final notifier = cardNotifier(repo);
+
+      final future = notifier.initiateDistance();
+      expect(repo.paymentRequests.single, {
+        'amount': 1000,
+        'paymentMethod': 'card',
+        'paymentOperator': null,
+        'phoneNumber': null,
+      });
+
+      repo.pendingPayments.single.complete(const DistancePaymentInitResult(
+        transactionId: 7,
+        paymentReference: 'SIGNME-SIG-1',
+        totalAmount: 2106,
+        checkoutUrl: checkout,
+      ));
+      expect(await future, isTrue);
+      expect(notifier.state.checkoutUrl, checkout);
+      expect(notifier.state.paymentStatus, 'completed');
+    });
+
+    test('sans page de paiement renvoyée : échec propre, rien à ouvrir', () async {
+      final repo = _FakeSignatureRepository();
+      final notifier = cardNotifier(repo);
+
+      final future = notifier.initiateDistance();
+      repo.pendingPayments.single.complete(const DistancePaymentInitResult(
+        transactionId: 7,
+        paymentReference: 'SIGNME-SIG-1',
+        totalAmount: 2106,
+      ));
+
+      expect(await future, isFalse);
+      expect(notifier.state.paymentStatus, 'failed');
+      expect(notifier.state.checkoutUrl, isNull);
+    });
+
+    test('Mobile Money exige toujours un numéro valide', () async {
+      final repo = _FakeSignatureRepository();
+      final notifier = cardNotifier(repo);
+      notifier.setPaymentMethod('mobile_money');
+      notifier.setPhone('123');
+
+      expect(await notifier.initiateDistance(), isFalse);
+      expect(repo.paymentRequests, isEmpty);
+      expect(notifier.state.error, 'Numéro invalide');
+    });
+
+    test('la réponse serveur est lue avec checkout_url', () {
+      final init = DistancePaymentInitResult.fromJson({
+        'transaction_id': 7,
+        'payment_reference': 'SIGNME-SIG-1',
+        'total_amount': 2106,
+        'checkout_url': checkout,
+      });
+      final status = PaymentTransactionStatus.fromJson({
+        'status': 'pending',
+        'checkout_url': checkout,
+      });
+
+      expect(init.checkoutUrl, checkout);
+      expect(status.checkoutUrl, checkout);
+      expect(DistancePaymentInitResult.fromJson({'transaction_id': 1}).checkoutUrl, isNull);
+    });
+  });
 }

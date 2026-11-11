@@ -6,6 +6,14 @@ import 'package:signme/features/evenements/domain/entities/card_payment_config_e
 /// instantané doit toujours donner le même total que le serveur.
 void main() {
   group('CardFeeCalculator', () {
+    test('grossUp : majore sans borne de barème (cumul de mois de signature)', () {
+      expect(CardFeeCalculator.grossUp(2000, 5), 2106);
+      expect(CardFeeCalculator.grossUp(120000, 5), 126316); // au-delà du barème d'une contribution
+      expect(CardFeeCalculator.grossUp(0, 5), isNull);
+      expect(CardFeeCalculator.grossUp(1000, 100), isNull);
+      expect(CardFeeCalculator.grossUp(1000, -1), isNull);
+    });
+
     test('le total est majoré pour que l\'église reçoive exactement le montant', () {
       expect(CardFeeCalculator.calculateTotal(1000, 4.8), 1051); // 1050,42 -> 1051
       expect(CardFeeCalculator.calculate(1000, 4.8), 51);

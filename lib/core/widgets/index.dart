@@ -64,6 +64,8 @@ export 'signme_leading_icon_avatar.dart';
 // ── Historique (timeline)
 export 'signme_timeline.dart';
 export 'signme_payment_method_info.dart';
+export 'signme_payment_method_selector.dart';
+export 'signme_card_payment_info.dart';
 
 // ── Formulaires : garde anti-perte de saisie
 export 'signme_unsaved_changes_guard.dart';

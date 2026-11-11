@@ -1,4 +1,4 @@
-/// Statut d'une transaction NotchPay (polling mobile).
+/// Statut d'une transaction de signature à distance (polling mobile).
 class PaymentTransactionStatus {
   const PaymentTransactionStatus({
     required this.status,
@@ -8,6 +8,7 @@ class PaymentTransactionStatus {
     this.totalAmount,
     this.isTerminal = false,
     this.pollIntervalMs = 3000,
+    this.checkoutUrl,
   });
 
   final String status;
@@ -17,6 +18,9 @@ class PaymentTransactionStatus {
   final num? totalAmount;
   final bool isTerminal;
   final int pollIntervalMs;
+
+  /// Page de paiement hébergée (carte), tant que le paiement est en attente.
+  final String? checkoutUrl;
 
   bool get isCompleted => status == 'completed';
   bool get isFailed => status == 'failed';
@@ -32,6 +36,7 @@ class PaymentTransactionStatus {
       totalAmount: json['total_amount'] as num?,
       isTerminal: json['is_terminal'] == true,
       pollIntervalMs: json['poll_interval_ms'] as int? ?? 3000,
+      checkoutUrl: json['checkout_url']?.toString(),
     );
   }
 }
@@ -43,12 +48,16 @@ class DistancePaymentInitResult {
     required this.paymentReference,
     required this.totalAmount,
     this.message,
+    this.checkoutUrl,
   });
 
   final int transactionId;
   final String paymentReference;
   final num totalAmount;
   final String? message;
+
+  /// Page de paiement hébergée — présente uniquement pour un paiement par carte.
+  final String? checkoutUrl;
 
   factory DistancePaymentInitResult.fromJson(Map<String, dynamic> json) {
     return DistancePaymentInitResult(
@@ -57,6 +66,7 @@ class DistancePaymentInitResult {
       paymentReference: json['payment_reference']?.toString() ?? '',
       totalAmount: json['total_amount'] as num? ?? 0,
       message: json['message']?.toString(),
+      checkoutUrl: json['checkout_url']?.toString(),
     );
   }
 }
