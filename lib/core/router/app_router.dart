@@ -21,7 +21,9 @@ import '../../features/groupes/domain/entities/groupe_contribution_target.dart';
 import '../../features/groupes/domain/entities/groupe_entities.dart';
 import '../../features/groupes/presentation/screens/communique_form_screen.dart';
 import '../../features/groupes/presentation/screens/groupe_screen.dart';
-import '../../features/services/presentation/screens/gestion_evenement_screen.dart';
+import '../../features/services/domain/gestion_evenement.dart';
+import '../../features/services/domain/gestion_finance.dart';
+import '../../features/services/presentation/screens/gestion_service_screen.dart';
 import '../../features/services/presentation/screens/services_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
@@ -66,6 +68,7 @@ abstract final class AppRoutes {
   static const servicesDon     = '/services/don';
   static const servicesTransactions = '/services/transactions';
   static const servicesGestionEvenement = '/services/gestion-evenement';
+  static const servicesGestionFinance   = '/services/gestion-finance';
   static String servicesGroupe(String uuid) => '/services/groupes/$uuid';
   static const maCarte         = '/ma-carte';
   static const profile         = '/profile';
@@ -477,7 +480,27 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.servicesGestionEvenement,
             name: 'services-gestion-evenement',
-            pageBuilder: (ctx, state) => _fadePage(const GestionEvenementScreen(), state),
+            pageBuilder: (ctx, state) => _fadePage(
+              const GestionServiceScreen(
+                titre: 'Gestion événement',
+                messageRefus: 'Ce service est réservé au pasteur, à la secrétaire et au trésorier.',
+                actionsPour: actionsGestionEvenement,
+              ),
+              state,
+            ),
+          ),
+          // Service « Gestion finance » : regroupe finances / sorties financières / retraits.
+          GoRoute(
+            path: AppRoutes.servicesGestionFinance,
+            name: 'services-gestion-finance',
+            pageBuilder: (ctx, state) => _fadePage(
+              const GestionServiceScreen(
+                titre: 'Gestion finance',
+                messageRefus: 'Ce service est réservé au pasteur et au trésorier.',
+                actionsPour: actionsGestionFinance,
+              ),
+              state,
+            ),
           ),
           GoRoute(
             path: AppRoutes.contributionsEvenement,

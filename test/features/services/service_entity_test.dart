@@ -4,6 +4,7 @@ import 'package:signme/core/permissions/app_permissions.dart';
 import 'package:signme/features/auth/domain/entities/user_entity.dart';
 import 'package:signme/features/services/domain/entities/service_entity.dart';
 import 'package:signme/features/services/domain/gestion_evenement.dart';
+import 'package:signme/features/services/domain/gestion_finance.dart';
 import 'package:signme/features/services/presentation/providers/services_provider.dart';
 
 const _don = ServiceEntity(
@@ -118,9 +119,9 @@ void main() {
     test('chaque rôle retrouve exactement les droits de l\'ancien menu', () {
       List<String> ids(String role) => actionsGestionEvenement(_user(role)).map((a) => a.id).toList();
 
-      expect(ids('pasteur'), ['creer', 'gerer', 'contributions', 'finances', 'sorties', 'retraits']);
-      expect(ids('secretaire'), ['creer', 'gerer', 'contributions']); // pas d'accès aux finances
-      expect(ids('tresorier'), ['gerer', 'contributions', 'finances', 'sorties', 'retraits']); // ne crée pas d'événement
+      expect(ids('pasteur'), ['creer', 'gerer', 'contributions']);
+      expect(ids('secretaire'), ['creer', 'gerer', 'contributions']);
+      expect(ids('tresorier'), ['gerer', 'contributions']); // le trésorier ne crée pas d'événement
       expect(ids('paroissien'), isEmpty);
       expect(ids('ancien'), isEmpty);
     });
@@ -128,20 +129,41 @@ void main() {
     test('les actions ouvrent les écrans existants, inchangés', () {
       final routes = actionsGestionEvenement(_user('pasteur')).map((a) => a.route).toList();
 
-      expect(routes, [
-        '/evenements/create',
-        '/evenements/gestion',
-        '/contributions-evenement',
-        '/finances',
-        '/sorties-financieres',
-        '/retraits',
-      ]);
+      expect(routes, ['/evenements/create', '/evenements/gestion', '/contributions-evenement']);
     });
 
     test('la tuile est rangée avec « Faire un don » dans Mes activités', () {
       expect(tuile().section, 'Mes activités');
       expect(tuile().label, 'Gestion événement');
       expect(tuile().route, '/services/gestion-evenement');
+    });
+  });
+
+  group('Service « Gestion finance » (regroupe les anciennes entrées du menu)', () {
+    ServiceEntity tuile() => servicesCatalog.firstWhere((s) => s.id == 'gestion-finance');
+
+    test('proposé au pasteur et au trésorier seulement', () {
+      for (final role in ['pasteur', 'tresorier']) {
+        expect(tuile().isAvailableFor(_user(role)), isTrue, reason: role);
+      }
+      for (final role in ['secretaire', 'paroissien', 'ancien']) {
+        expect(tuile().isAvailableFor(_user(role)), isFalse, reason: role);
+      }
+    });
+
+    test('ouvre les écrans existants, inchangés', () {
+      final actions = actionsGestionFinance(_user('tresorier'));
+
+      expect(actions.map((a) => a.route), ['/finances', '/sorties-financieres', '/retraits']);
+      expect(actionsGestionFinance(_user('secretaire')), isEmpty);
+    });
+
+    test('est rangé à côté de « Gestion événement »', () {
+      final ids = servicesCatalog.map((s) => s.id).toList();
+
+      expect(tuile().label, 'Gestion finance');
+      expect(tuile().route, '/services/gestion-finance');
+      expect(ids.indexOf('gestion-finance'), ids.indexOf('gestion-evenement') + 1);
     });
   });
 }
