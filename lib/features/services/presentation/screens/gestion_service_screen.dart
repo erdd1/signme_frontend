@@ -4,20 +4,29 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/design_system/index.dart';
 import '../../../../core/widgets/index.dart';
+import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../../domain/gestion_evenement.dart';
+import '../../domain/gestion_action.dart';
 
-/// Service « Gestion événement » : les actions de gestion des événements et
-/// des finances réunies en un seul endroit (elles étaient dispersées dans le menu).
-/// Chaque carte ouvre l'écran existant, inchangé.
-class GestionEvenementScreen extends ConsumerWidget {
-  const GestionEvenementScreen({super.key});
+/// Écran d'un service de gestion (« Gestion événement », « Gestion finance ») :
+/// les actions existantes du menu réunies en un seul endroit. Chaque carte
+/// ouvre l'écran existant, inchangé.
+class GestionServiceScreen extends ConsumerWidget {
+  const GestionServiceScreen({
+    super.key,
+    required this.titre,
+    required this.messageRefus,
+    required this.actionsPour,
+  });
+
+  final String titre;
+  final String messageRefus;
+  final List<GestionAction> Function(UserEntity user) actionsPour;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).auth?.user;
-    final actions = user == null ? const <GestionEvenementAction>[] : actionsGestionEvenement(user);
-    final sections = <String>{for (final a in actions) a.section};
+    final actions = user == null ? const <GestionAction>[] : actionsPour(user);
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
@@ -26,46 +35,33 @@ class GestionEvenementScreen extends ConsumerWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: SignmeColors.black),
         title: Text(
-          'Gestion événement',
+          titre,
           style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
       body: actions.isEmpty
-          ? const SignmeNoPermissionState(
+          ? SignmeNoPermissionState(
               title: 'Accès réservé',
-              message: 'Ce service est réservé au pasteur, à la secrétaire et au trésorier.',
+              message: messageRefus,
               icon: Icons.lock_outline_rounded,
             )
-          : ListView(
+          : ListView.separated(
               padding: EdgeInsets.fromLTRB(
                 SignmeSpacing.lg,
                 SignmeSpacing.lg,
                 SignmeSpacing.lg,
                 MediaQuery.of(context).padding.bottom + SignmeSpacing.navbarClearance,
               ),
-              children: [
-                for (final section in sections) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: SignmeSpacing.sm, top: SignmeSpacing.xs),
-                    child: Text(
-                      section,
-                      style: SignmeTypography.labelLarge
-                          .copyWith(color: SignmeColors.textSecondary, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  for (final action in actions.where((a) => a.section == section)) ...[
-                    _ActionCard(action: action, onTap: () => _ouvrir(context, action)),
-                    const SizedBox(height: SignmeSpacing.md),
-                  ],
-                ],
-              ],
+              itemCount: actions.length,
+              separatorBuilder: (_, __) => const SizedBox(height: SignmeSpacing.md),
+              itemBuilder: (context, i) => _ActionCard(action: actions[i], onTap: () => _ouvrir(context, actions[i])),
             ),
     );
   }
 
   /// Un onglet de l'application (Finances) s'ouvre comme avant depuis le menu ;
   /// les autres écrans s'empilent pour revenir ici avec le retour.
-  void _ouvrir(BuildContext context, GestionEvenementAction action) {
+  void _ouvrir(BuildContext context, GestionAction action) {
     if (action.estOnglet) {
       context.go(action.route);
     } else {
@@ -77,7 +73,7 @@ class GestionEvenementScreen extends ConsumerWidget {
 class _ActionCard extends StatelessWidget {
   const _ActionCard({required this.action, required this.onTap});
 
-  final GestionEvenementAction action;
+  final GestionAction action;
   final VoidCallback onTap;
 
   @override

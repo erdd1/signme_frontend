@@ -6,6 +6,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../groupes/presentation/providers/groupes_provider.dart';
 import '../../domain/entities/service_entity.dart';
 import '../../domain/gestion_evenement.dart';
+import '../../domain/gestion_finance.dart';
 
 /// Rubriques de l'écran Services.
 abstract final class ServiceSections {
@@ -28,7 +29,15 @@ final List<ServiceEntity> servicesCatalog = [
     icon: Icons.event_note_rounded,
     section: ServiceSections.mesActivites,
     route: AppRoutes.servicesGestionEvenement,
-    availableFor: aDesActionsGestion,
+    availableFor: peutGererEvenements,
+  ),
+  const ServiceEntity(
+    id: 'gestion-finance',
+    label: 'Gestion finance',
+    icon: Icons.account_balance_rounded,
+    section: ServiceSections.mesActivites,
+    route: AppRoutes.servicesGestionFinance,
+    availableFor: peutGererFinances,
   ),
 ];
 
