@@ -3,33 +3,33 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:signme/features/chants/data/datasources/chants_hub_session.dart';
 import 'package:signme/features/chants/data/datasources/chants_remote_datasource.dart';
 import 'package:signme/features/chants/domain/entities/chant_entity.dart';
+import 'package:signme/features/chants/domain/entities/chant_hub_entities.dart';
 import 'package:signme/features/chants/presentation/providers/chants_provider.dart';
 
 /// Ne touche jamais au réseau : chaque recherche est mise en attente et
 /// résolue manuellement par le test.
 class _FakeChantsRemoteDataSource extends ChantsRemoteDataSource {
-  _FakeChantsRemoteDataSource() : super(Dio());
+  _FakeChantsRemoteDataSource() : super(ChantsHubSession(Dio()));
 
   final List<String> queries = [];
-  final List<Completer<List<ChantSummaryEntity>>> pending = [];
+  final List<Completer<ChantsSearchResult>> pending = [];
 
   @override
-  Future<List<ChantSummaryEntity>> search(String query, {CancelToken? cancelToken}) {
+  Future<ChantsSearchResult> search(String query, {CancelToken? cancelToken}) {
     queries.add(query);
-    final completer = Completer<List<ChantSummaryEntity>>();
+    final completer = Completer<ChantsSearchResult>();
     pending.add(completer);
     return completer.future;
   }
 }
 
-ChantSummaryEntity _chant(int id, String title) => ChantSummaryEntity(
-      id: id,
-      title: title,
-      artist: 'Artiste',
-      excerpt: const [],
-      versions: const [],
+ChantsSearchResult _resultat(String title) => ChantsSearchResult(
+      paroles: [
+        ChantSummaryEntity(id: 1, title: title, artist: 'Artiste', excerpt: const [], versions: const []),
+      ],
     );
 
 const _afterDebounce = Duration(milliseconds: 450);
@@ -59,10 +59,10 @@ void main() {
     await Future<void>.delayed(_afterDebounce);
 
     expect(remote.queries, ['grace']);
-    remote.pending.single.complete([_chant(1, 'Grâce infinie')]);
+    remote.pending.single.complete(_resultat('Grâce infinie'));
     await Future<void>.delayed(Duration.zero);
 
-    expect(notifier.state.result.value, hasLength(1));
+    expect(notifier.state.result.value!.paroles, hasLength(1));
     notifier.dispose();
   });
 
@@ -76,13 +76,13 @@ void main() {
     await Future<void>.delayed(_afterDebounce);
     expect(remote.queries, ['grace', 'alleluia']);
 
-    remote.pending[1].complete([_chant(2, 'Alléluia')]);
+    remote.pending[1].complete(_resultat('Alléluia'));
     await Future<void>.delayed(Duration.zero);
-    remote.pending[0].complete([_chant(1, 'Grâce infinie')]);
+    remote.pending[0].complete(_resultat('Grâce infinie'));
     await Future<void>.delayed(Duration.zero);
 
     expect(notifier.state.query, 'alleluia');
-    expect(notifier.state.result.value!.single.title, 'Alléluia');
+    expect(notifier.state.result.value!.paroles.single.title, 'Alléluia');
     notifier.dispose();
   });
 
@@ -94,7 +94,7 @@ void main() {
     await Future<void>.delayed(_afterDebounce);
     remote.pending.single.completeError(Exception('hors ligne'));
     await Future<void>.delayed(Duration.zero);
-    expect(notifier.state.result, isA<AsyncError<List<ChantSummaryEntity>>>());
+    expect(notifier.state.result, isA<AsyncError<ChantsSearchResult>>());
 
     notifier.retry();
     expect(notifier.state.result.isLoading, isTrue);

@@ -41,6 +41,28 @@ Dio buildDioClient(
   return dio;
 }
 
+/// Client du hub Chants : service SÉPARÉ de l'API principale (autre adresse,
+/// autre jeton). Mêmes erreurs typées ([AppException]) mais délais courts :
+/// un hub lent ne doit jamais faire attendre l'utilisateur longtemps.
+Dio buildHubDioClient(String baseUrl, {Interceptor? auth}) {
+  final dio = Dio(BaseOptions(
+    baseUrl: baseUrl,
+    connectTimeout: const Duration(seconds: 8),
+    receiveTimeout: const Duration(seconds: 15),
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+  ));
+
+  dio.interceptors.addAll([
+    if (auth != null) auth,
+    _ErrorInterceptor(),
+  ]);
+
+  return dio;
+}
+
 // ── Auth Interceptor ─────────────────────────────────────────────────────────
 class _AuthInterceptor extends Interceptor {
   _AuthInterceptor(

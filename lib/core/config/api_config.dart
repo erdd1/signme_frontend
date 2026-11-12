@@ -106,8 +106,9 @@ abstract final class ApiConfig {
   static const String assistantChat = '/assistant/chat';
 
   // ── Chants (répertoire — recherche en ligne, aucune donnée stockée) ────────
-  static const String chantsSearch = '/chants/search';
-  static String chantDetail(int id) => '/chants/$id';
+  // Les chants passent par le hub (service séparé) ; l'API principale ne délivre
+  // que le jeton d'accès et l'adresse du hub.
+  static const String chantsToken = '/chants/token';
 
 
   // ── Services : « Faire un don » (hors événement) ──────────────────────────

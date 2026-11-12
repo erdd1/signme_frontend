@@ -39,6 +39,20 @@ class ChantSummaryEntity {
   final List<String> excerpt;
   final List<ChantVersionEntity> versions;
 
+  /// Résultat « paroles » du hub : mêmes données, clés en français.
+  factory ChantSummaryEntity.fromHub(Map<String, dynamic> json) {
+    return ChantSummaryEntity(
+      id: (json['lyrics_id'] as num?)?.toInt() ?? 0,
+      title: json['titre']?.toString() ?? '',
+      artist: json['artiste']?.toString() ?? '',
+      excerpt: (json['extrait'] as List? ?? const []).map((e) => e.toString()).toList(),
+      versions: (json['versions'] as List? ?? const [])
+          .whereType<Map>()
+          .map((e) => ChantVersionEntity.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
+    );
+  }
+
   factory ChantSummaryEntity.fromJson(Map<String, dynamic> json) {
     return ChantSummaryEntity(
       id: (json['id'] as num?)?.toInt() ?? 0,

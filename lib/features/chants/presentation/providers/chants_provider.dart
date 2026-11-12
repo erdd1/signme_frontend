@@ -4,11 +4,18 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../data/datasources/chants_hub_session.dart';
 import '../../data/datasources/chants_remote_datasource.dart';
 import '../../domain/entities/chant_entity.dart';
+import '../../domain/entities/chant_hub_entities.dart';
+
+/// Session du hub (jeton + adresse) : une seule pour toute l'app.
+final chantsHubSessionProvider = Provider<ChantsHubSession>((ref) {
+  return ChantsHubSession(ref.watch(dioProvider));
+});
 
 final chantsRemoteDataSourceProvider = Provider<ChantsRemoteDataSource>((ref) {
-  return ChantsRemoteDataSource(ref.watch(dioProvider));
+  return ChantsRemoteDataSource(ref.watch(chantsHubSessionProvider));
 });
 
 /// État de la recherche : texte saisi + résultat de la dernière requête
@@ -16,11 +23,11 @@ final chantsRemoteDataSourceProvider = Provider<ChantsRemoteDataSource>((ref) {
 class ChantsSearchState {
   const ChantsSearchState({
     this.query = '',
-    this.result = const AsyncValue.data([]),
+    this.result = const AsyncValue.data(ChantsSearchResult()),
   });
 
   final String query;
-  final AsyncValue<List<ChantSummaryEntity>> result;
+  final AsyncValue<ChantsSearchResult> result;
 
   bool get isIdle => query.trim().length < ChantsSearchNotifier.minQueryLength;
 }
@@ -94,3 +101,27 @@ final chantDetailProvider =
 
 /// Taille du texte des paroles (réglable par l'utilisateur, 1.0 = normal).
 final chantTextScaleProvider = StateProvider<double>((ref) => 1.0);
+
+// ── Écran d'accueil : mes chants, du moment ──────────────────────────────────
+
+/// Mes chants regardés récemment (le plus récent d'abord).
+final chantsHistoriqueProvider = FutureProvider.autoDispose<List<ChantReferenceEntity>>(
+  (ref) => ref.watch(chantsRemoteDataSourceProvider).historique(),
+);
+
+/// Mes chants favoris.
+final chantsFavorisProvider = FutureProvider.autoDispose<List<ChantReferenceEntity>>(
+  (ref) => ref.watch(chantsRemoteDataSourceProvider).favoris(),
+);
+
+/// Chants du moment : regardés par plusieurs personnes différentes (anonyme).
+final chantsTendancesProvider = FutureProvider.autoDispose<List<ChantReferenceEntity>>(
+  (ref) => ref.watch(chantsRemoteDataSourceProvider).tendances(),
+);
+
+/// Recharge les listes de l'accueil (après avoir regardé un chant ou changé un favori).
+void rafraichirAccueilChants(WidgetRef ref) {
+  ref.invalidate(chantsHistoriqueProvider);
+  ref.invalidate(chantsFavorisProvider);
+  ref.invalidate(chantsTendancesProvider);
+}

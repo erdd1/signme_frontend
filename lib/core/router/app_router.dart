@@ -50,6 +50,8 @@ import '../../features/mes_depenses/presentation/screens/mes_depenses_screen.dar
 import '../../features/celebrations/presentation/screens/celebrations_screen.dart';
 import '../../features/celebrations/presentation/screens/celebration_detail_screen.dart';
 import '../../features/chants/presentation/screens/chant_detail_screen.dart';
+import '../../features/chants/domain/entities/chant_hub_entities.dart';
+import '../../features/chants/presentation/screens/chants_liste_screen.dart';
 import '../../features/chants/presentation/screens/chants_screen.dart';
 import '../deep_link/deep_link_state.dart';
 
@@ -110,7 +112,8 @@ abstract final class AppRoutes {
   static String celebrationDetailPath(String uuid) => '/celebrations/$uuid';
   static const assistant = '/assistant';
   static const chants = '/chants';
-  static String chantDetailPath(String id) => '/chants/$id';
+  static const chantFiche = '/chants/fiche';
+  static String chantsListePath(String type) => '/chants/liste/$type';
 }
 
 // ── Router Provider ────────────────────────────────────────────────────────
@@ -538,15 +541,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (ctx, state) => _fadePage(const AssistantScreen(), state),
       ),
 
-      // ── Paroles d'un chant — plein écran, hors shell : lecture sans
-      // distraction (ni appbar ni navbar du shell), comme les célébrations.
+      // ── Fiche d'un chant (vidéo, paroles ou page web) — plein écran, hors
+      // shell : lecture sans distraction, comme les célébrations. La destination
+      // (`extra`) dit quel chant ouvrir ; sans elle (lien mort), retour au hub.
       GoRoute(
-        path: AppRoutes.chantDetailPath(':id'),
+        path: AppRoutes.chantFiche,
         name: 'chant-detail',
-        pageBuilder: (ctx, state) {
-          final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
-          return _fadePage(ChantDetailScreen(chantId: id), state);
-        },
+        redirect: (ctx, state) => state.extra is ChantAOuvrir ? null : AppRoutes.chants,
+        pageBuilder: (ctx, state) => _fadePage(ChantDetailScreen(cible: state.extra! as ChantAOuvrir), state),
+      ),
+      GoRoute(
+        path: '/chants/liste/:type',
+        name: 'chants-liste',
+        pageBuilder: (ctx, state) =>
+            _fadePage(ChantsListeScreen(type: state.pathParameters['type'] ?? 'historique'), state),
       ),
 
       // ── Historique des transactions — plein écran, hors shell : bouton
