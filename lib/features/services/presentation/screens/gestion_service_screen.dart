@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/design_system/index.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/index.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -31,15 +32,18 @@ class GestionServiceScreen extends ConsumerWidget {
     final actions = user == null ? const <GestionAction>[] : actionsPour(user);
     final badges = ref.watch(badgeNotifierProvider).valueOrNull ?? BadgeCountEntity.empty;
 
+    final bottom = MediaQuery.of(context).padding.bottom + SignmeSpacing.xl;
+
     return Scaffold(
       backgroundColor: SignmeColors.background,
       appBar: AppBar(
-        backgroundColor: SignmeColors.white,
+        backgroundColor: SignmeColors.background,
         elevation: 0,
-        iconTheme: const IconThemeData(color: SignmeColors.black),
-        title: Text(
-          titre,
-          style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
+          tooltip: 'Retour',
+          onPressed: () => context.canPop() ? context.pop() : context.go(AppRoutes.services),
         ),
       ),
       body: actions.isEmpty
@@ -49,13 +53,13 @@ class GestionServiceScreen extends ConsumerWidget {
               icon: Icons.lock_outline_rounded,
             )
           : ListView(
-              padding: EdgeInsets.fromLTRB(
-                SignmeSpacing.lg,
-                SignmeSpacing.lg,
-                SignmeSpacing.lg,
-                MediaQuery.of(context).padding.bottom + SignmeSpacing.navbarClearance,
-              ),
+              padding: EdgeInsets.fromLTRB(SignmeSpacing.lg, 0, SignmeSpacing.lg, bottom),
               children: [
+                Text(
+                  titre,
+                  style: SignmeTypography.displaySmall.copyWith(fontWeight: FontWeight.w900, height: 1.2),
+                ),
+                const SizedBox(height: SignmeSpacing.lg),
                 for (var i = 0; i < actions.length; i++) ...[
                   // Titre de rubrique au premier élément de chaque rubrique.
                   if (actions[i].section != null && (i == 0 || actions[i - 1].section != actions[i].section))
