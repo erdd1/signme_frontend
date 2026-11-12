@@ -7,8 +7,8 @@ import '../../../../core/widgets/index.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/gestion_evenement.dart';
 
-/// Service « Gestion événement » : les actions de gestion des événements
-/// réunies en un seul endroit (elles étaient dispersées dans le menu).
+/// Service « Gestion événement » : les actions de gestion des événements et
+/// des finances réunies en un seul endroit (elles étaient dispersées dans le menu).
 /// Chaque carte ouvre l'écran existant, inchangé.
 class GestionEvenementScreen extends ConsumerWidget {
   const GestionEvenementScreen({super.key});
@@ -17,6 +17,7 @@ class GestionEvenementScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).auth?.user;
     final actions = user == null ? const <GestionEvenementAction>[] : actionsGestionEvenement(user);
+    final sections = <String>{for (final a in actions) a.section};
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
@@ -32,21 +33,44 @@ class GestionEvenementScreen extends ConsumerWidget {
       body: actions.isEmpty
           ? const SignmeNoPermissionState(
               title: 'Accès réservé',
-              message: 'La gestion des événements est réservée au pasteur, à la secrétaire et au trésorier.',
+              message: 'Ce service est réservé au pasteur, à la secrétaire et au trésorier.',
               icon: Icons.lock_outline_rounded,
             )
-          : ListView.separated(
+          : ListView(
               padding: EdgeInsets.fromLTRB(
                 SignmeSpacing.lg,
                 SignmeSpacing.lg,
                 SignmeSpacing.lg,
                 MediaQuery.of(context).padding.bottom + SignmeSpacing.navbarClearance,
               ),
-              itemCount: actions.length,
-              separatorBuilder: (_, __) => const SizedBox(height: SignmeSpacing.md),
-              itemBuilder: (context, i) => _ActionCard(action: actions[i], onTap: () => context.push(actions[i].route)),
+              children: [
+                for (final section in sections) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: SignmeSpacing.sm, top: SignmeSpacing.xs),
+                    child: Text(
+                      section,
+                      style: SignmeTypography.labelLarge
+                          .copyWith(color: SignmeColors.textSecondary, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  for (final action in actions.where((a) => a.section == section)) ...[
+                    _ActionCard(action: action, onTap: () => _ouvrir(context, action)),
+                    const SizedBox(height: SignmeSpacing.md),
+                  ],
+                ],
+              ],
             ),
     );
+  }
+
+  /// Un onglet de l'application (Finances) s'ouvre comme avant depuis le menu ;
+  /// les autres écrans s'empilent pour revenir ici avec le retour.
+  void _ouvrir(BuildContext context, GestionEvenementAction action) {
+    if (action.estOnglet) {
+      context.go(action.route);
+    } else {
+      context.push(action.route);
+    }
   }
 }
 

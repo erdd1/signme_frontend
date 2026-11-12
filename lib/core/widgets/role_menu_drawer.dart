@@ -59,13 +59,8 @@ class RoleMenuDrawer extends ConsumerWidget {
                   },
                 ),
 
-                // Finances
-                if (AppPermissions.canViewFinances(user))
-                  _MenuItem(
-                    iconPath: SignmeAssets.finances,
-                    label: 'Finances',
-                    onTap: () => _navigate(context, AppRoutes.finances),
-                  ),
+                // Finances, sorties financières et retraits : réunis dans le service
+                // « Gestion événement » (onglet Services).
 
                 // Gestion des membres
                 if (AppPermissions.canViewMembers(user))
@@ -115,22 +110,6 @@ class RoleMenuDrawer extends ConsumerWidget {
 
                 // Créer / gérer les événements et leurs contributions : réunis dans
                 // le service « Gestion événement » (onglet Services).
-
-                // Sorties financières (pasteur, trésorier)
-                if (AppPermissions.canViewSortiesFinancieres(user))
-                  _MenuItem(
-                    iconPath: SignmeAssets.finances,
-                    label: 'Sorties financières',
-                    onTap: () => _navigate(context, AppRoutes.sortiesFinancieres),
-                  ),
-
-                // Retraits vers Orange Money/MTN Mobile Money (pasteur, trésorier)
-                if (AppPermissions.canViewRetraits(user))
-                  _MenuItem(
-                    icon: Icons.account_balance_wallet_rounded,
-                    label: 'Retraits',
-                    onTap: () => _navigate(context, AppRoutes.retraits),
-                  ),
 
                 // Mes dépenses (tous rôles)
                 _MenuItem(

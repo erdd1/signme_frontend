@@ -22,13 +22,13 @@ final List<ServiceEntity> servicesCatalog = [
     section: ServiceSections.mesActivites,
     route: AppRoutes.servicesDon,
   ),
-  ServiceEntity(
+  const ServiceEntity(
     id: 'gestion-evenement',
     label: 'Gestion événement',
     icon: Icons.event_note_rounded,
     section: ServiceSections.mesActivites,
     route: AppRoutes.servicesGestionEvenement,
-    availableFor: peutGererEvenements,
+    availableFor: aDesActionsGestion,
   ),
 ];
 
