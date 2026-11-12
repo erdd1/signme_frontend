@@ -36,6 +36,16 @@ class BadgeCountEntity extends Equatable {
     historiqueSignatures: 0,
   );
 
+  /// Compteur d'un type de badge (mêmes identifiants que [copyWithZero]).
+  int countFor(String type) => switch (type) {
+        'annonces' => annonces,
+        'meditations' => meditations,
+        'evenements' => evenements,
+        'historique' => historique,
+        'historique_signatures' => historiqueSignatures,
+        _ => 0,
+      };
+
   /// Remet un type spécifique à zéro (optimistic update local)
   BadgeCountEntity copyWithZero(String type) {
     return BadgeCountEntity(

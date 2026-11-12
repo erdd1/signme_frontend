@@ -23,6 +23,7 @@ import '../../features/groupes/presentation/screens/communique_form_screen.dart'
 import '../../features/groupes/presentation/screens/groupe_screen.dart';
 import '../../features/services/domain/gestion_evenement.dart';
 import '../../features/services/domain/gestion_finance.dart';
+import '../../features/services/domain/rapport_signatures.dart';
 import '../../features/services/presentation/screens/gestion_service_screen.dart';
 import '../../features/services/presentation/screens/services_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
@@ -69,6 +70,7 @@ abstract final class AppRoutes {
   static const servicesTransactions = '/services/transactions';
   static const servicesGestionEvenement = '/services/gestion-evenement';
   static const servicesGestionFinance   = '/services/gestion-finance';
+  static const servicesRapportSignatures = '/services/rapport-signatures';
   static String servicesGroupe(String uuid) => '/services/groupes/$uuid';
   static const maCarte         = '/ma-carte';
   static const profile         = '/profile';
@@ -498,6 +500,19 @@ final routerProvider = Provider<GoRouter>((ref) {
                 titre: 'Gestion finance',
                 messageRefus: 'Ce service est réservé au pasteur et au trésorier.',
                 actionsPour: actionsGestionFinance,
+              ),
+              state,
+            ),
+          ),
+          // Service « Rapport signatures » : regroupe historique des signatures et rapport secrétaire.
+          GoRoute(
+            path: AppRoutes.servicesRapportSignatures,
+            name: 'services-rapport-signatures',
+            pageBuilder: (ctx, state) => _fadePage(
+              const GestionServiceScreen(
+                titre: 'Rapport signatures',
+                messageRefus: 'Ce service est réservé au pasteur, aux anciens et à la secrétaire.',
+                actionsPour: actionsRapportSignatures,
               ),
               state,
             ),

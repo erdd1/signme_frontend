@@ -70,20 +70,8 @@ class RoleMenuDrawer extends ConsumerWidget {
                     onTap: () => _navigate(context, AppRoutes.users),
                   ),
 
-                // Historique Signatures (Clergé/Anciens) — avec badge
-                if (user.role == 'ancien' || user.role == 'pasteur')
-                  _MenuItem(
-                    iconPath: SignmeAssets.historySignatures,
-                    label: 'Historique Signatures',
-                    badgeCount: badges.historiqueSignatures,
-                    onTap: () {
-                      // Reset badge avant navigation
-                      ref
-                          .read(badgeNotifierProvider.notifier)
-                          .markRead('historique_signatures');
-                      _navigate(context, AppRoutes.historiqueSignatures);
-                    },
-                  ),
+                // Historique des signatures et rapport secrétaire : réunis dans le
+                // service « Rapport signatures » (onglet Services).
 
                 // Administration Pasteur
                 if (user.role == 'pasteur') ...[
@@ -120,15 +108,6 @@ class RoleMenuDrawer extends ConsumerWidget {
                   badgeCount: ref.watch(unreadCelebrationsCountProvider),
                   onTap: () => _navigate(context, AppRoutes.celebrations),
                 ),
-
-                // Rapport Secrétaire
-                if (user.role == 'secretaire' || user.role == 'pasteur')
-                  _MenuItem(
-                    iconPath: SignmeAssets.reportSec,
-                    label: 'Rapport secrétaire',
-                    onTap: () =>
-                        _navigate(context, AppRoutes.rapportSecretaire),
-                  ),
 
                 const Divider(
                     height: 32,

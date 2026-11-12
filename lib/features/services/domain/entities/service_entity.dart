@@ -12,6 +12,7 @@ class ServiceEntity {
     required this.route,
     this.availableFor,
     this.badgeCount = 0,
+    this.badgeType,
   });
 
   final String id;
@@ -29,6 +30,22 @@ class ServiceEntity {
 
   /// Nouveautés à signaler sur la tuile (0 = aucun badge).
   final int badgeCount;
+
+  /// Type de badge serveur dont le compteur s'affiche sur la tuile (voir
+  /// `BadgeNotifier`) ; null = la tuile n'en suit aucun.
+  final String? badgeType;
+
+  /// Copie de la tuile avec un autre compteur de nouveautés.
+  ServiceEntity withBadgeCount(int count) => ServiceEntity(
+        id: id,
+        label: label,
+        icon: icon,
+        section: section,
+        route: route,
+        availableFor: availableFor,
+        badgeCount: count,
+        badgeType: badgeType,
+      );
 
   bool isAvailableFor(UserEntity user) => availableFor?.call(user) ?? true;
 }

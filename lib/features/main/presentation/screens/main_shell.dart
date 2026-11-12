@@ -423,7 +423,7 @@ class _FloatingNavBar extends ConsumerWidget {
     });
     int badgeCountForTab(NavTab tab) => switch (tab) {
       NavTab.home => badges.annonces + badges.meditations + badges.evenements,
-      NavTab.services => groupesNonLus + transactionsNonLues,
+      NavTab.services => groupesNonLus + transactionsNonLues + badges.historiqueSignatures,
       _ => 0,
     };
     final half = tabs.length ~/ 2;

@@ -11,6 +11,7 @@ class GestionAction {
     required this.icone,
     required this.route,
     this.estOnglet = false,
+    this.badgeType,
   });
 
   final String id;
@@ -22,4 +23,8 @@ class GestionAction {
   /// Vrai pour un écran qui est un onglet de l'application (Finances) : on y
   /// accède comme depuis l'ancien menu, plutôt qu'en l'empilant.
   final bool estOnglet;
+
+  /// Type de badge de nouveautés rattaché à l'action (voir `BadgeNotifier.markRead`).
+  /// Ouvrir l'action le remet à zéro, comme depuis l'ancien menu.
+  final String? badgeType;
 }

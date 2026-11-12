@@ -100,6 +100,14 @@ abstract final class AppPermissions {
   static bool canDownloadRapportSecretairePdf(UserEntity u) =>
       u.isPasteur || u.isSecretaire;
 
+  /// Voir l'historique des signatures des membres (clergé et anciens).
+  static bool canViewHistoriqueSignatures(UserEntity u) =>
+      u.isPasteur || u.isAncien;
+
+  /// Voir le rapport secrétaire (qui a signé / qui n'a pas signé).
+  static bool canViewRapportSecretaire(UserEntity u) =>
+      u.isPasteur || u.isSecretaire;
+
   /// Gérer les événements (créer, modifier, publier, terminer, archiver)
   static bool canManageEvenements(UserEntity u) =>
       u.isPasteur || u.isSecretaire;

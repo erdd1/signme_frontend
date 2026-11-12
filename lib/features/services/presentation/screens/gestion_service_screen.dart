@@ -6,6 +6,8 @@ import '../../../../core/design_system/index.dart';
 import '../../../../core/widgets/index.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../badge/domain/entities/badge_count_entity.dart';
+import '../../../badge/presentation/providers/badge_provider.dart';
 import '../../domain/gestion_action.dart';
 
 /// Écran d'un service de gestion (« Gestion événement », « Gestion finance ») :
@@ -27,6 +29,7 @@ class GestionServiceScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).auth?.user;
     final actions = user == null ? const <GestionAction>[] : actionsPour(user);
+    final badges = ref.watch(badgeNotifierProvider).valueOrNull ?? BadgeCountEntity.empty;
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
@@ -54,14 +57,21 @@ class GestionServiceScreen extends ConsumerWidget {
               ),
               itemCount: actions.length,
               separatorBuilder: (_, __) => const SizedBox(height: SignmeSpacing.md),
-              itemBuilder: (context, i) => _ActionCard(action: actions[i], onTap: () => _ouvrir(context, actions[i])),
+              itemBuilder: (context, i) => _ActionCard(
+                action: actions[i],
+                badgeCount: badges.countFor(actions[i].badgeType ?? ''),
+                onTap: () => _ouvrir(context, ref, actions[i]),
+              ),
             ),
     );
   }
 
   /// Un onglet de l'application (Finances) s'ouvre comme avant depuis le menu ;
   /// les autres écrans s'empilent pour revenir ici avec le retour.
-  void _ouvrir(BuildContext context, GestionAction action) {
+  void _ouvrir(BuildContext context, WidgetRef ref, GestionAction action) {
+    final badge = action.badgeType;
+    if (badge != null) ref.read(badgeNotifierProvider.notifier).markRead(badge);
+
     if (action.estOnglet) {
       context.go(action.route);
     } else {
@@ -71,9 +81,10 @@ class GestionServiceScreen extends ConsumerWidget {
 }
 
 class _ActionCard extends StatelessWidget {
-  const _ActionCard({required this.action, required this.onTap});
+  const _ActionCard({required this.action, required this.badgeCount, required this.onTap});
 
   final GestionAction action;
+  final int badgeCount;
   final VoidCallback onTap;
 
   @override
@@ -94,14 +105,17 @@ class _ActionCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: SignmeColors.accentSky,
-                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+              BadgeDot(
+                count: badgeCount,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: SignmeColors.accentSky,
+                    borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                  ),
+                  child: Icon(action.icone, color: SignmeColors.primaryLight, size: 24),
                 ),
-                child: Icon(action.icone, color: SignmeColors.primaryLight, size: 24),
               ),
               const SizedBox(width: SignmeSpacing.md),
               Expanded(
