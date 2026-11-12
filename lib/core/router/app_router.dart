@@ -49,11 +49,6 @@ import '../../features/evenements/domain/entities/evenement_entity.dart';
 import '../../features/mes_depenses/presentation/screens/mes_depenses_screen.dart';
 import '../../features/celebrations/presentation/screens/celebrations_screen.dart';
 import '../../features/celebrations/presentation/screens/celebration_detail_screen.dart';
-import '../../features/chants/presentation/screens/chant_detail_screen.dart';
-import '../../features/chants/domain/entities/chant_hub_entities.dart';
-import '../../features/chants/presentation/screens/chants_liste_screen.dart';
-import '../../features/chants/presentation/screens/chants_navigateur_screen.dart';
-import '../../features/chants/presentation/screens/chants_screen.dart';
 import '../deep_link/deep_link_state.dart';
 
 // ── Route names ────────────────────────────────────────────────────────────
@@ -112,10 +107,6 @@ abstract final class AppRoutes {
   static const celebrations = '/celebrations';
   static String celebrationDetailPath(String uuid) => '/celebrations/$uuid';
   static const assistant = '/assistant';
-  static const chants = '/chants';
-  static const chantFiche = '/chants/fiche';
-  static const chantsNavigateur = '/chants/navigateur';
-  static String chantsListePath(String type) => '/chants/liste/$type';
 }
 
 // ── Router Provider ────────────────────────────────────────────────────────
@@ -512,12 +503,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (ctx, state) => _fadePage(const CelebrationsScreen(), state),
           ),
 
-          // ── Chants (recherche — reste dans le shell : appbar + navbar) ──
-          GoRoute(
-            path: AppRoutes.chants,
-            name: 'chants',
-            pageBuilder: (ctx, state) => _fadePage(const ChantsScreen(), state),
-          ),
         ],
       ),
 
@@ -541,30 +526,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.assistant,
         name: 'assistant',
         pageBuilder: (ctx, state) => _fadePage(const AssistantScreen(), state),
-      ),
-
-      // ── Fiche d'un chant (vidéo, paroles ou page web) — plein écran, hors
-      // shell : lecture sans distraction, comme les célébrations. La destination
-      // (`extra`) dit quel chant ouvrir ; sans elle (lien mort), retour au hub.
-      GoRoute(
-        path: AppRoutes.chantFiche,
-        name: 'chant-detail',
-        redirect: (ctx, state) => state.extra is ChantAOuvrir ? null : AppRoutes.chants,
-        pageBuilder: (ctx, state) => _fadePage(ChantDetailScreen(cible: state.extra! as ChantAOuvrir), state),
-      ),
-      // Navigateur intégré : vraies pages Google / YouTube, sans quitter SignMe.
-      GoRoute(
-        path: AppRoutes.chantsNavigateur,
-        name: 'chants-navigateur',
-        redirect: (ctx, state) => state.extra is ChantsNavigateurArgs ? null : AppRoutes.chants,
-        pageBuilder: (ctx, state) =>
-            _fadePage(ChantsNavigateurScreen(args: state.extra! as ChantsNavigateurArgs), state),
-      ),
-      GoRoute(
-        path: '/chants/liste/:type',
-        name: 'chants-liste',
-        pageBuilder: (ctx, state) =>
-            _fadePage(ChantsListeScreen(type: state.pathParameters['type'] ?? 'historique'), state),
       ),
 
       // ── Historique des transactions — plein écran, hors shell : bouton
