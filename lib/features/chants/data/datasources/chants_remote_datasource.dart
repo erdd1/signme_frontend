@@ -51,6 +51,7 @@ class ChantsRemoteDataSource {
           if (video.artiste != null) 'artiste': video.artiste,
           if (video.thumb != null) 'thumb': video.thumb,
         },
+      OuvrirWeb(:final titre, :final url) => {'titre': titre, 'source': 'web', 'url': url},
       OuvrirParoles(:final chant) => {
           'titre': chant.title,
           'source': 'paroles',

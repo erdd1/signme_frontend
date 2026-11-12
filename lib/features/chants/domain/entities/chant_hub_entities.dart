@@ -192,6 +192,13 @@ class OuvrirVideo extends ChantAOuvrir {
   final ChantVideoEntity video;
 }
 
+/// Page web gardée depuis le navigateur intégré.
+class OuvrirWeb extends ChantAOuvrir {
+  const OuvrirWeb({required this.titre, required this.url});
+  final String titre;
+  final String url;
+}
+
 /// Paroles trouvées par la recherche.
 class OuvrirParoles extends ChantAOuvrir {
   const OuvrirParoles(this.chant);

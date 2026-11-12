@@ -52,6 +52,7 @@ import '../../features/celebrations/presentation/screens/celebration_detail_scre
 import '../../features/chants/presentation/screens/chant_detail_screen.dart';
 import '../../features/chants/domain/entities/chant_hub_entities.dart';
 import '../../features/chants/presentation/screens/chants_liste_screen.dart';
+import '../../features/chants/presentation/screens/chants_navigateur_screen.dart';
 import '../../features/chants/presentation/screens/chants_screen.dart';
 import '../deep_link/deep_link_state.dart';
 
@@ -113,6 +114,7 @@ abstract final class AppRoutes {
   static const assistant = '/assistant';
   static const chants = '/chants';
   static const chantFiche = '/chants/fiche';
+  static const chantsNavigateur = '/chants/navigateur';
   static String chantsListePath(String type) => '/chants/liste/$type';
 }
 
@@ -549,6 +551,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'chant-detail',
         redirect: (ctx, state) => state.extra is ChantAOuvrir ? null : AppRoutes.chants,
         pageBuilder: (ctx, state) => _fadePage(ChantDetailScreen(cible: state.extra! as ChantAOuvrir), state),
+      ),
+      // Navigateur intégré : vraies pages Google / YouTube, sans quitter SignMe.
+      GoRoute(
+        path: AppRoutes.chantsNavigateur,
+        name: 'chants-navigateur',
+        redirect: (ctx, state) => state.extra is ChantsNavigateurArgs ? null : AppRoutes.chants,
+        pageBuilder: (ctx, state) =>
+            _fadePage(ChantsNavigateurScreen(args: state.extra! as ChantsNavigateurArgs), state),
       ),
       GoRoute(
         path: '/chants/liste/:type',

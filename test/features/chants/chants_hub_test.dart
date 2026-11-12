@@ -195,6 +195,14 @@ void main() {
       expect(m.hub.recues.single.data, {'titre': 'Chant', 'source': 'paroles', 'lyrics_id': 77});
     });
 
+    test('une page web gardée depuis le navigateur est envoyée avec son titre et son lien', () async {
+      final m = monter();
+
+      await m.remote.vu(const OuvrirWeb(titre: 'Cantique 12', url: 'https://exemple.org/cantique/12'));
+
+      expect(m.hub.recues.single.data, {'titre': 'Cantique 12', 'source': 'web', 'url': 'https://exemple.org/cantique/12'});
+    });
+
     test('un chant déjà référencé s\'ouvre par son identifiant, pas par « vu »', () async {
       final m = monter();
 

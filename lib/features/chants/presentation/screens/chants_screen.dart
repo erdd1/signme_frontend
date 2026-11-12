@@ -6,9 +6,11 @@ import '../../../../core/design_system/index.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/widgets/index.dart';
+import '../../domain/chant_navigateur.dart';
 import '../../domain/entities/chant_hub_entities.dart';
 import '../providers/chants_provider.dart';
 import '../widgets/chant_card.dart';
+import 'chants_navigateur_screen.dart';
 import '../widgets/chant_reference_tile.dart';
 import '../widgets/chant_video_card.dart';
 
@@ -55,6 +57,12 @@ class _ChantsScreenState extends ConsumerState<ChantsScreen> {
   void _clear() {
     _controller.clear();
     _search('');
+  }
+
+  /// Ouvre le navigateur intégré sur la recherche du chrétien (vraies pages Google / YouTube).
+  Future<void> _navigateur(String requete, MoteurRecherche moteur) async {
+    await context.pushNamed('chants-navigateur', extra: ChantsNavigateurArgs(requete: requete, moteur: moteur));
+    if (mounted) rafraichirAccueilChants(ref);
   }
 
   /// Ouvre la fiche d'un chant ; au retour, mes listes sont à jour (historique, favoris).
@@ -133,13 +141,20 @@ class _ChantsScreenState extends ConsumerState<ChantsScreen> {
                     ),
                     data: (resultat) => resultat.estVide
                         ? SignmeEmptyState(
-                            icon: Icons.music_off_rounded,
-                            title: 'Aucun chant trouvé',
+                            icon: Icons.travel_explore_rounded,
+                            title: 'Pas encore dans le répertoire',
                             message: resultat.partiel
-                                ? 'Certaines sources n\'ont pas répondu. Réessayez dans un instant.'
-                                : 'Essayez avec un autre titre, un mot du refrain ou une orthographe différente.',
+                                ? 'Certaines sources n\'ont pas répondu. Cherchez-le directement sur Google ou YouTube, sans quitter SignMe.'
+                                : 'Cherchez ce chant sur Google ou YouTube, sans quitter SignMe : celui que vous regardez sera retenu dans vos chants.',
+                            action: _Navigateurs(requete: search.query, onOuvrir: _navigateur),
                           )
-                        : _Resultats(resultat: resultat, onOuvrir: _ouvrir, bottomPadding: bottomPadding),
+                        : _Resultats(
+                            resultat: resultat,
+                            requete: search.query,
+                            onNavigateur: _navigateur,
+                            onOuvrir: _ouvrir,
+                            bottomPadding: bottomPadding,
+                          ),
                   ),
           ),
         ],
@@ -150,9 +165,17 @@ class _ChantsScreenState extends ConsumerState<ChantsScreen> {
 
 /// Résultats d'une recherche : mes chants déjà référencés, vidéos, paroles.
 class _Resultats extends StatelessWidget {
-  const _Resultats({required this.resultat, required this.onOuvrir, required this.bottomPadding});
+  const _Resultats({
+    required this.resultat,
+    required this.requete,
+    required this.onNavigateur,
+    required this.onOuvrir,
+    required this.bottomPadding,
+  });
 
   final ChantsSearchResult resultat;
+  final String requete;
+  final void Function(String requete, MoteurRecherche moteur) onNavigateur;
   final ValueChanged<ChantAOuvrir> onOuvrir;
   final double bottomPadding;
 
@@ -162,6 +185,8 @@ class _Resultats extends StatelessWidget {
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.sm, SignmeSpacing.lg, bottomPadding),
       children: [
+        _Navigateurs(requete: requete, onOuvrir: onNavigateur),
+        const SizedBox(height: SignmeSpacing.md),
         if (resultat.partiel)
           const _Bandeau(
             icon: Icons.info_outline_rounded,
@@ -193,6 +218,44 @@ class _Resultats extends StatelessWidget {
         ],
         const SizedBox(height: SignmeSpacing.sm),
         _Mention(texte: resultat.mention),
+      ],
+    );
+  }
+}
+
+/// Chercher le même chant sur Google ou YouTube, dans le navigateur intégré à SignMe.
+class _Navigateurs extends StatelessWidget {
+  const _Navigateurs({required this.requete, required this.onOuvrir});
+
+  final String requete;
+  final void Function(String requete, MoteurRecherche moteur) onOuvrir;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _TitreSection('CHERCHER AUSSI SUR'),
+        Row(
+          children: [
+            for (final m in MoteurRecherche.values) ...[
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => onOuvrir(requete, m),
+                  icon: Icon(m == MoteurRecherche.google ? Icons.search_rounded : Icons.play_circle_outline_rounded, size: 20),
+                  label: Text(m.libelle),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: SignmeColors.primaryLight,
+                    side: const BorderSide(color: SignmeColors.primaryLight),
+                    padding: const EdgeInsets.symmetric(vertical: SignmeSpacing.md),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd)),
+                  ),
+                ),
+              ),
+              if (m == MoteurRecherche.google) const SizedBox(width: SignmeSpacing.md),
+            ],
+          ],
+        ),
       ],
     );
   }
