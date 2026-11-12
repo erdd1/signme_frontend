@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:signme/core/permissions/app_permissions.dart';
 import 'package:signme/features/auth/domain/entities/user_entity.dart';
 import 'package:signme/features/services/domain/entities/service_entity.dart';
+import 'package:signme/features/services/domain/gestion_evenement.dart';
 import 'package:signme/features/services/presentation/providers/services_provider.dart';
 
 const _don = ServiceEntity(
@@ -99,6 +100,41 @@ void main() {
           reason: role,
         );
       }
+    });
+  });
+
+  group('Service « Gestion événement » (regroupe les anciennes entrées du menu)', () {
+    ServiceEntity tuile() => servicesCatalog.firstWhere((s) => s.id == 'gestion-evenement');
+
+    test('la tuile est proposée au pasteur, à la secrétaire et au trésorier seulement', () {
+      for (final role in ['pasteur', 'secretaire', 'tresorier']) {
+        expect(tuile().isAvailableFor(_user(role)), isTrue, reason: role);
+      }
+      for (final role in ['paroissien', 'ancien']) {
+        expect(tuile().isAvailableFor(_user(role)), isFalse, reason: role);
+      }
+    });
+
+    test('chaque rôle retrouve exactement les droits de l\'ancien menu', () {
+      List<String> ids(String role) => actionsGestionEvenement(_user(role)).map((a) => a.id).toList();
+
+      expect(ids('pasteur'), ['creer', 'gerer', 'contributions']);
+      expect(ids('secretaire'), ['creer', 'gerer', 'contributions']);
+      expect(ids('tresorier'), ['gerer', 'contributions']); // le trésorier ne crée pas d'événement
+      expect(ids('paroissien'), isEmpty);
+      expect(ids('ancien'), isEmpty);
+    });
+
+    test('les actions ouvrent les écrans existants, inchangés', () {
+      final routes = actionsGestionEvenement(_user('pasteur')).map((a) => a.route).toList();
+
+      expect(routes, ['/evenements/create', '/evenements/gestion', '/contributions-evenement']);
+    });
+
+    test('la tuile est rangée avec « Faire un don » dans Mes activités', () {
+      expect(tuile().section, 'Mes activités');
+      expect(tuile().label, 'Gestion événement');
+      expect(tuile().route, '/services/gestion-evenement');
     });
   });
 }

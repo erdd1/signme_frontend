@@ -21,6 +21,7 @@ import '../../features/groupes/domain/entities/groupe_contribution_target.dart';
 import '../../features/groupes/domain/entities/groupe_entities.dart';
 import '../../features/groupes/presentation/screens/communique_form_screen.dart';
 import '../../features/groupes/presentation/screens/groupe_screen.dart';
+import '../../features/services/presentation/screens/gestion_evenement_screen.dart';
 import '../../features/services/presentation/screens/services_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
@@ -64,6 +65,7 @@ abstract final class AppRoutes {
   static const services        = '/services';
   static const servicesDon     = '/services/don';
   static const servicesTransactions = '/services/transactions';
+  static const servicesGestionEvenement = '/services/gestion-evenement';
   static String servicesGroupe(String uuid) => '/services/groupes/$uuid';
   static const maCarte         = '/ma-carte';
   static const profile         = '/profile';
@@ -469,6 +471,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.servicesDon,
             name: 'services-don',
             pageBuilder: (ctx, state) => _fadePage(const ContributionFormScreen(), state),
+          ),
+          // Service « Gestion événement » : regroupe créer / gérer / contributions
+          // (les écrans eux-mêmes sont inchangés).
+          GoRoute(
+            path: AppRoutes.servicesGestionEvenement,
+            name: 'services-gestion-evenement',
+            pageBuilder: (ctx, state) => _fadePage(const GestionEvenementScreen(), state),
           ),
           GoRoute(
             path: AppRoutes.contributionsEvenement,

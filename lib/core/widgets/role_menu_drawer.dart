@@ -113,30 +113,8 @@ class RoleMenuDrawer extends ConsumerWidget {
                     onTap: () => _navigate(context, AppRoutes.publications),
                   ),
 
-                // Créer un événement (collecte de fonds)
-                if (AppPermissions.canManageEvenements(user))
-                  _MenuItem(
-                    iconPath: SignmeAssets.add,
-                    label: 'Créer un événement',
-                    onTap: () => _navigate(context, AppRoutes.evenementCreate),
-                  ),
-
-                // Gérer les événements (Actifs / Archivés, montant collecté,
-                // nombre de contributeurs) — Pasteur/Secrétaire/Trésorier
-                if (AppPermissions.canViewContributionsEvenement(user))
-                  _MenuItem(
-                    iconPath: SignmeAssets.managePubs,
-                    label: 'Gérer les événements',
-                    onTap: () => _navigate(context, AppRoutes.gestionEvenements),
-                  ),
-
-                // Contributions événement (vue trésorerie)
-                if (AppPermissions.canViewContributionsEvenement(user))
-                  _MenuItem(
-                    iconPath: SignmeAssets.finances,
-                    label: 'Contributions événement',
-                    onTap: () => _navigate(context, AppRoutes.contributionsEvenement),
-                  ),
+                // Créer / gérer les événements et leurs contributions : réunis dans
+                // le service « Gestion événement » (onglet Services).
 
                 // Sorties financières (pasteur, trésorier)
                 if (AppPermissions.canViewSortiesFinancieres(user))

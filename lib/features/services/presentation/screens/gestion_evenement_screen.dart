@@ -1,0 +1,107 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../../core/design_system/index.dart';
+import '../../../../core/widgets/index.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../domain/gestion_evenement.dart';
+
+/// Service « Gestion événement » : les actions de gestion des événements
+/// réunies en un seul endroit (elles étaient dispersées dans le menu).
+/// Chaque carte ouvre l'écran existant, inchangé.
+class GestionEvenementScreen extends ConsumerWidget {
+  const GestionEvenementScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).auth?.user;
+    final actions = user == null ? const <GestionEvenementAction>[] : actionsGestionEvenement(user);
+
+    return Scaffold(
+      backgroundColor: SignmeColors.background,
+      appBar: AppBar(
+        backgroundColor: SignmeColors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: SignmeColors.black),
+        title: Text(
+          'Gestion événement',
+          style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
+        ),
+      ),
+      body: actions.isEmpty
+          ? const SignmeNoPermissionState(
+              title: 'Accès réservé',
+              message: 'La gestion des événements est réservée au pasteur, à la secrétaire et au trésorier.',
+              icon: Icons.lock_outline_rounded,
+            )
+          : ListView.separated(
+              padding: EdgeInsets.fromLTRB(
+                SignmeSpacing.lg,
+                SignmeSpacing.lg,
+                SignmeSpacing.lg,
+                MediaQuery.of(context).padding.bottom + SignmeSpacing.navbarClearance,
+              ),
+              itemCount: actions.length,
+              separatorBuilder: (_, __) => const SizedBox(height: SignmeSpacing.md),
+              itemBuilder: (context, i) => _ActionCard(action: actions[i], onTap: () => context.push(actions[i].route)),
+            ),
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({required this.action, required this.onTap});
+
+  final GestionEvenementAction action;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '${action.titre}. ${action.description}',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+        child: Container(
+          padding: const EdgeInsets.all(SignmeSpacing.lg),
+          decoration: BoxDecoration(
+            color: SignmeColors.white,
+            borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
+            border: Border.all(color: SignmeColors.lightGrayBorder),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: SignmeColors.accentSky,
+                  borderRadius: BorderRadius.circular(SignmeSpacing.radiusMd),
+                ),
+                child: Icon(action.icone, color: SignmeColors.primaryLight, size: 24),
+              ),
+              const SizedBox(width: SignmeSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(action.titre, style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.w800, fontSize: 16)),
+                    const SizedBox(height: 2),
+                    Text(
+                      action.description,
+                      style: SignmeTypography.bodySmall.copyWith(color: SignmeColors.textSecondary, height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: SignmeColors.mediumGray),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

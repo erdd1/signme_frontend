@@ -5,6 +5,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../groupes/presentation/providers/groupes_provider.dart';
 import '../../domain/entities/service_entity.dart';
+import '../../domain/gestion_evenement.dart';
 
 /// Rubriques de l'écran Services.
 abstract final class ServiceSections {
@@ -20,6 +21,14 @@ final List<ServiceEntity> servicesCatalog = [
     icon: Icons.volunteer_activism_rounded,
     section: ServiceSections.mesActivites,
     route: AppRoutes.servicesDon,
+  ),
+  ServiceEntity(
+    id: 'gestion-evenement',
+    label: 'Gestion événement',
+    icon: Icons.event_note_rounded,
+    section: ServiceSections.mesActivites,
+    route: AppRoutes.servicesGestionEvenement,
+    availableFor: peutGererEvenements,
   ),
 ];
 
