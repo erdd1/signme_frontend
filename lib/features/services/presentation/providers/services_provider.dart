@@ -7,7 +7,7 @@ import '../../../badge/domain/entities/badge_count_entity.dart';
 import '../../../badge/presentation/providers/badge_provider.dart';
 import '../../../groupes/presentation/providers/groupes_provider.dart';
 import '../../domain/entities/service_entity.dart';
-import '../../domain/gestion_evenement.dart';
+import '../../domain/gestion_actualites.dart';
 import '../../domain/gestion_finance.dart';
 import '../../domain/rapport_signatures.dart';
 
@@ -27,12 +27,12 @@ final List<ServiceEntity> servicesCatalog = [
     route: AppRoutes.servicesDon,
   ),
   const ServiceEntity(
-    id: 'gestion-evenement',
-    label: 'Gestion événement',
-    icon: Icons.event_note_rounded,
+    id: 'gestion-actualites',
+    label: 'Gestion actualités',
+    icon: Icons.dynamic_feed_rounded,
     section: ServiceSections.mesActivites,
-    route: AppRoutes.servicesGestionEvenement,
-    availableFor: peutGererEvenements,
+    route: AppRoutes.servicesGestionActualites,
+    availableFor: peutGererActualites,
   ),
   const ServiceEntity(
     id: 'gestion-finance',

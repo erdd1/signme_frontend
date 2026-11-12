@@ -21,7 +21,7 @@ import '../../features/groupes/domain/entities/groupe_contribution_target.dart';
 import '../../features/groupes/domain/entities/groupe_entities.dart';
 import '../../features/groupes/presentation/screens/communique_form_screen.dart';
 import '../../features/groupes/presentation/screens/groupe_screen.dart';
-import '../../features/services/domain/gestion_evenement.dart';
+import '../../features/services/domain/gestion_actualites.dart';
 import '../../features/services/domain/gestion_finance.dart';
 import '../../features/services/domain/rapport_signatures.dart';
 import '../../features/services/presentation/screens/gestion_service_screen.dart';
@@ -68,7 +68,7 @@ abstract final class AppRoutes {
   static const services        = '/services';
   static const servicesDon     = '/services/don';
   static const servicesTransactions = '/services/transactions';
-  static const servicesGestionEvenement = '/services/gestion-evenement';
+  static const servicesGestionActualites = '/services/gestion-actualites';
   static const servicesGestionFinance   = '/services/gestion-finance';
   static const servicesRapportSignatures = '/services/rapport-signatures';
   static String servicesGroupe(String uuid) => '/services/groupes/$uuid';
@@ -477,16 +477,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'services-don',
             pageBuilder: (ctx, state) => _fadePage(const ContributionFormScreen(), state),
           ),
-          // Service « Gestion événement » : regroupe créer / gérer / contributions
-          // (les écrans eux-mêmes sont inchangés).
+          // Service « Gestion actualités » : regroupe les événements (créer / gérer /
+          // contributions) et les publications (les écrans eux-mêmes sont inchangés).
           GoRoute(
-            path: AppRoutes.servicesGestionEvenement,
-            name: 'services-gestion-evenement',
+            path: AppRoutes.servicesGestionActualites,
+            name: 'services-gestion-actualites',
             pageBuilder: (ctx, state) => _fadePage(
               const GestionServiceScreen(
-                titre: 'Gestion événement',
+                titre: 'Gestion actualités',
                 messageRefus: 'Ce service est réservé au pasteur, à la secrétaire et au trésorier.',
-                actionsPour: actionsGestionEvenement,
+                actionsPour: actionsGestionActualites,
               ),
               state,
             ),

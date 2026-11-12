@@ -60,7 +60,7 @@ class RoleMenuDrawer extends ConsumerWidget {
                 ),
 
                 // Finances, sorties financières et retraits : réunis dans le service
-                // « Gestion événement » (onglet Services).
+                // « Gestion finance » (onglet Services).
 
                 // Gestion des membres
                 if (AppPermissions.canViewMembers(user))
@@ -83,16 +83,8 @@ class RoleMenuDrawer extends ConsumerWidget {
                   ),
                 ],
 
-                // Publications
-                if (AppPermissions.canManagePublications(user))
-                  _MenuItem(
-                    iconPath: SignmeAssets.managePubs,
-                    label: 'Gérer publications',
-                    onTap: () => _navigate(context, AppRoutes.publications),
-                  ),
-
-                // Créer / gérer les événements et leurs contributions : réunis dans
-                // le service « Gestion événement » (onglet Services).
+                // Créer / gérer les événements, leurs contributions et les publications :
+                // réunis dans le service « Gestion actualités » (onglet Services).
 
                 // Mes dépenses (tous rôles)
                 _MenuItem(
