@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:signme/core/permissions/app_permissions.dart';
 import 'package:signme/features/auth/domain/entities/user_entity.dart';
 import 'package:signme/features/services/domain/entities/service_entity.dart';
-import 'package:signme/features/services/domain/gestion_evenement.dart';
+import 'package:signme/features/services/domain/gestion_actualites.dart';
 import 'package:signme/features/services/domain/gestion_finance.dart';
 import 'package:signme/features/services/domain/rapport_signatures.dart';
 import 'package:signme/features/services/presentation/providers/services_provider.dart';
@@ -105,8 +105,8 @@ void main() {
     });
   });
 
-  group('Service « Gestion événement » (regroupe les anciennes entrées du menu)', () {
-    ServiceEntity tuile() => servicesCatalog.firstWhere((s) => s.id == 'gestion-evenement');
+  group('Service « Gestion actualités » (regroupe les anciennes entrées du menu)', () {
+    ServiceEntity tuile() => servicesCatalog.firstWhere((s) => s.id == 'gestion-actualites');
 
     test('la tuile est proposée au pasteur, à la secrétaire et au trésorier seulement', () {
       for (final role in ['pasteur', 'secretaire', 'tresorier']) {
@@ -118,25 +118,38 @@ void main() {
     });
 
     test('chaque rôle retrouve exactement les droits de l\'ancien menu', () {
-      List<String> ids(String role) => actionsGestionEvenement(_user(role)).map((a) => a.id).toList();
+      List<String> ids(String role) => actionsGestionActualites(_user(role)).map((a) => a.id).toList();
 
-      expect(ids('pasteur'), ['creer', 'gerer', 'contributions']);
-      expect(ids('secretaire'), ['creer', 'gerer', 'contributions']);
-      expect(ids('tresorier'), ['gerer', 'contributions']); // le trésorier ne crée pas d'événement
+      expect(ids('pasteur'), ['creer', 'gerer', 'contributions', 'publication-creer', 'publications']);
+      expect(ids('secretaire'), ['creer', 'gerer', 'contributions', 'publication-creer', 'publications']);
+      expect(ids('tresorier'), ['gerer', 'contributions']); // ni création d'événement ni publications
       expect(ids('paroissien'), isEmpty);
       expect(ids('ancien'), isEmpty);
     });
 
     test('les actions ouvrent les écrans existants, inchangés', () {
-      final routes = actionsGestionEvenement(_user('pasteur')).map((a) => a.route).toList();
+      final routes = actionsGestionActualites(_user('pasteur')).map((a) => a.route).toList();
 
-      expect(routes, ['/evenements/create', '/evenements/gestion', '/contributions-evenement']);
+      expect(routes, [
+        '/evenements/create',
+        '/evenements/gestion',
+        '/contributions-evenement',
+        '/publications/create',
+        '/publications',
+      ]);
+    });
+
+    test('les actions sont rangées par rubrique, événements puis publications', () {
+      final sections = actionsGestionActualites(_user('pasteur')).map((a) => a.section).toList();
+
+      expect(sections, ['Événements', 'Événements', 'Événements', 'Publications', 'Publications']);
+      expect(actionsGestionActualites(_user('tresorier')).map((a) => a.section).toSet(), {'Événements'});
     });
 
     test('la tuile est rangée avec « Faire un don » dans Mes activités', () {
       expect(tuile().section, 'Mes activités');
-      expect(tuile().label, 'Gestion événement');
-      expect(tuile().route, '/services/gestion-evenement');
+      expect(tuile().label, 'Gestion actualités');
+      expect(tuile().route, '/services/gestion-actualites');
     });
   });
 
@@ -159,12 +172,12 @@ void main() {
       expect(actionsGestionFinance(_user('secretaire')), isEmpty);
     });
 
-    test('est rangé à côté de « Gestion événement »', () {
+    test('est rangé à côté de « Gestion actualités »', () {
       final ids = servicesCatalog.map((s) => s.id).toList();
 
       expect(tuile().label, 'Gestion finance');
       expect(tuile().route, '/services/gestion-finance');
-      expect(ids.indexOf('gestion-finance'), ids.indexOf('gestion-evenement') + 1);
+      expect(ids.indexOf('gestion-finance'), ids.indexOf('gestion-actualites') + 1);
     });
   });
 

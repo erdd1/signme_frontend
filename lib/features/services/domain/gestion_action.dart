@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Une action d'un service de gestion (« Gestion événement », « Gestion
+/// Une action d'un service de gestion (« Gestion actualités », « Gestion
 /// finance »). Chaque action ouvre l'écran qui existait déjà dans le menu :
 /// seul leur REGROUPEMENT a changé, jamais ce qu'elles font ni qui y a droit.
 class GestionAction {
@@ -10,6 +10,7 @@ class GestionAction {
     required this.description,
     required this.icone,
     required this.route,
+    this.section,
     this.estOnglet = false,
     this.badgeType,
   });
@@ -19,6 +20,10 @@ class GestionAction {
   final String description;
   final IconData icone;
   final String route;
+
+  /// Rubrique sous laquelle l'action est rangée dans l'écran du service ;
+  /// null = pas de rubrique (service à une seule famille d'actions).
+  final String? section;
 
   /// Vrai pour un écran qui est un onglet de l'application (Finances) : on y
   /// accède comme depuis l'ancien menu, plutôt qu'en l'empilant.

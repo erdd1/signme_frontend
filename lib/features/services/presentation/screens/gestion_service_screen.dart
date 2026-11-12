@@ -10,7 +10,7 @@ import '../../../badge/domain/entities/badge_count_entity.dart';
 import '../../../badge/presentation/providers/badge_provider.dart';
 import '../../domain/gestion_action.dart';
 
-/// Écran d'un service de gestion (« Gestion événement », « Gestion finance ») :
+/// Écran d'un service de gestion (« Gestion actualités », « Gestion finance ») :
 /// les actions existantes du menu réunies en un seul endroit. Chaque carte
 /// ouvre l'écran existant, inchangé.
 class GestionServiceScreen extends ConsumerWidget {
@@ -48,20 +48,33 @@ class GestionServiceScreen extends ConsumerWidget {
               message: messageRefus,
               icon: Icons.lock_outline_rounded,
             )
-          : ListView.separated(
+          : ListView(
               padding: EdgeInsets.fromLTRB(
                 SignmeSpacing.lg,
                 SignmeSpacing.lg,
                 SignmeSpacing.lg,
                 MediaQuery.of(context).padding.bottom + SignmeSpacing.navbarClearance,
               ),
-              itemCount: actions.length,
-              separatorBuilder: (_, __) => const SizedBox(height: SignmeSpacing.md),
-              itemBuilder: (context, i) => _ActionCard(
-                action: actions[i],
-                badgeCount: badges.countFor(actions[i].badgeType ?? ''),
-                onTap: () => _ouvrir(context, ref, actions[i]),
-              ),
+              children: [
+                for (var i = 0; i < actions.length; i++) ...[
+                  // Titre de rubrique au premier élément de chaque rubrique.
+                  if (actions[i].section != null && (i == 0 || actions[i - 1].section != actions[i].section))
+                    Padding(
+                      padding: EdgeInsets.only(bottom: SignmeSpacing.sm, top: i == 0 ? 0 : SignmeSpacing.sm),
+                      child: Text(
+                        actions[i].section!,
+                        style: SignmeTypography.labelLarge
+                            .copyWith(color: SignmeColors.textSecondary, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  _ActionCard(
+                    action: actions[i],
+                    badgeCount: badges.countFor(actions[i].badgeType ?? ''),
+                    onTap: () => _ouvrir(context, ref, actions[i]),
+                  ),
+                  if (i < actions.length - 1) const SizedBox(height: SignmeSpacing.md),
+                ],
+              ],
             ),
     );
   }
