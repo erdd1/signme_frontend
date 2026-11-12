@@ -118,9 +118,9 @@ void main() {
     test('chaque rôle retrouve exactement les droits de l\'ancien menu', () {
       List<String> ids(String role) => actionsGestionEvenement(_user(role)).map((a) => a.id).toList();
 
-      expect(ids('pasteur'), ['creer', 'gerer', 'contributions']);
-      expect(ids('secretaire'), ['creer', 'gerer', 'contributions']);
-      expect(ids('tresorier'), ['gerer', 'contributions']); // le trésorier ne crée pas d'événement
+      expect(ids('pasteur'), ['creer', 'gerer', 'contributions', 'finances', 'sorties', 'retraits']);
+      expect(ids('secretaire'), ['creer', 'gerer', 'contributions']); // pas d'accès aux finances
+      expect(ids('tresorier'), ['gerer', 'contributions', 'finances', 'sorties', 'retraits']); // ne crée pas d'événement
       expect(ids('paroissien'), isEmpty);
       expect(ids('ancien'), isEmpty);
     });
@@ -128,7 +128,14 @@ void main() {
     test('les actions ouvrent les écrans existants, inchangés', () {
       final routes = actionsGestionEvenement(_user('pasteur')).map((a) => a.route).toList();
 
-      expect(routes, ['/evenements/create', '/evenements/gestion', '/contributions-evenement']);
+      expect(routes, [
+        '/evenements/create',
+        '/evenements/gestion',
+        '/contributions-evenement',
+        '/finances',
+        '/sorties-financieres',
+        '/retraits',
+      ]);
     });
 
     test('la tuile est rangée avec « Faire un don » dans Mes activités', () {
