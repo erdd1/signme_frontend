@@ -93,11 +93,6 @@ class RoleMenuDrawer extends ConsumerWidget {
                     onTap: () =>
                         _navigate(context, AppRoutes.anciensDesignations),
                   ),
-                  _MenuItem(
-                    iconPath: SignmeAssets.signCard,
-                    label: 'Signer les cartes',
-                    onTap: () => _navigate(context, AppRoutes.signer),
-                  ),
                 ],
 
                 // Publications
