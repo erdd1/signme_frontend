@@ -31,9 +31,7 @@ abstract final class SignmeAssets {
   // --- Menu Drawer Icons ---
   static const String finances = '$_imagesBase/finances.png';
   static const String manageUsers = '$_imagesBase/gerer_utilisateurs.png';
-  static const String historySignatures = '$_imagesBase/historique_signature.png';
   static const String serviceAnciens = '$_imagesBase/ancien_service.png';
   static const String managePubs = '$_imagesBase/gerer_publication.png';
-  static const String reportSec = '$_imagesBase/rapport_secretaire.png';
   static const String settings = '$_imagesBase/parametres.png';
 }

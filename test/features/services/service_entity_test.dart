@@ -5,6 +5,7 @@ import 'package:signme/features/auth/domain/entities/user_entity.dart';
 import 'package:signme/features/services/domain/entities/service_entity.dart';
 import 'package:signme/features/services/domain/gestion_evenement.dart';
 import 'package:signme/features/services/domain/gestion_finance.dart';
+import 'package:signme/features/services/domain/rapport_signatures.dart';
 import 'package:signme/features/services/presentation/providers/services_provider.dart';
 
 const _don = ServiceEntity(
@@ -164,6 +165,50 @@ void main() {
       expect(tuile().label, 'Gestion finance');
       expect(tuile().route, '/services/gestion-finance');
       expect(ids.indexOf('gestion-finance'), ids.indexOf('gestion-evenement') + 1);
+    });
+  });
+
+  group('Service « Rapport signatures » (regroupe les anciennes entrées du menu)', () {
+    ServiceEntity tuile() => servicesCatalog.firstWhere((s) => s.id == 'rapport-signatures');
+
+    test('proposé au pasteur, aux anciens et à la secrétaire', () {
+      for (final role in ['pasteur', 'ancien', 'secretaire']) {
+        expect(tuile().isAvailableFor(_user(role)), isTrue, reason: role);
+      }
+      for (final role in ['paroissien', 'tresorier']) {
+        expect(tuile().isAvailableFor(_user(role)), isFalse, reason: role);
+      }
+    });
+
+    test('chaque rôle retrouve exactement les droits de l\'ancien menu', () {
+      List<String> ids(String role) => actionsRapportSignatures(_user(role)).map((a) => a.id).toList();
+
+      expect(ids('pasteur'), ['historique', 'rapport']);
+      expect(ids('ancien'), ['historique']);
+      expect(ids('secretaire'), ['rapport']);
+      expect(ids('tresorier'), isEmpty);
+    });
+
+    test('ouvre les écrans existants et garde le badge des signatures non vues', () {
+      final actions = actionsRapportSignatures(_user('pasteur'));
+
+      expect(actions.map((a) => a.route), ['/historique-signatures', '/rapport-secretaire']);
+      expect(actions.first.badgeType, 'historique_signatures');
+      expect(actions.last.badgeType, isNull);
+      expect(tuile().badgeType, 'historique_signatures');
+    });
+
+    test('la tuile reprend le compteur du badge', () {
+      expect(tuile().withBadgeCount(4).badgeCount, 4);
+      expect(tuile().withBadgeCount(4).route, tuile().route);
+    });
+
+    test('est rangé avec les autres services de gestion', () {
+      final ids = servicesCatalog.map((s) => s.id).toList();
+
+      expect(tuile().label, 'Rapport signatures');
+      expect(tuile().route, '/services/rapport-signatures');
+      expect(ids.indexOf('rapport-signatures'), ids.indexOf('gestion-finance') + 1);
     });
   });
 }

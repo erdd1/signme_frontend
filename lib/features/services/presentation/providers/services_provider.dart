@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../badge/domain/entities/badge_count_entity.dart';
+import '../../../badge/presentation/providers/badge_provider.dart';
 import '../../../groupes/presentation/providers/groupes_provider.dart';
 import '../../domain/entities/service_entity.dart';
 import '../../domain/gestion_evenement.dart';
 import '../../domain/gestion_finance.dart';
+import '../../domain/rapport_signatures.dart';
 
 /// Rubriques de l'écran Services.
 abstract final class ServiceSections {
@@ -38,6 +41,15 @@ final List<ServiceEntity> servicesCatalog = [
     section: ServiceSections.mesActivites,
     route: AppRoutes.servicesGestionFinance,
     availableFor: peutGererFinances,
+  ),
+  const ServiceEntity(
+    id: 'rapport-signatures',
+    label: 'Rapport signatures',
+    icon: Icons.fact_check_rounded,
+    section: ServiceSections.mesActivites,
+    route: AppRoutes.servicesRapportSignatures,
+    availableFor: peutVoirRapportSignatures,
+    badgeType: badgeHistoriqueSignatures,
   ),
 ];
 
@@ -75,8 +87,12 @@ final availableServicesProvider = Provider<List<ServiceEntity>>((ref) {
   final user = ref.watch(authNotifierProvider).auth?.user;
   if (user == null) return const [];
 
+  final badges = ref.watch(badgeNotifierProvider).valueOrNull ?? BadgeCountEntity.empty;
+
   return [
-    ...servicesCatalog.where((s) => s.isAvailableFor(user)),
+    for (final s in servicesCatalog)
+      if (s.isAvailableFor(user))
+        s.badgeType == null ? s : s.withBadgeCount(badges.countFor(s.badgeType!)),
     ...ref.watch(groupesServicesProvider),
   ];
 });
