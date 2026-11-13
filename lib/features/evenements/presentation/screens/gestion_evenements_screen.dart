@@ -45,10 +45,8 @@ class _GestionEvenementsScreenState extends ConsumerState<GestionEvenementsScree
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
-      appBar: AppBar(
-        backgroundColor: SignmeColors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: SignmeColors.black),
+      appBar: SignmePageAppBar(
+        title: 'Gérer les événements',
         actions: [
           if (canCreate)
             IconButton(

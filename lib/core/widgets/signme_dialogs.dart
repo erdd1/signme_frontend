@@ -419,6 +419,31 @@ Future<bool?> showSignmeConfirm(
   );
 }
 
+/// Confirmation simple, point d'entrée unique des « Êtes-vous sûr ? » de l'app :
+/// renvoie vrai si l'utilisateur confirme, faux s'il annule.
+/// [isDangerous] met l'action en rouge (suppression, retrait…).
+Future<bool> signmeConfirm(
+  BuildContext context, {
+  required String title,
+  required String message,
+  required String confirmLabel,
+  String cancelLabel = 'Annuler',
+  bool isDangerous = false,
+  IconData? icon,
+}) async {
+  final confirmed = await showSignmeConfirm(
+    context,
+    title: title,
+    message: message,
+    confirmLabel: confirmLabel,
+    cancelLabel: cancelLabel,
+    isDangerous: isDangerous,
+    icon: icon,
+    onConfirm: () {},
+  );
+  return confirmed ?? false;
+}
+
 /// Helper function to show loading dialog
 Future<T?> showSignmeLoadingDialog<T>(
   BuildContext context, {

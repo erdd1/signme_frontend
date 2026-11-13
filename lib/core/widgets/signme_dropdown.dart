@@ -3,6 +3,7 @@ import '../design_system/index.dart';
 import 'app_button.dart';
 import 'app_snackbar.dart';
 import '../network/dio_exception_mapper.dart';
+import 'signme_dialogs.dart';
 
 /// SIGNME DROPDOWN - Standard Production Component
 /// Champ de sélection ouvrant un bottom sheet compact (liste redimensionnable,
@@ -194,29 +195,13 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
   }
 
   Future<void> _handleDelete(T item) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
-        backgroundColor: SignmeColors.white,
-        title: Text('Supprimer ?', style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
-        content: Text(
-          widget.deleteConfirmMessage?.call(item) ??
+    final confirm = await signmeConfirm(
+      context,
+      title: 'Supprimer ?',
+      message: widget.deleteConfirmMessage?.call(item) ??
               'Voulez-vous vraiment supprimer "${widget.itemLabel(item)}" ?',
-          style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray),
-        ),
-        actionsPadding: const EdgeInsets.all(SignmeSpacing.lg),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text('Annuler', style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.primaryLight)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text('Supprimer', style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.error, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+      confirmLabel: 'Supprimer',
+      isDangerous: true,
     );
     if (confirm != true || !mounted) return;
 

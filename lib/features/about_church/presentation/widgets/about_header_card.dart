@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_assets.dart';
 import '../../../../core/design_system/index.dart';
+import '../../../../core/widgets/signme_card.dart';
 import '../../domain/entities/church_about_info_entity.dart';
 import '../../domain/entities/church_summary_entity.dart';
 
@@ -19,24 +20,8 @@ class AboutHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        boxShadow: [
-          BoxShadow(
-            color: SignmeColors.primaryLight.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

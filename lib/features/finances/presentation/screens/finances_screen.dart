@@ -332,17 +332,8 @@ class _SummaryHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-      ),
       child: Row(
         children: [
           Container(

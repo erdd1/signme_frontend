@@ -101,14 +101,8 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
     return SignmeUnsavedChangesGuard(
       child: Scaffold(
         backgroundColor: SignmeColors.background,
-        appBar: AppBar(
-          backgroundColor: SignmeColors.white,
-          elevation: 0,
-          title: Text(
-            _isDon ? 'Faire un don' : 'Contribution',
-            style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
-          ),
-          iconTheme: const IconThemeData(color: SignmeColors.black),
+        appBar: SignmePageAppBar(
+          title: _isDon ? 'Faire un don' : 'Contribution',
         ),
         body: state.paymentStatus == 'idle'
             ? _buildForm(state, groupes, cardConfig)
@@ -652,19 +646,8 @@ class _ContributionFormScreenState extends ConsumerState<ContributionFormScreen>
   }
 
   Widget _summary(int total) {
-    return Container(
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        boxShadow: [
-          BoxShadow(color: SignmeColors.primaryLight.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4)),
-        ],
-      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [

@@ -136,6 +136,71 @@ class SignmeGradientCard extends StatelessWidget {
   }
 }
 
+/// HERO CARD - Carte héros au dégradé de marque (solde, total, résumé).
+///
+/// Référence unique des cartes bleues de l'app (caisse du groupe, soldes,
+/// totaux) : même dégradé, même rayon, même ombre partout.
+class SignmeHeroCard extends StatelessWidget {
+  const SignmeHeroCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(SignmeSpacing.lg),
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(SignmeSpacing.radiusXl),
+        boxShadow: [
+          BoxShadow(
+            color: SignmeColors.primaryLight.withValues(alpha: 0.3),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Montant principal d'une [SignmeHeroCard] : blanc, très gras, et réduit
+/// automatiquement s'il ne tient pas sur la largeur (grands montants, petits
+/// écrans).
+class SignmeHeroAmount extends StatelessWidget {
+  const SignmeHeroAmount(this.amount, {super.key});
+
+  final String amount;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(
+        amount,
+        maxLines: 1,
+        style: SignmeTypography.headlineLarge.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w900,
+          fontSize: 30,
+        ),
+      ),
+    );
+  }
+}
+
 /// OUTLINE CARD - Bordered card without background
 /// 
 /// Used for: Secondary content, minimal design

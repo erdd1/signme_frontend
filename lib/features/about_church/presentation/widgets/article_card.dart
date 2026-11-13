@@ -98,22 +98,12 @@ class ArticleCard extends ConsumerWidget {
             }
 
             Future<void> handleDelete() async {
-              final confirm = await showDialog<bool>(
-                context: ctx,
-                builder: (dialogCtx) => AlertDialog(
-                  title: const Text('Confirmer'),
-                  content: Text('Supprimer définitivement l\'article "${article.titre}" ?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(dialogCtx, false),
-                      child: const Text('Annuler'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(dialogCtx, true),
-                      child: const Text('Supprimer', style: TextStyle(color: SignmeColors.error)),
-                    ),
-                  ],
-                ),
+              final confirm = await signmeConfirm(
+                ctx,
+                title: 'Confirmer',
+                message: 'Supprimer définitivement l\'article "${article.titre}" ?',
+                confirmLabel: 'Supprimer',
+                isDangerous: true,
               );
               if (confirm != true) return;
               try {

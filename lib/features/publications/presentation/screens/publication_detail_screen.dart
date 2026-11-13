@@ -23,19 +23,8 @@ class PublicationDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
-      appBar: AppBar(
-        backgroundColor: SignmeColors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Publication',
-          style: SignmeTypography.labelLarge.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+      appBar: SignmePageAppBar(
+        title: 'Publication',
         actions: [
           asyncPub.maybeWhen(
             data: (pub) {
@@ -217,27 +206,13 @@ class PublicationDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<bool> _confirmDelete(BuildContext context, String titre) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Supprimer ?'),
-            content: Text('« $titre » sera définitivement supprimée.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Annuler'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text(
-                  'Supprimer',
-                  style: TextStyle(color: SignmeColors.error),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+  Future<bool> _confirmDelete(BuildContext context, String titre) {
+    return signmeConfirm(
+      context,
+      title: 'Supprimer ?',
+      message: '« $titre » sera définitivement supprimée.',
+      confirmLabel: 'Supprimer',
+      isDangerous: true,
+    );
   }
 }

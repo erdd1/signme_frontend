@@ -90,16 +90,9 @@ class _EditChurchInfoScreenState extends ConsumerState<EditChurchInfoScreen> {
     return SignmeUnsavedChangesGuard(
       child: Scaffold(
         backgroundColor: SignmeColors.white,
-        appBar: AppBar(
-          backgroundColor: SignmeColors.white,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
-            onPressed: _isSaving ? null : () => context.pop(),
-          ),
-          title: Text(
-            'Infos de l\'Église',
-            style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-          ),
+        appBar: SignmePageAppBar(
+          title: 'Infos de l\'Église',
+          backEnabled: !_isSaving,
         ),
         body: Form(
           key: _formKey,

@@ -26,19 +26,8 @@ class UserDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
-      appBar: AppBar(
-        backgroundColor: SignmeColors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Fiche membre',
-          style: SignmeTypography.labelLarge.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+      appBar: SignmePageAppBar(
+        title: 'Fiche membre',
         actions: [
           asyncUser.maybeWhen(
             data: (user) {
@@ -81,31 +70,14 @@ class UserDetailScreen extends ConsumerWidget {
     final current = ref.read(authNotifierProvider).auth?.user;
     if (current == null) return;
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(user.actif ? 'Désactiver le compte ?' : 'Activer le compte ?'),
-        content: Text(
-          user.actif
+    final confirm = await signmeConfirm(
+      context,
+      title: user.actif ? 'Désactiver le compte ?' : 'Activer le compte ?',
+      message: user.actif
               ? '${user.nom} ne pourra plus se connecter.'
               : '${user.nom} pourra à nouveau utiliser l\'application.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              user.actif ? 'Désactiver' : 'Activer',
-              style: TextStyle(
-                color: user.actif ? SignmeColors.error : SignmeColors.success,
-              ),
-            ),
-          ),
-        ],
-      ),
+      confirmLabel: user.actif ? 'Désactiver' : 'Activer',
+      isDangerous: user.actif,
     );
 
     if (confirm != true || !context.mounted) return;

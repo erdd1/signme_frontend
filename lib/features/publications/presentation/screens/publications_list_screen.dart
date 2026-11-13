@@ -173,36 +173,12 @@ class PublicationsListScreen extends ConsumerWidget {
     WidgetRef ref,
     PublicationEntity pub,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        ),
-        title: Text(
-          'Supprimer ?',
-          style: SignmeTypography.headlineSmall.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Text(
-          '« ${pub.titre} » sera définitivement supprimée.',
-          style: SignmeTypography.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Supprimer',
-              style: TextStyle(color: SignmeColors.error),
-            ),
-          ),
-        ],
-      ),
+    final ok = await signmeConfirm(
+      context,
+      title: 'Supprimer ?',
+      message: '« ${pub.titre} » sera définitivement supprimée.',
+      confirmLabel: 'Supprimer',
+      isDangerous: true,
     );
 
     if (ok != true || !context.mounted) return;

@@ -31,17 +31,8 @@ class EvenementDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
-      appBar: AppBar(
-        backgroundColor: SignmeColors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
-          onPressed: () => context.canPop() ? context.pop() : context.go(AppRoutes.home),
-        ),
-        title: Text(
-          'Événement',
-          style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-        ),
+      appBar: SignmePageAppBar(
+        title: 'Événement',
         actions: [
           async.maybeWhen(
             data: (evenement) => evenement.peutGerer

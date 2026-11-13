@@ -152,16 +152,9 @@ class _CreateEditArticleScreenState extends ConsumerState<CreateEditArticleScree
 
     return SignmeUnsavedChangesGuard(
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: SignmeColors.white,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
-            onPressed: _isSaving ? null : () => context.pop(),
-          ),
-          title: Text(
-            widget.articleUuid == null ? 'Nouvel article' : 'Modifier l\'article',
-            style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-          ),
+        appBar: SignmePageAppBar(
+          title: widget.articleUuid == null ? 'Nouvel article' : 'Modifier l\'article',
+          backEnabled: !_isSaving,
         ),
         body: Form(
           key: _formKey,

@@ -26,11 +26,8 @@ class GestionUtilisateursScreen extends ConsumerWidget {
 
     if (currentUser == null || !AppPermissions.canManageMembers(currentUser)) {
       return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => context.pop(),
-          ),
+        appBar: SignmePageAppBar(
+          title: 'Statistiques fidèles',
         ),
         body: Center(
           child: Padding(
@@ -51,17 +48,8 @@ class GestionUtilisateursScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
-      appBar: AppBar(
-        backgroundColor: SignmeColors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Statistiques fidèles',
-          style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-        ),
+      appBar: SignmePageAppBar(
+        title: 'Statistiques fidèles',
       ),
       body: RefreshIndicator(
         color: SignmeColors.primaryLight,
@@ -301,17 +289,8 @@ class _SummaryHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-      ),
       child: Row(
         children: [
           Container(
@@ -453,17 +432,8 @@ class _FilteredMembersResultScreenState extends ConsumerState<FilteredMembersRes
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
-      appBar: AppBar(
-        backgroundColor: SignmeColors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          widget.title,
-          style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
-        ),
+      appBar: SignmePageAppBar(
+        title: widget.title,
       ),
       body: asyncUsers.when(
         loading: () => const SignmePageSkeleton(itemHeight: 90),
@@ -585,17 +555,8 @@ class _GroupHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-      ),
       child: Row(
         children: [
           Container(

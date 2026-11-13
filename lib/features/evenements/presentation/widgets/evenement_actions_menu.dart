@@ -5,6 +5,7 @@ import '../../../../core/design_system/index.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../domain/entities/evenement_entity.dart';
 import '../providers/evenements_provider.dart';
+import '../../../../core/widgets/signme_dialogs.dart';
 
 enum EvenementAction {
   publier,
@@ -125,32 +126,13 @@ class EvenementActionsMenu extends ConsumerWidget {
   }
 
   Future<bool?> _confirmDelete(BuildContext context) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
-        title: Text(
-          'Supprimer cet événement ?',
-          style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          'Cet événement programmé n\'a jamais été publié. Cette action est '
+    return signmeConfirm(
+      context,
+      title: 'Supprimer cet événement ?',
+      message: 'Cet événement programmé n\'a jamais été publié. Cette action est '
           'définitive et ne peut pas être annulée.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              'Supprimer',
-              style: TextStyle(color: SignmeColors.error, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+      confirmLabel: 'Supprimer',
+      isDangerous: true,
     );
   }
 }

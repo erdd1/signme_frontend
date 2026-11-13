@@ -90,23 +90,8 @@ class _StatusBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        boxShadow: [
-          BoxShadow(
-            color: SignmeColors.primaryLight.withOpacity(0.25),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
       child: Row(
         children: [
           Container(

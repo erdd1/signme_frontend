@@ -244,22 +244,7 @@ class _GlobalStatsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(sortiesDashboardProvider(SortiesFilter.empty));
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: SignmeColors.primaryLight.withValues(alpha: 0.30),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-      ),
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,13 +269,7 @@ class _GlobalStatsCard extends ConsumerWidget {
             data: (stats) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  FinanceFormatters.fcfa(stats.soldeActuel),
-                  style: SignmeTypography.headlineMedium.copyWith(
-                    color: SignmeColors.success,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+                SignmeHeroAmount(FinanceFormatters.fcfa(stats.soldeActuel)),
                 const SizedBox(height: SignmeSpacing.lg),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

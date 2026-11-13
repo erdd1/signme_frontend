@@ -135,12 +135,18 @@ class MainShell extends ConsumerWidget {
     // Masquer la navbar quand le clavier est ouvert
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
+    // Les écrans de détail et de formulaire portent leur propre en-tête
+    // (SignmePageAppBar) : le shell retire le sien pour ne jamais en empiler deux.
+    final hasOwnAppBar = _routeHasOwnAppBar(GoRouterState.of(context).matchedLocation);
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       extendBody: true,
       backgroundColor: SignmeColors.white,
       drawer: const RoleMenuDrawer(),
-      appBar: AppBar(
+      appBar: hasOwnAppBar
+          ? null
+          : AppBar(
         backgroundColor: SignmeColors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
@@ -168,11 +174,12 @@ class MainShell extends ConsumerWidget {
           // masque déjà quand le clavier s'ouvre).
           KeyboardAvoidingBody(child: child),
           // ── Bannière hors ligne ──
-          const Positioned(
-            top: 0,
+          Positioned(
+            // Sans appbar du shell, la bannière se place sous la barre d'état.
+            top: hasOwnAppBar ? MediaQuery.of(context).padding.top : 0,
             left: 0,
             right: 0,
-            child: OfflineBanner(),
+            child: const OfflineBanner(),
           ),
           // ── Navbar: Positioned D'ABORD, animations À L'INTÉRIEUR ──
           Positioned(
@@ -236,22 +243,13 @@ class MainShell extends ConsumerWidget {
       AppRoutes.historiqueSignatures => "Historique Signatures",
       AppRoutes.publications => "Gérer publications",
       AppRoutes.parametres => "Paramètres",
-      AppRoutes.userCreate => "Nouveau membre",
-      AppRoutes.userStats => "Statistiques fidèles",
       AppRoutes.evenementCreate => "Créer un événement",
-      AppRoutes.gestionEvenements => "Gérer les événements",
       AppRoutes.contributionsEvenement => "Contributions événement",
       AppRoutes.sortiesFinancieres => "Sorties financières",
       AppRoutes.retraits => "Retraits",
       AppRoutes.mesDepenses => "Mes dépenses",
       AppRoutes.aboutChurch => "À propos de votre Église",
       AppRoutes.celebrations => "Célébrations",
-      _ when route.startsWith('${AppRoutes.users}/') &&
-          route.endsWith('/edit') =>
-      "Modifier le membre",
-      _ when route.startsWith('${AppRoutes.users}/') => "Détails utilisateur",
-      _ when route.startsWith('/evenements/') && !route.endsWith('/contribuer') =>
-      "Détail de l'événement",
       _ => "SignMe",
     };
     final fontSize = route == AppRoutes.home ? 24.0 : 20.0;
@@ -271,6 +269,15 @@ class MainShell extends ConsumerWidget {
       ),
     );
   }
+
+  /// Routes du shell dont l'écran affiche son propre en-tête (flèche de retour
+  /// + grand titre). « Créer un événement » garde le titre du shell.
+  bool _routeHasOwnAppBar(String route) =>
+      route == AppRoutes.changePassword ||
+      route.startsWith('${AppRoutes.users}/') ||
+      route.startsWith('${AppRoutes.publications}/') ||
+      route.startsWith('${AppRoutes.aboutChurch}/') ||
+      (route.startsWith('/evenements/') && route != AppRoutes.evenementCreate);
 
   bool _isTabRoute(BuildContext ctx, List<NavTab> tabs) {
     final loc = GoRouterState.of(ctx).matchedLocation;

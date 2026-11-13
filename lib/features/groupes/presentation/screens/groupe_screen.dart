@@ -105,24 +105,12 @@ class _GroupeScreenState extends ConsumerState<GroupeScreen> {
   }
 
   Future<void> _retirerCommunique(GroupeEntity groupe, CommuniqueEntity communique) async {
-    final confirme = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
-        backgroundColor: SignmeColors.white,
-        title: Text('Retirer ce communiqué ?', style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
-        content: Text(
-          'Il disparaîtra de la liste. Les contributions déjà reçues restent dans la caisse et l\'historique.',
-          style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Annuler')),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text('Retirer', style: TextStyle(color: SignmeColors.error, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+    final confirme = await signmeConfirm(
+      context,
+      title: 'Retirer ce communiqué ?',
+      message: 'Il disparaîtra de la liste. Les contributions déjà reçues restent dans la caisse et l\'historique.',
+      confirmLabel: 'Retirer',
+      isDangerous: true,
     );
     if (confirme != true || !mounted) return;
 

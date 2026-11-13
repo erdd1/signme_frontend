@@ -114,29 +114,14 @@ class _StatsHeader extends StatelessWidget {
             ? 'Total sur l\'année $annee'
             : 'Total sur la période sélectionnée';
 
-    return Container(
-      padding: const EdgeInsets.all(SignmeSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-        boxShadow: [
-          BoxShadow(color: SignmeColors.primaryLight.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4)),
-        ],
-      ),
+    return SignmeHeroCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Total donné jusqu\'à présent',
               style: SignmeTypography.bodySmall.copyWith(color: Colors.white.withOpacity(0.8))),
           const SizedBox(height: 2),
-          Text(
-            FinanceFormatters.fcfa(stats?.totalDonne ?? 0),
-            style: SignmeTypography.headlineLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w900),
-          ),
+          SignmeHeroAmount(FinanceFormatters.fcfa(stats?.totalDonne ?? 0)),
           const SizedBox(height: SignmeSpacing.md),
           const Divider(color: Colors.white24, height: 1),
           const SizedBox(height: SignmeSpacing.md),

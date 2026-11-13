@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/design_system/index.dart';
+import '../../../../core/widgets/signme_card.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/entities/groupe_entities.dart';
 
@@ -25,19 +26,8 @@ class GroupeCaisseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final gerer = onEntreeCash != null || onRetrait != null;
 
-    return Container(
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusXl),
-        boxShadow: [
-          BoxShadow(color: SignmeColors.primaryLight.withValues(alpha: 0.3), blurRadius: 14, offset: const Offset(0, 6)),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -46,18 +36,7 @@ class GroupeCaisseCard extends StatelessWidget {
             style: SignmeTypography.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.8)),
           ),
           const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              FinanceFormatters.fcfa(caisse.total),
-              style: SignmeTypography.headlineLarge.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 30,
-              ),
-            ),
-          ),
+          SignmeHeroAmount(FinanceFormatters.fcfa(caisse.total)),
           const SizedBox(height: SignmeSpacing.md),
           Row(
             children: [

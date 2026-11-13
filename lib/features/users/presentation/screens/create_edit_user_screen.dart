@@ -172,11 +172,8 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
 
   Widget _scaffoldWithError(String message) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => context.pop(),
-        ),
+      appBar: SignmePageAppBar(
+        title: 'Membre',
       ),
       body: SignmeErrorState(
         title: 'Membre introuvable',
@@ -209,19 +206,9 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     return SignmeUnsavedChangesGuard(
       child: Scaffold(
       backgroundColor: SignmeColors.background,
-      appBar: AppBar(
-        backgroundColor: SignmeColors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
-          onPressed: isSaving ? null : () => context.pop(),
-        ),
-        title: Text(
-          _isEdit ? 'Modifier le membre' : 'Nouveau membre',
-          style: SignmeTypography.labelLarge.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+      appBar: SignmePageAppBar(
+        title: _isEdit ? 'Modifier le membre' : 'Nouveau membre',
+        backEnabled: !isSaving,
       ),
       body: Form(
         key: _formKey,

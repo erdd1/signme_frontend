@@ -275,22 +275,7 @@ class _SynthesisCard extends ConsumerWidget {
     final statsAsync =
         ref.watch(contributionsTreasuryStatsProvider(globalFilter));
 
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusXl),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: SignmeColors.primaryLight.withValues(alpha: 0.30),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,7 +405,7 @@ class _SynthesisCard extends ConsumerWidget {
                             .copyWith(color: Colors.white54),
                       ),
                     ],
-                  ),
+    ),
                 ),
               ],
             ),

@@ -5,6 +5,7 @@ import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/entities/sortie_financiere_entity.dart';
 import '../providers/sortie_form_provider.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/widgets/signme_dialogs.dart';
 
 class SortieCard extends ConsumerWidget {
   const SortieCard({super.key, required this.sortie, required this.onChanged, this.onEdit});
@@ -127,19 +128,12 @@ class SortieCard extends ConsumerWidget {
                           if (sortie.canDelete)
                             TextButton.icon(
                               onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (c) => AlertDialog(
-                                    title: const Text('Confirmer'),
-                                    content: const Text('Voulez-vous supprimer cette sortie ?'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Annuler')),
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(c, true),
-                                        child: const Text('Supprimer', style: TextStyle(color: SignmeColors.error)),
-                                      ),
-                                    ],
-                                  ),
+                                final confirm = await signmeConfirm(
+                                  context,
+                                  title: 'Confirmer',
+                                  message: 'Voulez-vous supprimer cette sortie ?',
+                                  confirmLabel: 'Supprimer',
+                                  isDangerous: true,
                                 );
                                 if (confirm == true) {
                                   await ref.read(sortieFormProvider.notifier).delete(sortie.uuid);

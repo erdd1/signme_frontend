@@ -11,6 +11,7 @@ import '../providers/anciens_provider.dart';
 import '../widgets/ancien_card.dart';
 import '../widgets/designation_form_dialog.dart';
 import '../../../../core/widgets/app_snackbar.dart';
+import '../../../../core/widgets/signme_dialogs.dart';
 
 class AncienDesignationsScreen extends ConsumerStatefulWidget {
   const AncienDesignationsScreen({super.key});
@@ -352,26 +353,15 @@ class _AncienDesignationsScreenState
     );
   }
 
-  void _showRevokeConfirm(BuildContext ctx, WidgetRef ref, AncienEntity ancien) {
-    showDialog(
-      context: ctx,
-      builder: (diagCtx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
-        title: Text('Confirmer la révocation', style: SignmeTypography.headlineSmall.copyWith(fontSize: 18, fontWeight: FontWeight.bold)),
-        content: Text('Voulez-vous vraiment retirer ${ancien.nom} de son service ?', style: SignmeTypography.bodyMedium),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(diagCtx), child: Text('Annuler', style: TextStyle(color: SignmeColors.mediumGray))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: SignmeColors.error),
-            onPressed: () {
-              Navigator.pop(diagCtx);
-              ref.read(ancienProvider.notifier).revoke(ancien.designationId!);
-            }, 
-            child: const Text('Révoquer', style: TextStyle(color: Colors.white))
-          ),
-        ],
-      ),
+  Future<void> _showRevokeConfirm(BuildContext ctx, WidgetRef ref, AncienEntity ancien) async {
+    final confirme = await signmeConfirm(
+      ctx,
+      title: 'Confirmer la révocation',
+      message: 'Voulez-vous vraiment retirer ${ancien.nom} de son service ?',
+      confirmLabel: 'Révoquer',
+      isDangerous: true,
     );
+    if (confirme) ref.read(ancienProvider.notifier).revoke(ancien.designationId!);
   }
 
   String _monthYearLabel(int mois, int annee) {

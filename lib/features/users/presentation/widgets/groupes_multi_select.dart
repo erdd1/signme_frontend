@@ -3,6 +3,7 @@ import '../../../../core/design_system/index.dart';
 import '../../../auth/domain/entities/user_lookup_refs.dart';
 import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../../core/widgets/signme_dialogs.dart';
 
 /// Sélection multiple de groupes avec, pour chaque groupe choisi, le poste du
 /// chrétien : simple membre (par défaut), président et/ou trésorier. Un
@@ -287,28 +288,12 @@ class _GroupeChipState extends State<_GroupeChip> {
   bool _isDeleting = false;
 
   Future<void> _handleDelete() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
-        backgroundColor: SignmeColors.white,
-        title: Text('Supprimer ?', style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
-        content: Text(
-          'Supprimer le groupe "${widget.groupe.nom}" ? Les membres qui l\'utilisent seront simplement dissociés.',
-          style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray),
-        ),
-        actionsPadding: const EdgeInsets.all(SignmeSpacing.lg),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text('Annuler', style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.primaryLight)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text('Supprimer', style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.error, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
+    final confirm = await signmeConfirm(
+      context,
+      title: 'Supprimer ?',
+      message: 'Supprimer le groupe "${widget.groupe.nom}" ? Les membres qui l\'utilisent seront simplement dissociés.',
+      confirmLabel: 'Supprimer',
+      isDangerous: true,
     );
     if (confirm != true || !mounted) return;
 

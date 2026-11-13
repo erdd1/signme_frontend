@@ -7,6 +7,7 @@ import '../../../../core/design_system/index.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_snackbar.dart';
+import '../../../../core/widgets/signme_page_app_bar.dart';
 import '../../../auth/domain/utils/password_policy.dart';
 import '../../../auth/presentation/utils/auth_feedback.dart';
 import '../../../auth/presentation/widgets/auth_asset_text_field.dart';
@@ -80,24 +81,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            size: 20,
-            color: SignmeColors.black,
-          ),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          AppStrings.changePassword,
-          style: SignmeTypography.titleMedium.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        centerTitle: true,
+      appBar: SignmePageAppBar(
+        title: AppStrings.changePassword,
       ),
       body: SafeArea(
         child: SingleChildScrollView(

@@ -213,18 +213,7 @@ class _SoldeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [SignmeColors.primaryDark, SignmeColors.primaryLight],
-        ),
-        boxShadow: [
-          BoxShadow(color: SignmeColors.primaryLight.withValues(alpha: 0.30), blurRadius: 20, offset: const Offset(0, 8)),
-        ],
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-      ),
+    return SignmeHeroCard(
       padding: const EdgeInsets.all(SignmeSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,10 +229,7 @@ class _SoldeCard extends StatelessWidget {
           soldeAsync.when(
             loading: () => const CircularProgressIndicator(color: Colors.white),
             error: (_, __) => const Text('Solde indisponible', style: TextStyle(color: Colors.white)),
-            data: (solde) => Text(
-              FinanceFormatters.fcfa(solde),
-              style: SignmeTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900),
-            ),
+            data: (solde) => SignmeHeroAmount(FinanceFormatters.fcfa(solde)),
           ),
         ],
       ),

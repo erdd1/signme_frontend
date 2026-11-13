@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../design_system/index.dart';
+import 'signme_dialogs.dart';
 
 /// Vrai lorsqu'un formulaire actuellement affiché contient des modifications
 /// non enregistrées. Un seul drapeau global : un seul formulaire de saisie
@@ -15,40 +15,15 @@ final formDirtyProvider = StateProvider<bool>((ref) => false);
 /// [SignmeUnsavedChangesGuard] (retour système/AppBar) et par la navbar
 /// flottante de [MainShell] (changement d'onglet), pour éviter toute
 /// duplication du même texte/style à plusieurs endroits.
-Future<bool> confirmDiscardChanges(BuildContext context) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
-      backgroundColor: SignmeColors.white,
-      title: Text(
-        'Abandonner la saisie ?',
-        style: SignmeTypography.headlineSmall.copyWith(fontWeight: FontWeight.w700),
-      ),
-      content: Text(
-        'Vous avez des modifications non enregistrées. Si vous quittez maintenant, elles seront perdues.',
-        style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.mediumGray),
-      ),
-      actionsPadding: const EdgeInsets.all(SignmeSpacing.lg),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, false),
-          child: Text(
-            'Continuer la saisie',
-            style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.primaryLight, fontWeight: FontWeight.w600),
-          ),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(dialogContext, true),
-          child: Text(
-            'Quitter sans enregistrer',
-            style: SignmeTypography.bodyMedium.copyWith(color: SignmeColors.error, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    ),
+Future<bool> confirmDiscardChanges(BuildContext context) {
+  return signmeConfirm(
+    context,
+    title: 'Abandonner la saisie ?',
+    message: 'Vous avez des modifications non enregistrées. Si vous quittez maintenant, elles seront perdues.',
+    confirmLabel: 'Quitter sans enregistrer',
+    cancelLabel: 'Continuer la saisie',
+    isDangerous: true,
   );
-  return confirmed ?? false;
 }
 
 /// Enveloppe un écran de formulaire pour bloquer toute sortie accidentelle
