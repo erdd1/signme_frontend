@@ -11,6 +11,7 @@ import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavCle
 import '../../domain/entities/about_article_entity.dart';
 import '../providers/about_church_provider.dart';
 import '../utils/max_words_input_formatter.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 
 class CreateEditArticleScreen extends ConsumerStatefulWidget {
   const CreateEditArticleScreen({super.key, this.articleUuid});
@@ -54,7 +55,7 @@ class _CreateEditArticleScreenState extends ConsumerState<CreateEditArticleScree
 
   Future<void> _pickImage() async {
     if (_totalImageCount >= 3) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Maximum 3 images')));
+      AppSnackbar.warning(context, 'Maximum 3 images');
       return;
     }
     try {
@@ -66,7 +67,7 @@ class _CreateEditArticleScreenState extends ConsumerState<CreateEditArticleScree
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      AppSnackbar.error(context, messageFromError(e));
     }
   }
 
@@ -133,7 +134,7 @@ class _CreateEditArticleScreenState extends ConsumerState<CreateEditArticleScree
       }
       if (mounted) context.pop();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) AppSnackbar.error(context, messageFromError(e));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

@@ -15,6 +15,7 @@ import '../../domain/entities/rapport_comparaison_entity.dart'
 import '../../domain/entities/rapport_mensuel_entity.dart';
 import '../providers/finances_provider.dart';
 import '../widgets/finance_formatters.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class FinancesScreen extends ConsumerStatefulWidget {
   const FinancesScreen({super.key});
@@ -173,11 +174,11 @@ class _RapportAnnuelTab extends ConsumerWidget {
       onRefresh: () => ref.read(financesProvider.notifier).refresh(),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           SignmeSpacing.lg,
           SignmeSpacing.md,
           SignmeSpacing.lg,
-          120,
+          floatingNavInset(context),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -712,11 +713,11 @@ class _ComparaisonTab extends ConsumerWidget {
           ref.read(financesProvider.notifier).loadComparison(force: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           SignmeSpacing.lg,
           SignmeSpacing.lg,
           SignmeSpacing.lg,
-          120,
+          floatingNavInset(context),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

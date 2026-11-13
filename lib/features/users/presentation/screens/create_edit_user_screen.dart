@@ -20,6 +20,7 @@ import '../providers/users_data_providers.dart';
 import '../providers/users_provider.dart';
 import '../widgets/add_lookup_bottom_sheet.dart';
 import '../widgets/groupes_multi_select.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class CreateEditUserScreen extends ConsumerStatefulWidget {
   const CreateEditUserScreen({super.key, this.userId});
@@ -225,11 +226,11 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             SignmeSpacing.lg,
             SignmeSpacing.md,
             SignmeSpacing.lg,
-            120,
+            floatingNavInset(context),
           ),
           children: [
             if (canUploadPhoto) ...[
@@ -689,27 +690,15 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     if (!_formKey.currentState!.validate()) return;
     if ((_selectedRole == null) &&
         (!_isEdit || AppPermissions.canEditMemberRole(currentUser))) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sélectionnez un rôle'), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, 'Sélectionnez un rôle');
       return;
     }
     if (_matriculeCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sélectionnez le sexe et l\'identifiant du membre'),
-          backgroundColor: SignmeColors.error,
-        ),
-      );
+      AppSnackbar.error(context, 'Sélectionnez le sexe et l\'identifiant du membre');
       return;
     }
     if (_selectedRole == 'paroissien' && _estCommuniant == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Sélectionnez le statut communiant/non communiant'),
-          backgroundColor: SignmeColors.error,
-        ),
-      );
+      AppSnackbar.error(context, 'Sélectionnez le statut communiant/non communiant');
       return;
     }
 
@@ -766,27 +755,16 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
 
       if (mounted) {
         ref.read(formDirtyProvider.notifier).state = false;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isEdit ? 'Membre mis à jour' : 'Membre créé avec succès',
-            ),
-            backgroundColor: SignmeColors.success,
-          ),
-        );
+        AppSnackbar.success(context, _isEdit ? 'Membre mis à jour' : 'Membre créé avec succès');
         context.pop();
       }
     } on ProfileImageTooLargeException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, e.message);
     } catch (e) {
       if (!mounted) return;
       final msg = e is AppException ? e.message : messageFromError(e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, msg);
     }
   }
 
@@ -804,12 +782,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isFetchingMatricule = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e is AppException ? e.message : messageFromError(e)),
-          backgroundColor: SignmeColors.error,
-        ),
-      );
+      AppSnackbar.error(context, e is AppException ? e.message : messageFromError(e));
     }
   }
 
@@ -822,9 +795,7 @@ class _CreateEditUserScreenState extends ConsumerState<CreateEditUserScreen> {
       }
     } on ProfileImageTooLargeException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, e.message);
     }
   }
 }

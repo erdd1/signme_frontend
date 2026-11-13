@@ -8,6 +8,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/historique_personnel_entity.dart';
 import '../providers/historique_personnel_combined_provider.dart';
 import '../../../badge/presentation/providers/badge_provider.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class HistoriquePersonnelScreen extends ConsumerStatefulWidget {
   const HistoriquePersonnelScreen({super.key});
@@ -111,7 +112,7 @@ class _HistoriquePersonnelScreenState
               return buildSignmeTimelineSlivers(sections: sections);
             },
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          SliverToBoxAdapter(child: SizedBox(height: floatingNavInset(context))),
         ],
       ),
     );

@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../constants/app_colors.dart';
+import '../design_system/index.dart';
 
+/// Point d'entrée unique des messages éphémères de l'app (palette SignMe).
+/// Le succès et l'erreur s'accompagnent d'un léger retour haptique.
 abstract final class AppSnackbar {
-  static void success(BuildContext context, String message) =>
-      _show(context, message, AppColors.success, Icons.check_circle_rounded);
+  static void success(BuildContext context, String message) {
+    HapticFeedback.mediumImpact();
+    _show(context, message, SignmeColors.success, Icons.check_circle_rounded);
+  }
 
-  static void error(BuildContext context, String message) =>
-      _show(context, message, AppColors.error, Icons.error_rounded);
+  static void error(BuildContext context, String message) {
+    HapticFeedback.mediumImpact();
+    _show(context, message, SignmeColors.error, Icons.error_rounded);
+  }
 
   static void info(BuildContext context, String message) =>
-      _show(context, message, AppColors.primary, Icons.info_rounded);
+      _show(context, message, SignmeColors.primaryLight, Icons.info_rounded);
 
   static void warning(BuildContext context, String message) =>
-      _show(context, message, AppColors.warning, Icons.warning_rounded);
+      _show(context, message, SignmeColors.warning, Icons.warning_rounded);
 
   static void _show(BuildContext context, String message, Color color, IconData icon) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();

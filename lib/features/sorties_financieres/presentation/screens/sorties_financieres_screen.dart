@@ -8,6 +8,7 @@ import '../providers/sorties_dashboard_provider.dart';
 import '../providers/sorties_list_provider.dart';
 import '../providers/sortie_form_provider.dart';
 import '../widgets/sortie_card.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class SortiesFinancieresScreen extends ConsumerStatefulWidget {
   const SortiesFinancieresScreen({super.key});
@@ -158,12 +159,27 @@ class _SortiesFinancieresScreenState extends ConsumerState<SortiesFinancieresScr
               ),
             ),
             if (listState.isLoading && listState.items.isEmpty)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+              const SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+                sliver: SliverToBoxAdapter(child: SignmeSkeletonList(itemCount: 4, itemHeight: 96)),
               )
             else if (listState.error != null && listState.items.isEmpty)
               SliverFillRemaining(
-                child: Center(child: Text('Erreur: ${listState.error}')),
+                hasScrollBody: false,
+                child: SignmeErrorState(
+                  title: 'Chargement impossible',
+                  message: listState.error!,
+                  onRetry: () => ref.read(sortiesListProvider.notifier).refresh(_filters, type: _selectedType),
+                ),
+              )
+            else if (listState.items.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: SignmeEmptyState(
+                  icon: Icons.receipt_long_rounded,
+                  title: 'Aucune sortie',
+                  message: 'Les sorties financières enregistrées apparaîtront ici.',
+                ),
               )
             else
               SliverPadding(
@@ -194,8 +210,8 @@ class _SortiesFinancieresScreenState extends ConsumerState<SortiesFinancieresScr
                   ),
                 ),
               ),
-            const SliverToBoxAdapter(
-              child: SizedBox(height: SignmeSpacing.navbarClearance + 80),
+            SliverToBoxAdapter(
+              child: SizedBox(height: floatingNavInset(context) + 80),
             ),
           ],
         ),
@@ -264,7 +280,7 @@ class _GlobalStatsCard extends ConsumerWidget {
           const SizedBox(height: SignmeSpacing.md),
           statsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator(color: Colors.white)),
-            error: (_, __) => const Text('Erreur', style: TextStyle(color: Colors.white)),
+            error: (_, __) => const Text('Solde indisponible', style: TextStyle(color: Colors.white)),
             data: (stats) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -376,7 +392,7 @@ class _PeriodSynthesisCard extends ConsumerWidget {
           const SizedBox(height: SignmeSpacing.sm),
           statsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => const Text('Erreur'),
+            error: (_, __) => const Text('Résumé indisponible'),
             data: (stats) => Column(
               children: [
                 Row(

@@ -11,6 +11,7 @@ import '../../../transactions/presentation/widgets/recent_transactions_section.d
 import '../../domain/entities/service_entity.dart';
 import '../providers/services_provider.dart';
 import '../widgets/service_tile.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 /// Écran Services : accès rapide aux actions courantes des fidèles,
 /// rangées par rubrique, avec recherche.
@@ -44,7 +45,7 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
     // La navbar flottante se masque avec le clavier : le contenu se dégage
     // alors au-dessus du clavier plutôt que de la navbar.
     final bottomPadding =
-        keyboardInset > 0 ? keyboardInset + SignmeSpacing.lg : SignmeSpacing.navbarClearance;
+        keyboardInset > 0 ? keyboardInset + SignmeSpacing.lg : floatingNavInset(context);
 
     return Scaffold(
       backgroundColor: SignmeColors.background,

@@ -6,6 +6,8 @@ import '../../../../core/design_system/index.dart';
 import '../../../../core/widgets/index.dart';
 import '../providers/celebrations_provider.dart';
 import '../widgets/celebration_card.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class CelebrationsScreen extends ConsumerWidget {
   const CelebrationsScreen({super.key});
@@ -17,12 +19,10 @@ class CelebrationsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: SignmeColors.background,
       body: async.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: SignmeColors.primaryLight),
-        ),
+        loading: () => const SignmePageSkeleton(itemHeight: 90),
         error: (e, _) => SignmeErrorState(
           title: 'Chargement impossible',
-          message: e.toString(),
+          message: messageFromError(e),
           onRetry: () => ref.read(celebrationsProvider.notifier).load(),
         ),
         data: (celebrations) => RefreshIndicator(
@@ -42,11 +42,11 @@ class CelebrationsScreen extends ConsumerWidget {
                 )
               : ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(
+                  padding: EdgeInsets.fromLTRB(
                     SignmeSpacing.lg,
                     SignmeSpacing.lg,
                     SignmeSpacing.lg,
-                    SignmeSpacing.navbarClearance,
+                    floatingNavInset(context),
                   ),
                   itemCount: celebrations.length,
                   separatorBuilder: (_, __) => const SizedBox(height: SignmeSpacing.md),

@@ -17,6 +17,7 @@ class AuthAssetTextField extends StatelessWidget {
     this.onChanged,
     this.enabled = true,
     this.textInputAction,
+    this.autofillHints,
   });
 
   final String label;
@@ -31,6 +32,10 @@ class AuthAssetTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final bool enabled;
   final TextInputAction? textInputAction;
+
+  /// Indications pour le remplissage automatique (trousseau iOS, gestionnaire
+  /// de mots de passe Android) ; null = pas de remplissage automatique.
+  final Iterable<String>? autofillHints;
 
   static const double _radius = SignmeSpacing.radiusLg; // 16 px
   static const double _circleSize = 36.0;
@@ -57,6 +62,7 @@ class AuthAssetTextField extends StatelessWidget {
           onChanged: onChanged,
           enabled: enabled,
           textInputAction: textInputAction,
+          autofillHints: autofillHints,
           style: SignmeTypography.bodyLarge.copyWith(fontSize: 15),
           decoration: InputDecoration(
             hintText: hint,

@@ -10,6 +10,7 @@ import '../../../../core/widgets/index.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/users_provider.dart';
 import '../widgets/user_card.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class UsersScreen extends ConsumerStatefulWidget {
   const UsersScreen({super.key});
@@ -173,11 +174,11 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
             )
           else
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 SignmeSpacing.lg,
                 0,
                 SignmeSpacing.lg,
-                120,
+                floatingNavInset(context),
               ),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(

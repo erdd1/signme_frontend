@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../providers/auth_provider.dart';
 import '../utils/auth_feedback.dart';
 import '../widgets/auth_screen_header.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 
 class OTPVerificationScreen extends ConsumerStatefulWidget {
   final String email;
@@ -158,13 +159,7 @@ class _OTPVerificationScreenState extends ConsumerState<OTPVerificationScreen>
       setState(() => _resendAttempts++);
       _startResendCountdown(nextResendInSeconds);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Code renvoyé à votre email.'),
-          backgroundColor: SignmeColors.success,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      AppSnackbar.success(context, 'Code renvoyé à votre email.');
     }
   }
 

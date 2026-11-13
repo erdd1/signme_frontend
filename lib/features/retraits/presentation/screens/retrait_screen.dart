@@ -10,6 +10,7 @@ import '../providers/retraits_list_provider.dart';
 import '../widgets/retrait_beneficiaire_dialog.dart';
 import '../widgets/retrait_card.dart';
 import '../widgets/retrait_form_dialog.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 /// Montant minimum côté client, pour un feedback immédiat — le backend
 /// (config('payment.retrait.montant_min'), .env RETRAIT_MONTANT_MIN) reste la
@@ -150,22 +151,26 @@ class _RetraitScreenState extends ConsumerState<RetraitScreen> {
               ),
             ),
             if (listState.isLoading && listState.items.isEmpty)
-              const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: SignmeColors.primaryLight)))
+              const SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+                sliver: SliverToBoxAdapter(child: SignmeSkeletonList(itemCount: 4, itemHeight: 96)),
+              )
             else if (listState.error != null && listState.items.isEmpty)
               SliverFillRemaining(
+                hasScrollBody: false,
                 child: SignmeErrorState(
-                  title: 'Erreur',
+                  title: 'Chargement impossible',
                   message: listState.error!,
                   onRetry: () => ref.read(retraitsListProvider.notifier).refresh(),
                 ),
               )
             else if (listState.items.isEmpty)
               const SliverFillRemaining(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(SignmeSpacing.xl),
-                    child: Text('Aucun retrait pour le moment.', style: TextStyle(color: SignmeColors.mediumGray)),
-                  ),
+                hasScrollBody: false,
+                child: SignmeEmptyState(
+                  icon: Icons.account_balance_wallet_rounded,
+                  title: 'Aucun retrait',
+                  message: 'Vos retraits vers Mobile Money apparaîtront ici.',
                 ),
               )
             else
@@ -194,7 +199,7 @@ class _RetraitScreenState extends ConsumerState<RetraitScreen> {
                   ),
                 ),
               ),
-            const SliverToBoxAdapter(child: SizedBox(height: SignmeSpacing.navbarClearance + 40)),
+            SliverToBoxAdapter(child: SizedBox(height: floatingNavInset(context) + 40)),
           ],
         ),
       ),
@@ -234,7 +239,7 @@ class _SoldeCard extends StatelessWidget {
           const SizedBox(height: SignmeSpacing.md),
           soldeAsync.when(
             loading: () => const CircularProgressIndicator(color: Colors.white),
-            error: (_, __) => const Text('Erreur', style: TextStyle(color: Colors.white)),
+            error: (_, __) => const Text('Solde indisponible', style: TextStyle(color: Colors.white)),
             data: (solde) => Text(
               FinanceFormatters.fcfa(solde),
               style: SignmeTypography.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w900),

@@ -8,6 +8,7 @@ import '../../domain/entities/about_article_entity.dart';
 import '../providers/about_church_provider.dart';
 import 'content_pager.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 
 /// NB : cette version affiche le contenu intégral. Le découpage en pages
 /// horizontales (~10 lignes/page, swipe interne) sera ajouté à l'étape 6
@@ -91,7 +92,7 @@ class ArticleCard extends ConsumerWidget {
                 }
               } catch (e) {
                 if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.toString())));
+                  AppSnackbar.error(ctx, messageFromError(e));
                 }
               }
             }
@@ -119,7 +120,7 @@ class ArticleCard extends ConsumerWidget {
                 await ref.read(aboutChurchProvider.notifier).deleteArticle(article.uuid);
               } catch (e) {
                 if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(e.toString())));
+                  AppSnackbar.error(ctx, messageFromError(e));
                 }
               }
             }

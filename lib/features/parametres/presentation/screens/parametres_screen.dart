@@ -4,6 +4,7 @@ import '../widgets/user_info.dart';
 import '../widgets/general_info.dart';
 import '../widgets/about_app.dart';
 import '../widgets/support_and_legal_card.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class ParametresScreen extends StatelessWidget {
   const ParametresScreen({super.key});
@@ -27,7 +28,7 @@ class ParametresScreen extends StatelessWidget {
             const AboutApp(),
             const SizedBox(height: SignmeSpacing.xxxl),
             const SupportAndLegalCard(),
-            const SizedBox(height: 120),
+            SizedBox(height: floatingNavInset(context)),
           ],
         ),
       ),

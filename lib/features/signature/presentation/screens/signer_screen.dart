@@ -14,6 +14,7 @@ import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/signable_months.dart';
 import '../providers/signer_provider.dart';
 import '../providers/ma_carte_provider.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class SignerScreen extends ConsumerStatefulWidget {
   const SignerScreen({super.key});
@@ -324,7 +325,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
             const SizedBox(height: SignmeSpacing.lg),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 120),
+                padding: EdgeInsets.only(bottom: floatingNavInset(context)),
                 child: _distanceStep == 0
                     ? _distanceStepPeriode(state)
                     : _distanceStepPaiement(state, cardEnabled),
@@ -441,7 +442,7 @@ class _SignerScreenState extends ConsumerState<SignerScreen>
               const SizedBox(height: SignmeSpacing.lg),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 120),
+                  padding: EdgeInsets.only(bottom: floatingNavInset(context)),
                   child: switch (_presentielStep) {
                     0 => _presentielStepMember(state, isAncienNotInService, canSignNow),
                     1 => _presentielStepPeriode(state, isAncienNotInService),

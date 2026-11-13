@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../../core/widgets/app_button.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 
 class DesignationFormDialog extends StatefulWidget {
   const DesignationFormDialog({
@@ -320,9 +321,7 @@ class _DesignationFormDialogState extends State<DesignationFormDialog> {
   // ── Handle designate ───────────────────────────────────────────────────
   void _handleDesignate() {
     if (!is24h && selectedDays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez sélectionner au moins un jour'), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, 'Veuillez sélectionner au moins un jour');
       return;
     }
 

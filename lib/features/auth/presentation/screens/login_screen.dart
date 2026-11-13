@@ -108,7 +108,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             padding: const EdgeInsets.symmetric(
               horizontal: SignmeSpacing.screenPaddingHorizontal,
             ),
-            child: Form(
+            // AutofillGroup : l'identifiant et le mot de passe sont proposés
+            // ensemble par le gestionnaire de mots de passe du téléphone.
+            child: AutofillGroup(
+              child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -138,6 +141,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     assetPath: SignmeAssets.email,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.username, AutofillHints.email],
                     enabled: _credentialsLoaded && !authState.isLoading,
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
@@ -162,6 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     onToggleObscure: () =>
                         setState(() => _isObscured = !_isObscured),
                     textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
                     enabled: !authState.isLoading,
                     onChanged: (_) {},
                     validator: (v) => v == null || v.isEmpty
@@ -241,6 +246,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   const _SecurityFooter(),
                   const SizedBox(height: SignmeSpacing.xxl),
                 ],
+              ),
               ),
             ),
           ),

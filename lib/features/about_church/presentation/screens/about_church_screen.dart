@@ -12,6 +12,8 @@ import '../widgets/about_scroll_fab.dart';
 import '../widgets/article_card.dart';
 import '../widgets/category_filter_bar.dart';
 import '../widgets/pinned_carousel.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class AboutChurchScreen extends ConsumerStatefulWidget {
   const AboutChurchScreen({super.key});
@@ -68,12 +70,10 @@ class _AboutChurchScreenState extends ConsumerState<AboutChurchScreen> {
       backgroundColor: SignmeColors.background,
       floatingActionButton: AboutScrollFab(scrollController: _scrollController),
       body: payloadAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: SignmeColors.primaryLight),
-        ),
+        loading: () => const SignmePageSkeleton(),
         error: (e, _) => SignmeErrorState(
           title: 'Chargement impossible',
-          message: e.toString(),
+          message: messageFromError(e),
           onRetry: () => ref.read(aboutChurchProvider.notifier).load(),
         ),
         data: (payload) {
@@ -87,11 +87,11 @@ class _AboutChurchScreenState extends ConsumerState<AboutChurchScreen> {
             child: SingleChildScrollView(
               controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 SignmeSpacing.lg,
                 SignmeSpacing.lg,
                 SignmeSpacing.lg,
-                120,
+                floatingNavInset(context),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

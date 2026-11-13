@@ -11,6 +11,7 @@ import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/entities/contribution_entity.dart';
 import '../../domain/entities/contribution_filter_event_entity.dart';
 import '../providers/contributions_treasury_filter_provider.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 /// Tableau de bord financier « Contributions événement »
 /// (Pasteur / Secrétaire / Trésorier).
@@ -242,9 +243,9 @@ class _ContributionsEvenementScreenState
             // ── Load-more / indicateur bas de liste ───────────────────────────
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(
+                padding: EdgeInsets.fromLTRB(
                   SignmeSpacing.lg, SignmeSpacing.md,
-                  SignmeSpacing.lg, 120,
+                  SignmeSpacing.lg, floatingNavInset(context),
                 ),
                 child: _LoadMoreIndicator(
                   isLoading: listState.isLoading && listState.items.isNotEmpty,

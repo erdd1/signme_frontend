@@ -13,6 +13,7 @@ import '../../../home/presentation/widgets/expandable_text_block.dart';
 import '../../domain/entities/evenement_entity.dart';
 import '../providers/evenements_provider.dart';
 import '../widgets/objectif_progress_bar.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 /// Écran de détail d'un événement — atteint depuis un lien partagé
 /// (WhatsApp/App Links/Universal Links) ou une notification push. Charge
@@ -55,9 +56,7 @@ class EvenementDetailScreen extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: SignmeColors.primaryLight),
-        ),
+        loading: () => const SignmePageSkeleton(),
         error: (e, _) => SignmeErrorState(
           title: 'Événement introuvable',
           message: messageFromError(e),
@@ -81,7 +80,7 @@ class _EvenementDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 120),
+      padding: EdgeInsets.only(bottom: floatingNavInset(context)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

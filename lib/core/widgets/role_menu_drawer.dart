@@ -13,6 +13,7 @@ import '../../features/celebrations/presentation/providers/celebrations_provider
 import '../../features/historique_personnel/presentation/providers/historique_personnel_combined_provider.dart';
 import 'app_snackbar.dart';
 import 'badge_dot.dart';
+import 'profile_photo_avatar.dart';
 
 /// Menu drawer contextuel selon le rôle de l'utilisateur
 class RoleMenuDrawer extends ConsumerWidget {
@@ -34,7 +35,7 @@ class RoleMenuDrawer extends ConsumerWidget {
       child: Column(
         children: [
           // ── Header Premium ──────────────────────────────────────────
-          _buildHeader(user),
+          _buildHeader(context, user),
 
           // ── Menu items typés ────────────────────────────────────────
           Expanded(
@@ -133,10 +134,12 @@ class RoleMenuDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(UserEntity user) {
+  Widget _buildHeader(BuildContext context, UserEntity user) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+      // Zone de sécurité réelle de l'appareil (encoche, Dynamic Island, barre
+      // d'état Android) plutôt qu'une valeur fixe.
+      padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + SignmeSpacing.lg, 20, 30),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -147,14 +150,11 @@ class RoleMenuDrawer extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
+          ProfilePhotoAvatar(
+            photoUrl: user.photoUrl,
+            displayName: user.nom,
             radius: 30,
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            child: Text(
-              user.nom[0].toUpperCase(),
-              style: SignmeTypography.headlineSmall
-                  .copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            showViewerOnTap: false,
           ),
           const SizedBox(height: SignmeSpacing.md),
           Text(
@@ -170,6 +170,22 @@ class RoleMenuDrawer extends ConsumerWidget {
                 .copyWith(color: Colors.white.withValues(alpha: 0.7)),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: SignmeSpacing.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+            ),
+            child: Text(
+              AppPermissions.roleLabel(user.role),
+              style: SignmeTypography.labelSmall.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
+            ),
           ),
         ],
       ),

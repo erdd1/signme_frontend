@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../design_system/index.dart';
 
 // ============================================================================
@@ -42,7 +43,12 @@ class SignmePrimaryButton extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: (enabled && !isLoading) ? onPressed : null,
+          onTap: (enabled && !isLoading)
+              ? () {
+                  HapticFeedback.lightImpact();
+                  onPressed?.call();
+                }
+              : null,
           borderRadius: BorderRadius.circular(SignmeSpacing.buttonBorderRadius),
           child: Center(
             child: isLoading

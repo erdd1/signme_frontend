@@ -78,7 +78,7 @@ class SignedMemberCard extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: member.signature!.signatureType == 'presentiel'
-                              ? Colors.blue.withOpacity(0.1)
+                              ? SignmeColors.primaryLight.withValues(alpha: 0.1)
                               : Colors.purple.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -89,7 +89,7 @@ class SignedMemberCard extends StatelessWidget {
                           style: SignmeTypography.bodySmall.copyWith(
                             color: member.signature!.signatureType ==
                                     'presentiel'
-                                ? Colors.blue
+                                ? SignmeColors.primaryLight
                                 : Colors.purple,
                             fontSize: 11,
                           ),

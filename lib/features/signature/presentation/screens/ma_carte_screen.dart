@@ -13,6 +13,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/signature_entity.dart';
 import '../../domain/ma_carte_years.dart';
 import '../providers/ma_carte_provider.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class MaCarteScreen extends ConsumerStatefulWidget {
   const MaCarteScreen({super.key});
@@ -51,11 +52,11 @@ class _MaCarteScreenState extends ConsumerState<MaCarteScreen> {
       onRefresh: () => ref.read(maCarteProvider.notifier).load(force: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           SignmeSpacing.lg,
           SignmeSpacing.lg,
           SignmeSpacing.lg,
-          120,
+          floatingNavInset(context),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

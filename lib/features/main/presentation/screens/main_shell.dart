@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +12,7 @@ import '../../../../core/notifications/push_notification_provider.dart';
 import '../../../../core/permissions/app_permissions.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/services/sync_service.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 import '../../../../core/widgets/badge_dot.dart';
 import '../../../../core/widgets/keyboard_avoiding_body.dart';
 import '../../../../core/widgets/offline_banner.dart';
@@ -54,6 +56,13 @@ const double _kNavRadius = 28.0;
 /// (zone de sécurité quasi nulle) et à ceux à barre de navigation 3-boutons
 /// (zone de sécurité nettement plus haute).
 const double kFloatingNavClearance = _kNavBPad + _kNavHeight + _kFabLift;
+
+/// Marge basse d'un écran vivant derrière [MainShell] : navbar flottante +
+/// zone de sécurité système. Méthode unique pour que le dernier élément d'une
+/// liste ne soit jamais masqué, sur iPhone comme sur Android (voir
+/// [kFloatingNavClearance]).
+double floatingNavInset(BuildContext context) =>
+    kFloatingNavClearance + MediaQuery.of(context).padding.bottom;
 
 /// Distance entre le bas de l'écran et la navbar flottante.
 ///
@@ -369,11 +378,14 @@ class MainShell extends ConsumerWidget {
     }
 
     // Paroissien non communiant : le bouton reste affiché (toujours présent
-    // dans la navbar) mais ne peut pas signer sa carte — un tap ne fait rien.
+    // dans la navbar) mais ne peut pas signer sa carte — un tap l'explique.
     if (!user.estCommuniant) {
       return _DockedFab(
         icon: Icons.add_rounded,
-        onTap: () {},
+        onTap: () => AppSnackbar.info(
+          ctx,
+          'La signature de carte est réservée aux membres communiants.',
+        ),
       );
     }
 
@@ -589,8 +601,16 @@ class _DockedFab extends StatelessWidget {
     return SizedBox(
       width: _kFabSize,
       height: _kFabSize,
-      child: GestureDetector(
+      child: Semantics(
+        button: true,
+        label: 'Signer une carte',
+        excludeSemantics: true,
         onTap: onTap,
+        child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
         child: Container(
           decoration: BoxDecoration(
             shape: BoxShape.circle,
@@ -620,6 +640,7 @@ class _DockedFab extends StatelessWidget {
             size: 28,
           ),
         ),
+      ),
       ),
     );
   }
@@ -660,9 +681,18 @@ class _NavItem extends StatelessWidget {
       NavTab.maCarte => "Ma Carte",
     };
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return Semantics(
+      button: true,
+      selected: isActive,
+      label: badgeCount > 0 ? '$label, $badgeCount nouveauté${badgeCount > 1 ? 's' : ''}' : label,
+      excludeSemantics: true,
       onTap: onTap,
+      child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -704,6 +734,7 @@ class _NavItem extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../design_system/index.dart';
 import 'app_button.dart';
+import 'app_snackbar.dart';
+import '../network/dio_exception_mapper.dart';
 
 /// SIGNME DROPDOWN - Standard Production Component
 /// Champ de sélection ouvrant un bottom sheet compact (liste redimensionnable,
@@ -229,9 +231,7 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _deletingItem = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Suppression impossible : $e'), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, 'Suppression impossible : ${messageFromError(e)}');
     }
   }
 

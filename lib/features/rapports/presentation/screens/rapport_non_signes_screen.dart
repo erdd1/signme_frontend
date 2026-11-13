@@ -4,6 +4,7 @@ import '../../../../core/design_system/index.dart';
 import '../../domain/entities/rapport_membre_entity.dart';
 import '../providers/rapports_provider.dart';
 import '../widgets/not_signed_member_card.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class RapportNonSignesScreen extends ConsumerStatefulWidget {
   final List<RapportMembreEntity> nonSignes;
@@ -169,7 +170,7 @@ class _RapportNonSignesScreenState extends ConsumerState<RapportNonSignesScreen>
                     ),
             ),
 
-            const SizedBox(height: 120), // Bottom padding for navbar
+            SizedBox(height: floatingNavInset(context)), // Bottom padding for navbar
           ],
         ),
     );

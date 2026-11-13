@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../design_system/index.dart';
+import 'app_snackbar.dart';
+import '../network/dio_exception_mapper.dart';
 
 /// COMPACT DROPDOWN - Menu ancré sous le champ (coin bas-droit), jamais
 /// plein écran.
@@ -312,9 +314,7 @@ class _CompactDropdownMenuState<T> extends State<_CompactDropdownMenu<T>> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _deletingItem = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Suppression impossible : $e'), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, 'Suppression impossible : ${messageFromError(e)}');
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/design_system/index.dart';
@@ -14,6 +15,7 @@ import '../../../evenements/presentation/providers/evenements_provider.dart';
 import '../../../evenements/presentation/widgets/evenement_card.dart';
 import '../providers/home_feed_provider.dart';
 import '../widgets/news_card.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -62,7 +64,7 @@ class HomeScreen extends ConsumerWidget {
                 const OnboardingSection(
                   svgPath: SignmeAssets.onboardingHome,
                   title: 'Ravis de vous revoir',
-                  description: "Que voulez-vous faire aujourd'hui Mme/Mr ?",
+                  description: "Que souhaitez-vous faire aujourd'hui ?",
                 ),
                 const SizedBox(height: SignmeSpacing.xxxl),
                 const _ActualitesTitle(),
@@ -87,7 +89,7 @@ class HomeScreen extends ConsumerWidget {
               ref.read(evenementsListProvider.notifier).refresh();
             },
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          SliverToBoxAdapter(child: SizedBox(height: floatingNavInset(context))),
         ],
       ),
     );
@@ -116,7 +118,8 @@ class _UserHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Bonjour,',
+                  // Salutation selon l'heure locale de l'appareil.
+                  DateTime.now().hour >= 18 ? 'Bonsoir,' : 'Bonjour,',
                   style: SignmeTypography.bodySmall.copyWith(
                     color: SignmeColors.darkGray,
                   ),
@@ -294,23 +297,40 @@ class _ActualiteTabPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: SignmeSpacing.animationFast,
-        padding: const EdgeInsets.symmetric(
-          horizontal: SignmeSpacing.md,
-          vertical: SignmeSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: selected ? SignmeColors.primaryLight : SignmeColors.accentSky,
-          borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
-        ),
-        child: Text(
-          label,
-          style: SignmeTypography.labelSmall.copyWith(
-            color: selected ? SignmeColors.white : SignmeColors.primaryLight,
-            fontWeight: FontWeight.w700,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (!selected) HapticFeedback.selectionClick();
+          onTap();
+        },
+        // Zone tactile de 48 px minimum, sans changer l'aspect de la pastille.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: SignmeSpacing.touchTarget),
+          child: Center(
+            child: AnimatedContainer(
+              duration: SignmeSpacing.animationFast,
+              padding: const EdgeInsets.symmetric(
+                horizontal: SignmeSpacing.md,
+                vertical: SignmeSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: selected ? SignmeColors.primaryLight : SignmeColors.accentSky,
+                borderRadius: BorderRadius.circular(SignmeSpacing.radiusFull),
+              ),
+              child: Text(
+                label,
+                style: SignmeTypography.labelSmall.copyWith(
+                  color: selected ? SignmeColors.white : SignmeColors.primaryLight,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
         ),
       ),

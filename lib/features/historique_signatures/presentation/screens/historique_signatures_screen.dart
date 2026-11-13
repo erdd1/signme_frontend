@@ -5,6 +5,7 @@ import '../../../../core/widgets/index.dart';
 import '../../domain/entities/historique_signatures_entity.dart';
 import '../providers/historique_signatures_provider.dart';
 import '../../../badge/presentation/providers/badge_provider.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class HistoriqueSignaturesScreen extends ConsumerStatefulWidget {
   const HistoriqueSignaturesScreen({super.key});
@@ -104,7 +105,7 @@ class _HistoriqueSignaturesScreenState extends ConsumerState<HistoriqueSignature
               return buildSignmeTimelineSlivers(sections: sections);
             },
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 120)),
+          SliverToBoxAdapter(child: SizedBox(height: floatingNavInset(context))),
         ],
       ),
     );

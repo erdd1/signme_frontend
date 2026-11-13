@@ -12,6 +12,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/lookup_providers.dart';
 import '../providers/users_provider.dart';
 import '../widgets/user_card.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 
 /// Tableau de bord "Gérer utilisateurs" — stats démographiques (total
 /// fidèles, Cameroun/Diaspora, Hommes/Femmes) + 4 filtres (mois de
@@ -58,7 +59,7 @@ class GestionUtilisateursScreen extends ConsumerWidget {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'Statistique Fideles',
+          'Statistiques fidèles',
           style: SignmeTypography.labelLarge.copyWith(fontWeight: FontWeight.bold),
         ),
       ),
@@ -465,12 +466,10 @@ class _FilteredMembersResultScreenState extends ConsumerState<FilteredMembersRes
         ),
       ),
       body: asyncUsers.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: SignmeColors.primaryLight),
-        ),
+        loading: () => const SignmePageSkeleton(itemHeight: 90),
         error: (e, _) => SignmeErrorState(
           title: 'Chargement impossible',
-          message: e.toString(),
+          message: messageFromError(e),
           onRetry: () => ref.invalidate(userFilteredListProvider(widget.filters)),
         ),
         data: (users) {

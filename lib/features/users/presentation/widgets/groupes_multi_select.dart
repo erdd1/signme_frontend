@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../../core/design_system/index.dart';
 import '../../../auth/domain/entities/user_lookup_refs.dart';
+import '../../../../core/widgets/app_snackbar.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 
 /// Sélection multiple de groupes avec, pour chaque groupe choisi, le poste du
 /// chrétien : simple membre (par défaut), président et/ou trésorier. Un
@@ -316,9 +318,7 @@ class _GroupeChipState extends State<_GroupeChip> {
     } catch (e) {
       if (mounted) {
         setState(() => _isDeleting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Suppression impossible : $e'), backgroundColor: SignmeColors.error),
-        );
+        AppSnackbar.error(context, 'Suppression impossible : ${messageFromError(e)}');
       }
     }
   }

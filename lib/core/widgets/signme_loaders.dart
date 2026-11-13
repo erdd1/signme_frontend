@@ -188,6 +188,24 @@ class SignmeSkeletonList extends StatelessWidget {
   }
 }
 
+/// SKELETON DE PAGE - Chargement plein écran (détails, listes) : remplace le
+/// spinner centré par un aperçu de la mise en page, comme l'écran du groupe.
+class SignmePageSkeleton extends StatelessWidget {
+  const SignmePageSkeleton({super.key, this.itemCount = 4, this.itemHeight = 110});
+
+  final int itemCount;
+  final double itemHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: SignmeSpacing.lg),
+      children: [SignmeSkeletonList(itemCount: itemCount, itemHeight: itemHeight)],
+    );
+  }
+}
+
 // ============================================================================
 // SIGNME EMPTY & ERROR STATES
 // ============================================================================

@@ -9,6 +9,7 @@ import '../../../../core/widgets/index.dart';
 import '../../../../core/widgets/profile_photo_avatar.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/publications_provider.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class PublicationDetailScreen extends ConsumerWidget {
   const PublicationDetailScreen({super.key, required this.publicationId});
@@ -57,12 +58,7 @@ class PublicationDetailScreen extends ConsumerWidget {
                             .delete(pub.id);
                         if (context.mounted) {
                           context.pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Publication supprimée'),
-                              backgroundColor: SignmeColors.success,
-                            ),
-                          );
+                          AppSnackbar.success(context, 'Publication supprimée');
                         }
                       } catch (e) {
                         if (context.mounted) {
@@ -94,9 +90,7 @@ class PublicationDetailScreen extends ConsumerWidget {
         ],
       ),
       body: asyncPub.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: SignmeColors.primaryLight),
-        ),
+        loading: () => const SignmePageSkeleton(),
         error: (e, _) => SignmeErrorState(
           title: 'Chargement impossible',
           message: messageFromError(e),
@@ -104,11 +98,11 @@ class PublicationDetailScreen extends ConsumerWidget {
               ref.invalidate(publicationDetailProvider(publicationId)),
         ),
         data: (pub) => SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             SignmeSpacing.lg,
             SignmeSpacing.md,
             SignmeSpacing.lg,
-            120,
+            floatingNavInset(context),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

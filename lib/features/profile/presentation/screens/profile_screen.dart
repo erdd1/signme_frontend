@@ -20,6 +20,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../../retraits/presentation/providers/retraits_provider.dart';
 import '../providers/profile_provider.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -296,28 +297,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _bustPhotoCache = DateTime.now().millisecondsSinceEpoch;
         });
         await ref.read(authNotifierProvider.notifier).refreshProfile();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Photo de profil mise à jour'),
-            backgroundColor: SignmeColors.success,
-          ),
-        );
+        AppSnackbar.success(context, 'Photo de profil mise à jour');
       }
     } on ProfileImageTooLargeException catch (e) {
       if (!mounted) return;
       setState(() => _pendingPhotoFile = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, e.message);
     } catch (e) {
       if (!mounted) return;
       setState(() => _pendingPhotoFile = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur : $e'),
-          backgroundColor: SignmeColors.error,
-        ),
-      );
+      AppSnackbar.error(context, messageFromError(e));
     }
   }
 
@@ -629,13 +618,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (!context.mounted) return;
     result.fold(
           (failure) => AppSnackbar.error(context, failure.message),
-          (_) => ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profil mis à jour avec succès'),
-          backgroundColor: SignmeColors.success,
-          duration: Duration(seconds: 3),
-        ),
-      ),
+          (_) => AppSnackbar.success(context, 'Profil mis à jour avec succès'),
     );
   }
 
@@ -1003,9 +986,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: () async {
               final newValue = controller.text.trim();
               if (newValue.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Le champ ne peut pas être vide')),
-                );
+                AppSnackbar.warning(context, 'Le champ ne peut pas être vide');
                 return;
               }
 
@@ -1045,13 +1026,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   },
                       (updatedUser) {
                     // Succès - afficher le message avec le champ mis à jour
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('$field mis à jour avec succès'),
-                        backgroundColor: Colors.green,
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
+                    AppSnackbar.success(context, '$field mis à jour avec succès');
                   },
                 );
               }
@@ -1095,9 +1070,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             value: 'Activé',
             showChevron: true,
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifications non disponible...')),
-              );
+              AppSnackbar.info(context, 'Notifications non disponible...');
             },
           ),
         ],

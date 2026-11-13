@@ -5,11 +5,12 @@ import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/app_shimmer.dart';
 import '../../../../core/widgets/onboarding_section.dart';
-import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance;
+import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance, floatingNavInset;
 import '../../domain/entities/ancien_entity.dart';
 import '../providers/anciens_provider.dart';
 import '../widgets/ancien_card.dart';
 import '../widgets/designation_form_dialog.dart';
+import '../../../../core/widgets/app_snackbar.dart';
 
 class AncienDesignationsScreen extends ConsumerStatefulWidget {
   const AncienDesignationsScreen({super.key});
@@ -262,7 +263,7 @@ class _AncienDesignationsScreenState
       color: SignmeColors.primaryLight,
       onRefresh: () => ref.read(ancienProvider.notifier).refresh(),
       child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.md, SignmeSpacing.lg, 120),
+        padding: EdgeInsets.fromLTRB(SignmeSpacing.lg, SignmeSpacing.md, SignmeSpacing.lg, floatingNavInset(context)),
         itemCount: state.anciens.length,
         itemBuilder: (_, index) {
           final ancien = state.anciens[index];
@@ -344,9 +345,7 @@ class _AncienDesignationsScreenState
             horairesFin: fin,
           );
           if (ok && ctx.mounted) {
-            ScaffoldMessenger.of(ctx).showSnackBar(
-              const SnackBar(content: Text('Désignation réussie'), backgroundColor: SignmeColors.success)
-            );
+            AppSnackbar.success(ctx, 'Désignation réussie');
           }
         },
       ),

@@ -12,6 +12,7 @@ import '../../domain/entities/publication_entity.dart';
 import '../providers/publications_data_providers.dart';
 import '../providers/publications_provider.dart';
 import '../widgets/publication_card.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class PublicationsListScreen extends ConsumerWidget {
   const PublicationsListScreen({super.key});
@@ -118,11 +119,11 @@ class PublicationsListScreen extends ConsumerWidget {
             isEmpty: (list) => list.isEmpty,
             data: (publications) => [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
+                padding: EdgeInsets.fromLTRB(
                   SignmeSpacing.lg,
                   0,
                   SignmeSpacing.lg,
-                  120,
+                  floatingNavInset(context),
                 ),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
@@ -209,12 +210,7 @@ class PublicationsListScreen extends ConsumerWidget {
     try {
       await ref.read(publicationFormProvider.notifier).delete(pub.id);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Publication supprimée'),
-            backgroundColor: SignmeColors.success,
-          ),
-        );
+        AppSnackbar.success(context, 'Publication supprimée');
       }
     } catch (e) {
       if (!context.mounted) return;

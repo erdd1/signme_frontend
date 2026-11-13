@@ -15,6 +15,7 @@ import '../../domain/entities/rapport_membre_entity.dart';
 import '../providers/rapports_provider.dart';
 import 'rapport_signes_screen.dart';
 import 'rapport_non_signes_screen.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class RapportSecretaireScreen extends ConsumerStatefulWidget {
   const RapportSecretaireScreen({super.key});
@@ -72,11 +73,11 @@ class _RapportSecretaireScreenState extends ConsumerState<RapportSecretaireScree
 
           Padding(
 
-            padding: const EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB(
               SignmeSpacing.lg,
               SignmeSpacing.md,
               SignmeSpacing.lg,
-              120,
+              floatingNavInset(context),
             ),
 
             child: Column(

@@ -9,6 +9,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/evenement_entity.dart';
 import '../providers/evenements_provider.dart';
 import '../widgets/evenement_gestion_card.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 /// Écran "Gérer les événements" — Pasteur/Secrétaire/Trésorier.
 ///
@@ -99,11 +100,11 @@ class _EvenementsGestionList extends ConsumerWidget {
         emptyMessage: 'Les événements apparaîtront ici.',
         isEmpty: (list) => list.isEmpty,
         data: (evenements) => ListView.separated(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             SignmeSpacing.lg,
             SignmeSpacing.lg,
             SignmeSpacing.lg,
-            120,
+            floatingNavInset(context),
           ),
           itemCount: evenements.length,
           separatorBuilder: (_, __) => const SizedBox(height: SignmeSpacing.md),

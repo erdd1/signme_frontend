@@ -5,6 +5,7 @@ import '../design_system/index.dart';
 import '../network/dio_exception_mapper.dart';
 import '../services/pdf_download_service.dart';
 import 'app_button.dart';
+import 'app_snackbar.dart';
 
 /// Bouton "Télécharger (PDF)" réutilisable — lance le téléchargement dans une
 /// boîte de dialogue avec barre de progression, puis propose d'ouvrir le
@@ -111,16 +112,9 @@ class _PdfDownloadProgressDialogState
     if (result.type == ResultType.done) return true;
 
     if (!mounted) return false;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result.type == ResultType.noAppToOpen
+    AppSnackbar.error(context, result.type == ResultType.noAppToOpen
               ? 'Aucune application installée ne peut ouvrir ce PDF.'
-              : 'Impossible d\'ouvrir le fichier.',
-        ),
-        backgroundColor: SignmeColors.error,
-      ),
-    );
+              : 'Impossible d\'ouvrir le fichier.');
     return false;
   }
 

@@ -7,6 +7,7 @@ import '../../../../core/widgets/index.dart';
 import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance;
 import '../../domain/entities/church_about_info_entity.dart';
 import '../providers/about_church_provider.dart';
+import '../../../../core/network/dio_exception_mapper.dart';
 
 /// Formulaire d'édition des infos permanentes du Card principal
 /// ("À propos de mon Église") — district, horaires de culte, activités
@@ -75,7 +76,7 @@ class _EditChurchInfoScreenState extends ConsumerState<EditChurchInfoScreen> {
       });
       if (mounted) context.pop();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) AppSnackbar.error(context, messageFromError(e));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

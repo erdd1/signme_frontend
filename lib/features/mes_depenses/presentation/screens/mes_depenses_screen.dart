@@ -9,6 +9,7 @@ import '../../domain/entities/mes_depenses_stats_entity.dart';
 import '../providers/mes_depenses_data_providers.dart';
 import '../providers/mes_depenses_provider.dart';
 import '../widgets/contribution_perso_card.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 /// Module "Mes dépenses" — accessible à tous les rôles.
 /// Historique et statistiques des contributions du seul utilisateur connecté.
@@ -90,7 +91,7 @@ class MesDepensesScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 120)),
+            SliverToBoxAdapter(child: SizedBox(height: floatingNavInset(context))),
           ],
         ),
       ),

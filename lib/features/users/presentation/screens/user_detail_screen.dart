@@ -11,6 +11,7 @@ import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/users_provider.dart';
 import '../utils/user_display_formatters.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 class UserDetailScreen extends ConsumerWidget {
   const UserDetailScreen({super.key, required this.userId});
@@ -56,9 +57,7 @@ class UserDetailScreen extends ConsumerWidget {
         ],
       ),
       body: asyncUser.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: SignmeColors.primaryLight),
-        ),
+        loading: () => const SignmePageSkeleton(),
         error: (e, _) => SignmeErrorState(
           title: 'Chargement impossible',
           message: messageFromError(e),
@@ -114,21 +113,12 @@ class UserDetailScreen extends ConsumerWidget {
     try {
       await ref.read(usersActionsProvider.notifier).toggleStatus(user.id);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              user.actif ? 'Compte désactivé' : 'Compte activé',
-            ),
-            backgroundColor: SignmeColors.success,
-          ),
-        );
+        AppSnackbar.success(context, user.actif ? 'Compte désactivé' : 'Compte activé');
       }
     } catch (e) {
       if (!context.mounted) return;
       final msg = e is AppException ? e.message : messageFromError(e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, msg);
     }
   }
 }
@@ -155,11 +145,11 @@ class _UserDetailBody extends StatelessWidget {
         );
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         SignmeSpacing.lg,
         SignmeSpacing.md,
         SignmeSpacing.lg,
-        120,
+        floatingNavInset(context),
       ),
       child: Column(
         children: [

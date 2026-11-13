@@ -7,6 +7,7 @@ import '../../../../core/network/dio_exception_mapper.dart';
 import '../../../../core/widgets/index.dart';
 import '../../domain/entities/publication_entity.dart';
 import '../providers/publications_provider.dart';
+import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
 
 /// Création ou édition d'une publication (pasteur / secrétaire).
 class CreateEditPublicationScreen extends ConsumerStatefulWidget {
@@ -141,11 +142,11 @@ class _CreateEditPublicationScreenState
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             SignmeSpacing.lg,
             SignmeSpacing.md,
             SignmeSpacing.lg,
-            120,
+            floatingNavInset(context),
           ),
           children: [
             if (!_isEdit) ...[
@@ -278,22 +279,13 @@ class _CreateEditPublicationScreenState
       }
       if (mounted) {
         ref.read(formDirtyProvider.notifier).state = false;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isEdit ? 'Publication mise à jour' : 'Publication publiée',
-            ),
-            backgroundColor: SignmeColors.success,
-          ),
-        );
+        AppSnackbar.success(context, _isEdit ? 'Publication mise à jour' : 'Publication publiée');
         context.pop();
       }
     } catch (e) {
       if (!mounted) return;
       final msg = e is AppException ? e.message : messageFromError(e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: SignmeColors.error),
-      );
+      AppSnackbar.error(context, msg);
     }
   }
 }
