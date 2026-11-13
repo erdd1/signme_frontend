@@ -126,12 +126,20 @@ class MainShell extends ConsumerWidget {
     // Masquer la navbar quand le clavier est ouvert
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
+    // Écrans de service : plein écran (ni appbar ni navbar du shell), tout en
+    // restant dans le shell pour pouvoir ouvrir ses autres écrans.
+    final fullScreen = _isFullScreenRoute(GoRouterState.of(context).matchedLocation);
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       extendBody: true,
       backgroundColor: SignmeColors.white,
       drawer: const RoleMenuDrawer(),
-      appBar: AppBar(
+      // Pas de menu par glissement sur un écran plein écran (il a sa flèche de retour).
+      drawerEnableOpenDragGesture: !fullScreen,
+      appBar: fullScreen
+          ? null
+          : AppBar(
         backgroundColor: SignmeColors.white,
         elevation: 0,
         automaticallyImplyLeading: false,
@@ -159,13 +167,15 @@ class MainShell extends ConsumerWidget {
           // masque déjà quand le clavier s'ouvre).
           KeyboardAvoidingBody(child: child),
           // ── Bannière hors ligne ──
-          const Positioned(
-            top: 0,
+          Positioned(
+            // Sans appbar du shell, la bannière se place sous la barre d'état.
+            top: fullScreen ? MediaQuery.of(context).padding.top : 0,
             left: 0,
             right: 0,
-            child: OfflineBanner(),
+            child: const OfflineBanner(),
           ),
           // ── Navbar: Positioned D'ABORD, animations À L'INTÉRIEUR ──
+          if (!fullScreen)
           Positioned(
             left: _kNavHPad,
             right: _kNavHPad,
@@ -262,6 +272,14 @@ class MainShell extends ConsumerWidget {
       ),
     );
   }
+
+  /// Routes du shell affichées en plein écran, comme l'écran d'un groupe :
+  /// l'écran porte sa propre flèche de retour et son titre.
+  bool _isFullScreenRoute(String route) =>
+      route == AppRoutes.servicesDon ||
+      route == AppRoutes.servicesGestionActualites ||
+      route == AppRoutes.servicesGestionFinance ||
+      route == AppRoutes.servicesRapportSignatures;
 
   bool _isTabRoute(BuildContext ctx, List<NavTab> tabs) {
     final loc = GoRouterState.of(ctx).matchedLocation;
