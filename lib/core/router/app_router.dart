@@ -54,6 +54,7 @@ import '../../features/mes_depenses/presentation/screens/mes_depenses_screen.dar
 import '../../features/celebrations/presentation/screens/celebrations_screen.dart';
 import '../../features/celebrations/presentation/screens/celebration_detail_screen.dart';
 import '../deep_link/deep_link_state.dart';
+import '../widgets/signme_edge_swipe_back.dart';
 
 // ── Route names ────────────────────────────────────────────────────────────
 abstract final class AppRoutes {
@@ -668,7 +669,8 @@ class _AuthListenable extends ChangeNotifier {
 CustomTransitionPage<void> _fadePage(Widget child, GoRouterState state) {
   return CustomTransitionPage(
     key:                state.pageKey,
-    child:              child,
+    // Geste « glisser pour revenir » d'iOS, que le fondu ne fournit pas.
+    child:              SignmeEdgeSwipeBack(child: child),
     transitionDuration: const Duration(milliseconds: 220),
     transitionsBuilder: (_, animation, secondaryAnimation, child) => FadeTransition(
       opacity: animation,

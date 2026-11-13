@@ -7,7 +7,6 @@ import '../../../../core/widgets/index.dart';
 import '../../../finances/presentation/widgets/finance_formatters.dart';
 import '../../domain/entities/groupe_entities.dart';
 import '../providers/groupes_provider.dart';
-import 'groupe_sheet.dart';
 
 /// Action choisie dans le détail d'un communiqué.
 enum CommuniqueAction { contribuer, modifier, retirer }
@@ -21,7 +20,7 @@ Future<CommuniqueAction?> showCommuniqueDetailSheet(
   required CommuniqueEntity communique,
   required bool peutGerer,
 }) {
-  return showGroupeSheet<CommuniqueAction>(
+  return showSignmeSheet<CommuniqueAction>(
     context,
     title: communique.titre,
     builder: (_) => _Detail(groupeUuid: groupeUuid, communique: communique, peutGerer: peutGerer),

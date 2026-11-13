@@ -63,8 +63,8 @@ class _RetraitScreenState extends ConsumerState<RetraitScreen> {
   }
 
   void _openBeneficiaireDialog(RetraitBeneficiaireEntity? actuel) {
-    showDialog<bool>(
-      context: context,
+    showSignmeSheet<bool>(
+      context,
       builder: (_) => RetraitBeneficiaireDialog(beneficiaireActuel: actuel),
     ).then((changed) {
       if (changed == true) {
@@ -74,9 +74,9 @@ class _RetraitScreenState extends ConsumerState<RetraitScreen> {
   }
 
   void _openRetraitDialog(int solde, RetraitBeneficiaireEntity beneficiaire) {
-    showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
+    showSignmeSheet<bool>(
+      context,
+      isDismissible: false,
       builder: (_) => RetraitFormDialog(
         solde: solde,
         beneficiaire: beneficiaire,

@@ -20,7 +20,7 @@ Future<bool?> showGroupeRetraitSheet(
   required String groupeUuid,
   required int soldeEnLigne,
 }) {
-  return showGroupeSheet<bool>(
+  return showSignmeSheet<bool>(
     context,
     title: 'Retirer de la caisse',
     builder: (_) => _RetraitFlow(groupeUuid: groupeUuid, soldeEnLigne: soldeEnLigne),

@@ -56,6 +56,7 @@ export 'role_menu_drawer.dart';
 // ── Badges
 export 'badge_dot.dart';
 export 'signme_page_app_bar.dart';
+export 'signme_sheet.dart';
 
 // ── Filtres & avatars décoratifs
 export 'signme_pill_chip.dart';

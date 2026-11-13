@@ -144,7 +144,7 @@ class _GroupeScreenState extends ConsumerState<GroupeScreen> {
   /// Annulation d'une entrée cash (jamais de modification ni de suppression).
   Future<void> _annulerCash(GroupeEntity groupe, MouvementEntity m) async {
     final controller = TextEditingController();
-    final motif = await showGroupeSheet<String>(
+    final motif = await showSignmeSheet<String>(
       context,
       title: 'Annuler cette entrée ?',
       subtitle: 'Elle restera visible dans l\'historique, marquée comme annulée.',

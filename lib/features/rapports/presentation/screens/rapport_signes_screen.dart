@@ -54,15 +54,14 @@ class _RapportSignesScreenState extends ConsumerState<RapportSignesScreen> {
             padding: const EdgeInsets.all(SignmeSpacing.lg),
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: const Icon(
-                    Icons.arrow_back_rounded,
-                    color: SignmeColors.primaryDark,
-                    size: 24,
-                  ),
+                // IconButton : zone tactile de 48 px (l'icône seule en faisait 24).
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'Retour',
+                  padding: EdgeInsets.zero,
+                  alignment: Alignment.centerLeft,
+                  icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.primaryDark, size: 24),
                 ),
-                const SizedBox(width: SignmeSpacing.md),
                 Text(
                   'Rechercher un membre',
                   style: SignmeTypography.headlineSmall.copyWith(

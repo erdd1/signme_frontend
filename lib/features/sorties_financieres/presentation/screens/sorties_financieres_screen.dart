@@ -58,8 +58,8 @@ class _SortiesFinancieresScreenState extends ConsumerState<SortiesFinancieresScr
   }
 
   void _showFormDialog({String? initialType, SortieFinanciereEntity? editSortie}) {
-    showDialog(
-      context: context,
+    showSignmeSheet<bool>(
+      context,
       builder: (ctx) => _SortieFormDialog(initialType: initialType, sortieToEdit: editSortie),
     ).then((val) {
       if (val == true) {
@@ -507,21 +507,9 @@ class _SortieFormDialogState extends ConsumerState<_SortieFormDialog> {
   Widget build(BuildContext context) {
     final state = ref.watch(sortieFormProvider);
 
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg),
-      ),
-      backgroundColor: SignmeColors.white,
-      child: SingleChildScrollView(
-        child: Container(
-          padding: EdgeInsets.only(
-            left: SignmeSpacing.lg,
-            right: SignmeSpacing.lg,
-            top: SignmeSpacing.lg,
-            bottom: SignmeSpacing.lg + MediaQuery.of(context).viewInsets.bottom,
-          ),
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: Form(
+    // Contenu d'une feuille modale (voir showSignmeSheet) : le cadre, le
+    // défilement et la remontée au-dessus du clavier sont gérés par la feuille.
+    return Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -598,9 +586,6 @@ class _SortieFormDialogState extends ConsumerState<_SortieFormDialog> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
+          );
   }
 }

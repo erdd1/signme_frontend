@@ -138,12 +138,18 @@ class MainShell extends ConsumerWidget {
     // Les écrans de détail et de formulaire portent leur propre en-tête
     // (SignmePageAppBar) : le shell retire le sien pour ne jamais en empiler deux.
     final hasOwnAppBar = _routeHasOwnAppBar(GoRouterState.of(context).matchedLocation);
+    // Écran empilé au-dessus d'un autre (ouvert depuis un service, une liste…) :
+    // le shell affiche une flèche de retour. Sur un onglet ou un module ouvert
+    // depuis le menu, il n'y a rien à dépiler.
+    final canGoBack = !_isTabRoute(context, tabs) && GoRouter.of(context).canPop();
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
       extendBody: true,
       backgroundColor: SignmeColors.white,
       drawer: const RoleMenuDrawer(),
+      // Sur un écran empilé, le bord gauche sert au retour, pas au menu.
+      drawerEnableOpenDragGesture: !canGoBack && !hasOwnAppBar,
       appBar: hasOwnAppBar
           ? null
           : AppBar(
@@ -151,20 +157,28 @@ class MainShell extends ConsumerWidget {
         elevation: 0,
         automaticallyImplyLeading: false,
         centerTitle: false,
+        leading: canGoBack
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
+                tooltip: 'Retour',
+                onPressed: () => _guardedNavigate(context, ref, () => context.pop()),
+              )
+            : null,
+        titleSpacing: canGoBack ? 0 : null,
         title: _buildAppBarTitleForRoute(context),
         actions: [
-          if (GoRouterState.of(context).matchedLocation == AppRoutes.home) ...[
-            Builder(
-              builder: (ctx) => Padding(
-                padding: const EdgeInsets.only(right: SignmeSpacing.sm),
-                child: IconButton(
-                  icon: const Icon(Icons.menu_rounded,
-                      color: SignmeColors.black, size: 28),
-                  onPressed: () => Scaffold.of(ctx).openDrawer(),
-                ),
+          // Le menu reste accessible depuis tous les écrans du shell.
+          Builder(
+            builder: (ctx) => Padding(
+              padding: const EdgeInsets.only(right: SignmeSpacing.sm),
+              child: IconButton(
+                icon: const Icon(Icons.menu_rounded,
+                    color: SignmeColors.black, size: 28),
+                tooltip: 'Menu',
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
               ),
             ),
-          ],
+          ),
         ],
       ),
       body: Stack(

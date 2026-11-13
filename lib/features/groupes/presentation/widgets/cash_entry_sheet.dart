@@ -12,7 +12,7 @@ import 'groupe_sheet.dart';
 /// Enregistre de l'argent reçu HORS application (cash) dans la caisse du
 /// groupe — président ou trésorier. Toujours distinct de l'argent en ligne.
 Future<bool?> showCashEntrySheet(BuildContext context, {required String groupeUuid}) {
-  return showGroupeSheet<bool>(
+  return showSignmeSheet<bool>(
     context,
     title: 'Argent reçu hors application',
     subtitle: 'Enregistrez de l\'argent reçu en main propre. Il reste séparé de l\'argent reçu par l\'application.',

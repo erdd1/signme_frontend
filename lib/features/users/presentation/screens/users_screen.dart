@@ -71,41 +71,6 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                   description:
                       'Consultez, créez et gérez les membres de votre église.',
                 ),
-                if (canManage) ...[
-                  const SizedBox(height: SignmeSpacing.lg),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: SignmeSpacing.lg,
-                    ),
-                    child: SignmePrimaryButton(
-                      label: 'Nouveau membre',
-                      icon: Icons.person_add_rounded,
-                      onPressed: () => context.push(AppRoutes.userCreate),
-                    ),
-                  ),
-                  const SizedBox(height: SignmeSpacing.md),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: SignmeSpacing.lg,
-                    ),
-                    child: SignmeSecondaryButton(
-                      label: 'Statistiques fidèles',
-                      icon: Icons.bar_chart_rounded,
-                      onPressed: () => context.push(AppRoutes.userStats),
-                    ),
-                  ),
-                  const SizedBox(height: SignmeSpacing.md),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: SignmeSpacing.lg,
-                    ),
-                    child: PdfDownloadButton(
-                      label: 'Télécharger la liste (PDF)',
-                      path: ApiConfig.usersExportPdf,
-                      filename: 'membres.pdf',
-                    ),
-                  ),
-                ],
                 const SizedBox(height: SignmeSpacing.lg),
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -132,6 +97,46 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                     ),
                   ),
                 ),
+                if (canManage) ...[
+                  const SizedBox(height: SignmeSpacing.md),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: SignmeSpacing.lg,
+                    ),
+                    child: SignmePrimaryButton(
+                      label: 'Nouveau membre',
+                      icon: Icons.person_add_rounded,
+                      onPressed: () => context.push(AppRoutes.userCreate),
+                    ),
+                  ),
+                  const SizedBox(height: SignmeSpacing.md),
+                  // Actions secondaires côte à côte : la liste reste visible
+                  // sans faire défiler l'écran.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: SignmeSpacing.lg,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: SignmeSecondaryButton(
+                            label: 'Statistiques',
+                            icon: Icons.bar_chart_rounded,
+                            onPressed: () => context.push(AppRoutes.userStats),
+                          ),
+                        ),
+                        const SizedBox(width: SignmeSpacing.md),
+                        const Expanded(
+                          child: PdfDownloadButton(
+                            label: 'Liste PDF',
+                            path: ApiConfig.usersExportPdf,
+                            filename: 'membres.pdf',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: SignmeSpacing.lg),
               ],
             ),

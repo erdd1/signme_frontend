@@ -53,26 +53,13 @@ class _RetraitFormDialogState extends ConsumerState<RetraitFormDialog> {
   Widget build(BuildContext context) {
     final state = ref.watch(retraitFormProvider);
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SignmeSpacing.radiusLg)),
-      backgroundColor: SignmeColors.white,
-      child: SingleChildScrollView(
-        child: Container(
-          padding: EdgeInsets.only(
-            left: SignmeSpacing.lg,
-            right: SignmeSpacing.lg,
-            top: SignmeSpacing.lg,
-            bottom: SignmeSpacing.lg + MediaQuery.of(context).viewInsets.bottom,
-          ),
-          constraints: const BoxConstraints(maxWidth: 400),
-          child: switch (_step) {
+    // Contenu d'une feuille modale (voir showSignmeSheet) : le cadre, le
+    // défilement et la remontée au-dessus du clavier sont gérés par la feuille.
+    return switch (_step) {
             _RetraitStep.montant => _buildMontantStep(),
             _RetraitStep.recap => _buildRecapStep(),
             _RetraitStep.resultat => _buildResultatStep(state),
-          },
-        ),
-      ),
-    );
+          };
   }
 
   Widget _buildMontantStep() {
