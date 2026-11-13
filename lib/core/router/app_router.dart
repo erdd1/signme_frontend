@@ -473,6 +473,57 @@ final routerProvider = Provider<GoRouter>((ref) {
               return _fadePage(ContributionFormScreen(evenement: evenement), state);
             },
           ),
+          // ── Services (don, gestion actualités / finance, rapport signatures) ──
+          // Affichés en plein écran (le shell masque son appbar et sa navbar sur
+          // ces routes, voir MainShell), mais déclarés DANS le shell : ils
+          // ouvrent d'autres écrans du shell (créer un événement, retraits…), et
+          // go_router ne peut pas empiler une seconde page du shell au-dessus
+          // d'une page hors shell (clé de page dupliquée dans le Navigator).
+          GoRoute(
+            path: AppRoutes.servicesDon,
+            name: 'services-don',
+            pageBuilder: (ctx, state) => _fadePage(const ContributionFormScreen(), state),
+          ),
+          // Service « Gestion actualités » : regroupe les événements (créer / gérer /
+          // contributions) et les publications (les écrans eux-mêmes sont inchangés).
+          GoRoute(
+            path: AppRoutes.servicesGestionActualites,
+            name: 'services-gestion-actualites',
+            pageBuilder: (ctx, state) => _fadePage(
+              const GestionServiceScreen(
+                titre: 'Gestion actualités',
+                messageRefus: 'Ce service est réservé au pasteur, à la secrétaire et au trésorier.',
+                actionsPour: actionsGestionActualites,
+              ),
+              state,
+            ),
+          ),
+          // Service « Gestion finance » : regroupe finances / sorties financières / retraits.
+          GoRoute(
+            path: AppRoutes.servicesGestionFinance,
+            name: 'services-gestion-finance',
+            pageBuilder: (ctx, state) => _fadePage(
+              const GestionServiceScreen(
+                titre: 'Gestion finance',
+                messageRefus: 'Ce service est réservé au pasteur et au trésorier.',
+                actionsPour: actionsGestionFinance,
+              ),
+              state,
+            ),
+          ),
+          // Service « Rapport signatures » : regroupe historique des signatures et rapport secrétaire.
+          GoRoute(
+            path: AppRoutes.servicesRapportSignatures,
+            name: 'services-rapport-signatures',
+            pageBuilder: (ctx, state) => _fadePage(
+              const GestionServiceScreen(
+                titre: 'Rapport signatures',
+                messageRefus: 'Ce service est réservé au pasteur, aux anciens et à la secrétaire.',
+                actionsPour: actionsRapportSignatures,
+              ),
+              state,
+            ),
+          ),
           GoRoute(
             path: AppRoutes.contributionsEvenement,
             name: 'contributions-evenement',
@@ -537,55 +588,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.servicesTransactions,
         name: 'services-transactions',
         pageBuilder: (ctx, state) => _fadePage(const TransactionsScreen(), state),
-      ),
-
-      // ── Services (don, gestion actualités / finance, rapport signatures) —
-      // plein écran, hors shell, comme les groupes : bouton retour et grand
-      // titre, sans appbar « Services » ni navbar du shell.
-      GoRoute(
-        path: AppRoutes.servicesDon,
-        name: 'services-don',
-        pageBuilder: (ctx, state) => _fadePage(const ContributionFormScreen(), state),
-      ),
-      // Service « Gestion actualités » : regroupe les événements (créer / gérer /
-      // contributions) et les publications (les écrans eux-mêmes sont inchangés).
-      GoRoute(
-        path: AppRoutes.servicesGestionActualites,
-        name: 'services-gestion-actualites',
-        pageBuilder: (ctx, state) => _fadePage(
-          const GestionServiceScreen(
-            titre: 'Gestion actualités',
-            messageRefus: 'Ce service est réservé au pasteur, à la secrétaire et au trésorier.',
-            actionsPour: actionsGestionActualites,
-          ),
-          state,
-        ),
-      ),
-      // Service « Gestion finance » : regroupe finances / sorties financières / retraits.
-      GoRoute(
-        path: AppRoutes.servicesGestionFinance,
-        name: 'services-gestion-finance',
-        pageBuilder: (ctx, state) => _fadePage(
-          const GestionServiceScreen(
-            titre: 'Gestion finance',
-            messageRefus: 'Ce service est réservé au pasteur et au trésorier.',
-            actionsPour: actionsGestionFinance,
-          ),
-          state,
-        ),
-      ),
-      // Service « Rapport signatures » : regroupe historique des signatures et rapport secrétaire.
-      GoRoute(
-        path: AppRoutes.servicesRapportSignatures,
-        name: 'services-rapport-signatures',
-        pageBuilder: (ctx, state) => _fadePage(
-          const GestionServiceScreen(
-            titre: 'Rapport signatures',
-            messageRefus: 'Ce service est réservé au pasteur, aux anciens et à la secrétaire.',
-            actionsPour: actionsRapportSignatures,
-          ),
-          state,
-        ),
       ),
 
       // ── Groupes : écran du groupe, communiqués, contribution — plein écran,
