@@ -135,13 +135,12 @@ class MainShell extends ConsumerWidget {
     // Masquer la navbar quand le clavier est ouvert
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
-    // Écrans de service : plein écran (ni appbar ni navbar du shell), tout en
-    // restant dans le shell pour pouvoir ouvrir ses autres écrans.
-    final fullScreen = _isFullScreenRoute(GoRouterState.of(context).matchedLocation);
-    // Les écrans de détail et de formulaire portent leur propre en-tête
-    // (SignmePageAppBar), comme les écrans plein écran : le shell retire le
-    // sien pour ne jamais en empiler deux.
-    final hasOwnAppBar = fullScreen || _routeHasOwnAppBar(GoRouterState.of(context).matchedLocation);
+    // Habillage de l'écran courant (voir AppRoutes.isFullScreenService et
+    // AppRoutes.hasOwnHeader) : plein écran = ni appbar ni navbar du shell ;
+    // en-tête propre = le shell retire son appbar pour ne jamais en empiler deux.
+    final route = GoRouterState.of(context).matchedLocation;
+    final fullScreen = AppRoutes.isFullScreenService(route);
+    final hasOwnAppBar = AppRoutes.hasOwnHeader(route);
     // Écran empilé au-dessus d'un autre (ouvert depuis un service, une liste…) :
     // le shell affiche une flèche de retour. Sur un onglet ou un module ouvert
     // depuis le menu, il n'y a rien à dépiler.
@@ -288,23 +287,6 @@ class MainShell extends ConsumerWidget {
       ),
     );
   }
-
-  /// Routes du shell dont l'écran affiche son propre en-tête (flèche de retour
-  /// + grand titre). « Créer un événement » garde le titre du shell.
-  bool _routeHasOwnAppBar(String route) =>
-      route == AppRoutes.changePassword ||
-      route.startsWith('${AppRoutes.users}/') ||
-      route.startsWith('${AppRoutes.publications}/') ||
-      route.startsWith('${AppRoutes.aboutChurch}/') ||
-      (route.startsWith('/evenements/') && route != AppRoutes.evenementCreate);
-
-  /// Routes du shell affichées en plein écran, comme l'écran d'un groupe :
-  /// l'écran porte sa propre flèche de retour et son titre.
-  bool _isFullScreenRoute(String route) =>
-      route == AppRoutes.servicesDon ||
-      route == AppRoutes.servicesGestionActualites ||
-      route == AppRoutes.servicesGestionFinance ||
-      route == AppRoutes.servicesRapportSignatures;
 
   bool _isTabRoute(BuildContext ctx, List<NavTab> tabs) {
     final loc = GoRouterState.of(ctx).matchedLocation;

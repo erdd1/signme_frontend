@@ -115,6 +115,37 @@ abstract final class AppRoutes {
   static const celebrations = '/celebrations';
   static String celebrationDetailPath(String uuid) => '/celebrations/$uuid';
   static const assistant = '/assistant';
+
+  // ── Présentation dans le shell ────────────────────────────────────────────
+  // Source unique, avec les chemins ci-dessus : ajouter une route = déclarer ici
+  // comment le shell (MainShell) l'habille, au lieu de tenir des listes à part.
+
+  /// Services ouverts en plein écran (flèche de retour + grand titre, sans
+  /// appbar ni navbar du shell), comme l'écran d'un groupe.
+  ///
+  /// Ils restent DÉCLARÉS DANS le shell : ils ouvrent d'autres écrans du shell
+  /// (créer un événement, retraits…), et go_router ne sait pas empiler une
+  /// seconde page du shell au-dessus d'une page hors shell (clé de page
+  /// dupliquée dans le Navigator).
+  static const fullScreenServices = <String>{
+    servicesDon,
+    servicesGestionActualites,
+    servicesGestionFinance,
+    servicesRapportSignatures,
+  };
+
+  static bool isFullScreenService(String route) => fullScreenServices.contains(route);
+
+  /// Écrans du shell qui affichent leur propre en-tête (SignmePageAppBar :
+  /// flèche de retour + grand titre) : le shell retire alors le sien pour ne
+  /// jamais en empiler deux. « Créer un événement » garde le titre du shell.
+  static bool hasOwnHeader(String route) =>
+      isFullScreenService(route) ||
+      route == changePassword ||
+      route.startsWith('$users/') ||
+      route.startsWith('$publications/') ||
+      route.startsWith('$aboutChurch/') ||
+      (route.startsWith('/evenements/') && route != evenementCreate);
 }
 
 // ── Router Provider ────────────────────────────────────────────────────────
