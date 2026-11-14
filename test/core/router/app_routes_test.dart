@@ -23,17 +23,33 @@ void main() {
         AppRoutes.services,
         AppRoutes.maCarte,
         AppRoutes.profile,
-        AppRoutes.publications,
         AppRoutes.users,
-        AppRoutes.sortiesFinancieres,
-        AppRoutes.retraits,
+        AppRoutes.anciensDesignations,
         AppRoutes.mesDepenses,
         AppRoutes.parametres,
-        AppRoutes.evenementCreate,
-        AppRoutes.contributionsEvenement,
+        AppRoutes.celebrations,
+        AppRoutes.historiquePersonnel,
       ]) {
         expect(AppRoutes.isFullScreenService(route), isFalse, reason: route);
         expect(AppRoutes.hasOwnHeader(route), isFalse, reason: route);
+      }
+    });
+
+    test('les modules ouverts depuis un service portent leur propre en-tête', () {
+      for (final route in [
+        AppRoutes.evenementCreate,
+        AppRoutes.gestionEvenements,
+        AppRoutes.contributionsEvenement,
+        AppRoutes.publications,
+        AppRoutes.publicationCreate,
+        AppRoutes.sortiesFinancieres,
+        AppRoutes.retraits,
+        AppRoutes.historiqueSignatures,
+        AppRoutes.rapportSecretaire,
+      ]) {
+        expect(AppRoutes.hasOwnHeader(route), isTrue, reason: route);
+        // En-tête propre, mais la navbar reste (seuls les services sont plein écran).
+        expect(AppRoutes.isFullScreenService(route), isFalse, reason: route);
       }
     });
 

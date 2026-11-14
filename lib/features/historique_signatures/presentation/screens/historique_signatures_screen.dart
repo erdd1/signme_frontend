@@ -33,7 +33,10 @@ class _HistoriqueSignaturesScreenState extends ConsumerState<HistoriqueSignature
   Widget build(BuildContext context) {
     final historiqueAsync = ref.watch(historiqueSignaturesProvider(_selectedYear));
 
-    return RefreshIndicator(
+    return Scaffold(
+      backgroundColor: SignmeColors.background,
+      appBar: const SignmePageAppBar(title: 'Historique signatures'),
+      body: RefreshIndicator(
       color: SignmeColors.primaryLight,
       onRefresh: () async {
         await ref.read(historiqueSignaturesProvider(_selectedYear).notifier).refresh();
@@ -108,6 +111,7 @@ class _HistoriqueSignaturesScreenState extends ConsumerState<HistoriqueSignature
           SliverToBoxAdapter(child: SizedBox(height: floatingNavInset(context))),
         ],
       ),
+    ),
     );
   }
 

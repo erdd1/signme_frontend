@@ -137,15 +137,29 @@ abstract final class AppRoutes {
   static bool isFullScreenService(String route) => fullScreenServices.contains(route);
 
   /// Écrans du shell qui affichent leur propre en-tête (SignmePageAppBar :
-  /// flèche de retour + grand titre) : le shell retire alors le sien pour ne
-  /// jamais en empiler deux. « Créer un événement » garde le titre du shell.
+  /// flèche de retour + grand titre, comme l'écran d'un groupe) : le shell
+  /// retire alors le sien pour ne jamais en empiler deux. Ce sont les services,
+  /// les modules qu'ils ouvrent, et les écrans de détail / formulaire. Les
+  /// onglets et les modules du menu latéral gardent l'appbar du shell.
   static bool hasOwnHeader(String route) =>
       isFullScreenService(route) ||
+      _modulesOfServices.contains(route) ||
       route == changePassword ||
       route.startsWith('$users/') ||
       route.startsWith('$publications/') ||
       route.startsWith('$aboutChurch/') ||
-      (route.startsWith('/evenements/') && route != evenementCreate);
+      route.startsWith('/evenements/');
+
+  /// Modules ouverts depuis un service (Gestion actualités, Gestion finance,
+  /// Rapport signatures).
+  static const _modulesOfServices = <String>{
+    publications,
+    contributionsEvenement,
+    sortiesFinancieres,
+    retraits,
+    historiqueSignatures,
+    rapportSecretaire,
+  };
 }
 
 // ── Router Provider ────────────────────────────────────────────────────────

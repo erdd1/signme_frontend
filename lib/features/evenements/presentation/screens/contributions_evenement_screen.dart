@@ -83,6 +83,7 @@ class _ContributionsEvenementScreenState
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
+      appBar: const SignmePageAppBar(title: 'Contributions événement'),
       body: RefreshIndicator(
         color: SignmeColors.primaryLight,
         onRefresh: () => ref

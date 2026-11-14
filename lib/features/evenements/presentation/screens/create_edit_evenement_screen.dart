@@ -10,6 +10,7 @@ import '../../../../core/widgets/signme_unsaved_changes_guard.dart';
 import '../../../../core/utils/evenement_image_picker.dart';
 import '../../../main/presentation/screens/main_shell.dart' show kFloatingNavClearance;
 import '../providers/evenements_provider.dart';
+import '../../../../core/widgets/signme_page_app_bar.dart';
 
 /// Création d'un événement (pasteur/secrétaire uniquement).
 class CreateEditEvenementScreen extends ConsumerStatefulWidget {
@@ -155,6 +156,7 @@ class _CreateEditEvenementScreenState extends ConsumerState<CreateEditEvenementS
     return SignmeUnsavedChangesGuard(
       child: Scaffold(
       backgroundColor: SignmeColors.background,
+      appBar: SignmePageAppBar(title: 'Créer un événement', backEnabled: !_submitting),
       body: SafeArea(
         child: SingleChildScrollView(
           // Padding bas dynamique : dégage la navbar flottante sur tous les

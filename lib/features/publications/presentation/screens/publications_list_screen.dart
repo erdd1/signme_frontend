@@ -26,7 +26,10 @@ class PublicationsListScreen extends ConsumerWidget {
         user != null && AppPermissions.canManagePublications(user);
     final selectedType = ref.watch(publicationTypeFilterProvider);
 
-    return RefreshIndicator(
+    return Scaffold(
+      backgroundColor: SignmeColors.background,
+      appBar: const SignmePageAppBar(title: 'Gérer les publications'),
+      body: RefreshIndicator(
       color: SignmeColors.primaryLight,
       onRefresh: () async {
         await ref.read(publicationsListProvider(filters).notifier).refresh();
@@ -165,6 +168,7 @@ class PublicationsListScreen extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 

@@ -78,6 +78,7 @@ class _SortiesFinancieresScreenState extends ConsumerState<SortiesFinancieresScr
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
+      appBar: const SignmePageAppBar(title: 'Sorties financières'),
       body: RefreshIndicator(
         color: SignmeColors.primaryLight,
         onRefresh: () async {

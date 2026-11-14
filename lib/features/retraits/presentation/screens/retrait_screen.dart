@@ -108,6 +108,7 @@ class _RetraitScreenState extends ConsumerState<RetraitScreen> {
 
     return Scaffold(
       backgroundColor: SignmeColors.background,
+      appBar: const SignmePageAppBar(title: 'Retraits'),
       body: RefreshIndicator(
         color: SignmeColors.primaryLight,
         onRefresh: _refreshAll,

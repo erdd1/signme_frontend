@@ -135,100 +135,66 @@ class MainShell extends ConsumerWidget {
     // Masquer la navbar quand le clavier est ouvert
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
-    // Habillage de l'écran courant (voir AppRoutes.isFullScreenService et
-    // AppRoutes.hasOwnHeader) : plein écran = ni appbar ni navbar du shell ;
-    // en-tête propre = le shell retire son appbar pour ne jamais en empiler deux.
-    final route = GoRouterState.of(context).matchedLocation;
-    final fullScreen = AppRoutes.isFullScreenService(route);
-    final hasOwnAppBar = AppRoutes.hasOwnHeader(route);
-    // Écran empilé au-dessus d'un autre (ouvert depuis un service, une liste…) :
-    // le shell affiche une flèche de retour. Sur un onglet ou un module ouvert
-    // depuis le menu, il n'y a rien à dépiler.
-    final canGoBack = !_isTabRoute(context, tabs) && GoRouter.of(context).canPop();
+    // `route` = écran réellement affiché, y compris un écran empilé (push) :
+    // GoRouterState.of(context) ne verrait que la route sous-jacente.
+    return _TopRouteBuilder(builder: (context, route) {
+      // Habillage de l'écran courant (voir AppRoutes.isFullScreenService et
+      // AppRoutes.hasOwnHeader) : plein écran = ni appbar ni navbar du shell ;
+      // en-tête propre = le shell retire son appbar pour ne jamais en empiler deux.
+      final fullScreen = AppRoutes.isFullScreenService(route);
+      final hasOwnAppBar = AppRoutes.hasOwnHeader(route);
 
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      extendBody: true,
-      backgroundColor: SignmeColors.white,
-      drawer: const RoleMenuDrawer(),
-      // Sur un écran empilé ou plein écran, le bord gauche sert au retour, pas au menu.
-      drawerEnableOpenDragGesture: !canGoBack && !hasOwnAppBar,
-      appBar: hasOwnAppBar
-          ? null
-          : AppBar(
+      return Scaffold(
+        resizeToAvoidBottomInset: false,
+        extendBody: true,
         backgroundColor: SignmeColors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        centerTitle: false,
-        leading: canGoBack
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: SignmeColors.black),
-                tooltip: 'Retour',
-                onPressed: () => _guardedNavigate(context, ref, () => context.pop()),
-              )
-            : null,
-        titleSpacing: canGoBack ? 0 : null,
-        title: _buildAppBarTitleForRoute(context),
-        actions: [
-          // Le menu reste accessible depuis tous les écrans du shell.
-          Builder(
-            builder: (ctx) => Padding(
-              padding: const EdgeInsets.only(right: SignmeSpacing.sm),
-              child: IconButton(
-                icon: const Icon(Icons.menu_rounded,
-                    color: SignmeColors.black, size: 28),
-                tooltip: 'Menu',
-                onPressed: () => Scaffold.of(ctx).openDrawer(),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          // Le contenu se réduit avec le clavier pour que le champ en cours de
-          // saisie reste visible ; la navbar, elle, garde sa position (elle se
-          // masque déjà quand le clavier s'ouvre).
-          KeyboardAvoidingBody(child: child),
-          // ── Bannière hors ligne ──
-          Positioned(
-            // Sans appbar du shell, la bannière se place sous la barre d'état.
-            top: hasOwnAppBar ? MediaQuery.of(context).padding.top : 0,
-            left: 0,
-            right: 0,
-            child: const OfflineBanner(),
-          ),
-          // ── Navbar: Positioned D'ABORD, animations À L'INTÉRIEUR ──
-          if (!fullScreen)
-          Positioned(
-            left: _kNavHPad,
-            right: _kNavHPad,
-            bottom: floatingNavBottomOffset(safeBottom: bottomInset, platform: defaultTargetPlatform),
-            child: AnimatedSlide(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOut,
-              offset: keyboardVisible ? const Offset(0, 1.5) : Offset.zero,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                opacity: keyboardVisible ? 0.0 : 1.0,
-                child: _FloatingNavBar(
-                  tabs: tabs,
-                  currentIndex: currentIdx,
-                  isTabRoute: _isTabRoute(context, tabs),
-                  onNavTap: (t) => _onNavTap(context, ref, t),
-                  fab: _buildFab(context, ref, user),
+        drawer: const RoleMenuDrawer(),
+        // Le menu n'existe que depuis l'accueil : ailleurs, le bord gauche sert au retour.
+        drawerEnableOpenDragGesture: route == AppRoutes.home,
+        appBar: hasOwnAppBar
+            ? null
+            : AppBar(
+          backgroundColor: SignmeColors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          centerTitle: false,
+          title: _buildAppBarTitleForRoute(route),
+          actions: [
+            // Bouton menu : uniquement dans l'appbar de l'accueil.
+            if (route == AppRoutes.home)
+            Builder(
+              builder: (ctx) => Padding(
+                padding: const EdgeInsets.only(right: SignmeSpacing.sm),
+                child: IconButton(
+                  icon: const Icon(Icons.menu_rounded,
+                      color: SignmeColors.black, size: 28),
+                  tooltip: 'Menu',
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
                 ),
               ),
             ),
-          ),
-          // ── Assistant religieux : accueil uniquement, au-dessus de la
-          // navbar côté Profil (à la manière du bouton IA de WhatsApp) ──
-          if (GoRouterState.of(context).matchedLocation == AppRoutes.home)
+          ],
+        ),
+        body: Stack(
+          children: [
+            // Le contenu se réduit avec le clavier pour que le champ en cours de
+            // saisie reste visible ; la navbar, elle, garde sa position (elle se
+            // masque déjà quand le clavier s'ouvre).
+            KeyboardAvoidingBody(child: child),
+            // ── Bannière hors ligne ──
             Positioned(
-              right: _kNavHPad + SignmeSpacing.xs,
-              bottom: floatingNavBottomOffset(safeBottom: bottomInset, platform: defaultTargetPlatform) +
-                  _kNavHeight +
-                  SignmeSpacing.md,
+              // Sans appbar du shell, la bannière se place sous la barre d'état.
+              top: hasOwnAppBar ? MediaQuery.of(context).padding.top : 0,
+              left: 0,
+              right: 0,
+              child: const OfflineBanner(),
+            ),
+            // ── Navbar: Positioned D'ABORD, animations À L'INTÉRIEUR ──
+            if (!fullScreen)
+            Positioned(
+              left: _kNavHPad,
+              right: _kNavHPad,
+              bottom: floatingNavBottomOffset(safeBottom: bottomInset, platform: defaultTargetPlatform),
               child: AnimatedSlide(
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeInOut,
@@ -236,17 +202,42 @@ class MainShell extends ConsumerWidget {
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 200),
                   opacity: keyboardVisible ? 0.0 : 1.0,
-                  child: _AssistantFab(onTap: () => context.push(AppRoutes.assistant)),
+                  child: _FloatingNavBar(
+                    tabs: tabs,
+                    currentIndex: currentIdx,
+                    isTabRoute: _isTabRoute(context, tabs),
+                    onNavTap: (t) => _onNavTap(context, ref, t),
+                    fab: _buildFab(context, ref, user),
+                  ),
                 ),
               ),
             ),
-        ],
-      ),
-    );
+            // ── Assistant religieux : accueil uniquement, au-dessus de la
+            // navbar côté Profil (à la manière du bouton IA de WhatsApp) ──
+            if (route == AppRoutes.home)
+              Positioned(
+                right: _kNavHPad + SignmeSpacing.xs,
+                bottom: floatingNavBottomOffset(safeBottom: bottomInset, platform: defaultTargetPlatform) +
+                    _kNavHeight +
+                    SignmeSpacing.md,
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
+                  offset: keyboardVisible ? const Offset(0, 1.5) : Offset.zero,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: keyboardVisible ? 0.0 : 1.0,
+                    child: _AssistantFab(onTap: () => context.push(AppRoutes.assistant)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
   }
 
-  Widget _buildAppBarTitleForRoute(BuildContext context) {
-    final route = GoRouterState.of(context).matchedLocation;
+  Widget _buildAppBarTitleForRoute(String route) {
     final String label = switch (route) {
       AppRoutes.home => "SignMe",
       AppRoutes.finances => "Mes Finances",
@@ -257,14 +248,7 @@ class MainShell extends ConsumerWidget {
       AppRoutes.users => "Gérer utilisateurs",
       AppRoutes.signer => "Signer une carte",
       AppRoutes.anciensDesignations => "Anciens de services",
-      AppRoutes.rapportSecretaire => "Rapport secrétaire",
-      AppRoutes.historiqueSignatures => "Historique Signatures",
-      AppRoutes.publications => "Gérer publications",
       AppRoutes.parametres => "Paramètres",
-      AppRoutes.evenementCreate => "Créer un événement",
-      AppRoutes.contributionsEvenement => "Contributions événement",
-      AppRoutes.sortiesFinancieres => "Sorties financières",
-      AppRoutes.retraits => "Retraits",
       AppRoutes.mesDepenses => "Mes dépenses",
       AppRoutes.aboutChurch => "À propos de votre Église",
       AppRoutes.celebrations => "Célébrations",
@@ -408,6 +392,25 @@ class MainShell extends ConsumerWidget {
     return _DockedFab(
       icon: Icons.add_rounded,
       onTap: () => _guardedNavigate(ctx, ref, () => ctx.go(AppRoutes.signer)),
+    );
+  }
+}
+
+/// Fournit la route réellement affichée (celle du dessus de la pile, y compris
+/// un écran empilé par `push`) et reconstruit à chaque changement de route.
+/// `GoRouterState.of(context)` ne renvoie que la route sous-jacente d'un écran
+/// empilé : il affichait « Services » sur tous les écrans ouverts depuis Services.
+class _TopRouteBuilder extends StatelessWidget {
+  const _TopRouteBuilder({required this.builder});
+
+  final Widget Function(BuildContext context, String route) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    final delegate = GoRouter.of(context).routerDelegate;
+    return ListenableBuilder(
+      listenable: delegate,
+      builder: (context, _) => builder(context, delegate.currentConfiguration.last.matchedLocation),
     );
   }
 }

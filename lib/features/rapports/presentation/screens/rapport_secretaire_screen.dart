@@ -16,6 +16,7 @@ import '../providers/rapports_provider.dart';
 import 'rapport_signes_screen.dart';
 import 'rapport_non_signes_screen.dart';
 import '../../../main/presentation/screens/main_shell.dart' show floatingNavInset;
+import '../../../../core/widgets/signme_page_app_bar.dart';
 
 class RapportSecretaireScreen extends ConsumerStatefulWidget {
   const RapportSecretaireScreen({super.key});
@@ -49,7 +50,10 @@ class _RapportSecretaireScreenState extends ConsumerState<RapportSecretaireScree
     final canDownload = currentUser != null &&
         AppPermissions.canDownloadRapportSecretairePdf(currentUser);
 
-    return SingleChildScrollView(
+    return Scaffold(
+      backgroundColor: SignmeColors.background,
+      appBar: const SignmePageAppBar(title: 'Rapport secrétaire'),
+      body: SingleChildScrollView(
 
       child: Column(
 
@@ -155,6 +159,7 @@ class _RapportSecretaireScreenState extends ConsumerState<RapportSecretaireScree
           ),
         ],
       ),
+    ),
     );
   }
 
